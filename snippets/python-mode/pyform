@@ -1,0 +1,19 @@
+from django import forms
+from django.views.generic.simple import direct_to_template
+
+class $1Form(forms.Form):
+    subject = forms.CharField(max_length=100)
+    message = forms.CharField()
+    sender = forms.EmailField()
+    cc_myself = forms.BooleanField(required=False)
+
+def $1(request):
+    if request.method == 'POST':
+        form = $1Form(request.POST)
+        if form.is_valid():
+	   print 'form is valid'
+    else:
+        form = $1Form()
+
+    return direct_to_template(request, '$1.html',
+                              dict(form=form))

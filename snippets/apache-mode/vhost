@@ -1,0 +1,4 @@
+<VirtualHost $1:${2:80}>
+    ServerName $1
+    $2
+</VirtualHost>

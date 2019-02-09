@@ -1,0 +1,85 @@
+syntax: glob
+*.orig
+*.rej
+*~
+*.o
+*.elc
+tests/*.err
+*.pyc
+*.elc
+*.html
+.org-id-locations
+tramp
+./nxhtml/*
+./dvc/*
+./python-el/*
+./python-django.el/*
+./url/cache/*
+replace-colorthemes
+.emacs
+projectile.cache
+el-get/packages/*
+url/cookies
+eshell/*
+places
+plantuml.jar
+reveal.js*
+recentf
+network-security.data
+.trello/*
+var/pcache/*
+request/curl-cookie-jar
+diary
+history
+*.ics
+snippets/ledger-mode
+treemacs/*
+./lisp/auto-virtualenv/*
+.cache/*
+emojis/*
+
+syntax: regexp
+.*\#.*\#$
+^html5-el/.*$
+^tramp-2.2.2/.*$
+^.ropeproject/.*
+^elpa/.*
+^ac-comphist.dat$
+^auto-complete/.*
+^breadcrumb/.*
+^org-redmine/.*
+^anything/.*
+^helm/.*
+^image-dired/.
+^session.*
+^configs/cfg_.*_custom.el$
+^configs/cfg_org-redmine.el
+^emacs-color-theme-solarized/.*
+^configs/cfg_avk_notmuch.el$
+projectile-bookmarks.eld
+.python-environments
+jabber-avatar-cache
+bookmarks
+# added by aHg on Sat Oct 29 13:48:29 2016
+syntax: glob
+.mc-lists.el
+.git
+
+el-get/.loaddefs.el
+el-get/.status.el
+README.el
+README.tex
+README.txt
+settings.el
+
+# added by aHg on Mon Dec 31 11:12:04 2018
+syntax: glob
+forge-database.sqlite
+
+# added by aHg on Mon Dec 31 11:12:21 2018
+syntax: glob
+logview-cache.extmap
+
+# added by aHg on Mon Dec 31 11:12:27 2018
+syntax: glob
+magithub/cache

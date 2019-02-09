@@ -1,0 +1,3 @@
+;; trying it.
+
+(require 'hyperbole)

@@ -1,0 +1,5 @@
+#+begin_src plantuml :file files/find_or_reg_v3.png
+@startuml
+$1
+@enduml
+#+end_src

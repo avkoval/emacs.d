@@ -1,0 +1,22 @@
+#+BEGIN_SRC ditaa :file files/hello-world.png
+
+                              +----------+
+          Drawing with        |cYEL   {s}|
+            ditaa             +          +
+                              | emacs fu |
+                              +----------+
+                                  ^
+                                  |
+    +--------+   +-------+    +-------+
+    |cGRE    |-->+ ditaa +--> |       |
+    |  Text  |   +-------+    |diagram|
+    |Document|   | magic!|    |       |
+    |     {d}|   |cBLU   |    | cRED  |
+    +---+----+   +-------+    +-------+
+        ^
+        |
+    +--------+
+    |cPNK{io}|
+    |  user  |
+    +--------+
+#+END_SRC

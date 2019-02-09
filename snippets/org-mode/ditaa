@@ -1,0 +1,48 @@
+#+BEGIN_SRC ditaa :file files/hello-world.png
+
+ ----+  /----\  +----+
+     :  |    |  :    |
+     |  |    |  |{s} |
+     v  \-=--+  +----+
+
+ *----*
+ |    |      /--*
+ *    *      |
+ |    |  -*--+
+ *----*
+
+ /-----------------\
+ | Things to do    |
+ | cGRE            |
+ | o Cut the grass |
+ | o Buy jam       |
+ | o Fix car       |
+ | o Make website  |
+ \-----------------/
+
+ Document
+
+ +-----+
+ |{d}  |
+ |     |
+ |     |
+ +-----+
+
+
+ Storage
+
+ +-----+
+ |{s}  |
+ |     |
+ |     |
+ +-----+
+
+ Input/Output
+
+ +-----+
+ |{io} |
+ |     |
+ |     |
+ +-----+
+
+#+END_SRC

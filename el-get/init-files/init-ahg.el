@@ -1,0 +1,5 @@
+(defun ahg-glog-default()
+  (interactive)
+  (ahg-glog "tip" "-200"))
+(global-set-key [C-f1] 'ahg-status)
+(global-set-key [C-f2] 'ahg-glog-default)

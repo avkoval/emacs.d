@@ -1,0 +1,14 @@
+Installing this configuration file should be simple, I tried to automate the most
+of actions and package installations via el-get and Emacs packages system.
+
+System depedendencies (Ubuntu)
+------------------------------
+
+sudo apt-get install pep8
+
+Post-install
+------------
+
+cd ~/.emacs.d/elpa/jedi-core-*
+sudo python setup.py install
+sudo python3 setup.py install

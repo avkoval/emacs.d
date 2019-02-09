@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% load i18n %}
+
+{% block head_title %}Typical page{% endblock %}
+{% block page_title %}Typical page{% endblock %}
+
+{% block content %}
+
+Typical page.
+
+<table>
+
+</table>
+
+{% endblock %}

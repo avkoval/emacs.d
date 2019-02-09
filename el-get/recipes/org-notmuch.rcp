@@ -1,0 +1,5 @@
+(:name org-notmuch
+       :description "Org-notmuch"
+       :type http
+       :url "http://orgmode.org/w/?p=org-mode.git;a=blob_plain;f=contrib/lisp/org-notmuch.el;hb=HEAD"
+       :features org-notmuch)

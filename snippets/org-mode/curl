@@ -1,0 +1,3 @@
+#+BEGIN_SRC sh :dir ~ :results output replace :async
+curl -X GET -k -i '$1' 2> /dev/null
+#+END_SRC

@@ -1,0 +1,4 @@
+(:name annot
+       :description "Emacs annotations manager"
+       :type http
+       :url "https://raw.githubusercontent.com/ghoshi/annot/master/src/annot.el")
