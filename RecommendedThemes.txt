@@ -1,0 +1,44 @@
+Very good dark themes
+=====================
+
+  * avk-darkblue-night (*my*)
+  * cyberpunk
+  * base16-railscasts-dark
+  * warm-night
+  * tsdh-dark
+  * moe-dark
+  * deeper-blue
+  * tango-dark
+  * tangotango
+  * gruber-darker
+  * ample*
+  * farmhouse-dark
+  * yoshi
+
+
+Good light themes
+======================
+
+  * leuven
+  * avk-dayligth
+  * tommyh
+  * professional
+  * alect-light
+
+
+Can recommend (acceptable quality)
+==================================
+
+  * twilight-anti-bright
+  * toxi
+  * solarized-dark
+  * solarized-light
+  * misterioso
+  * tomorrow-night-eighties
+  * wheatgrass (high contrast)
+  * purple-haze
+  * assemblage
+  * misterioso
+  * cherry-blossom
+
+

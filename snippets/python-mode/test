@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import unittest
+from django.test import TestCase
+from django.contrib.sites.models import Site
+#from django.core.urlresolvers import reverse
+
+current_site = Site.objects.get_current()
+
+class DjangoModelTest(TestCase):
+    def testNothing(self):
+        pass
+
+
+if __name__ == '__main__':
+    unittest.main()

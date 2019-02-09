@@ -1,0 +1,7 @@
+#+begin_src plantuml :file $1
+@startuml
+autonumber
+actor "$2"
+"$2" -> service1 : Request for access keys
+service1 -> "$2" : Response
+#+end_src

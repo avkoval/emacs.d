@@ -1,0 +1,5 @@
+(:name openapi-yaml-mode
+       :description "OpenAPI YAML Mode"
+       :type git
+       :prepare (add-to-list 'custom-theme-load-path default-directory)
+       :url "https://github.com/magoyette/openapi-yaml-mode.git")

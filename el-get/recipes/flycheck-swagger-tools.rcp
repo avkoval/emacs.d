@@ -1,0 +1,5 @@
+(:name flycheck-swagger-tools
+       :description "An Emacs Flycheck checker for Swagger files that uses swagger-tools"
+       :type git
+       :prepare (add-to-list 'custom-theme-load-path default-directory)
+       :url "https://github.com/magoyette/flycheck-swagger-tools.git")

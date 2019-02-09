@@ -1,0 +1,6 @@
+#+Property: header-args :cache yes
+#+REVEAL_ROOT: http://cdn.jsdelivr.net/reveal.js/3.0.0/
+#+AUTHOR: Alex V. Koval
+#+TITLE: $1
+#+OPTIONS: texht:nil ^:nil toc:nil  num:nil
+#+REVEAL_THEME: beige

@@ -1,0 +1,16 @@
+(defun enable-transparency ()
+  (interactive)
+  (set-frame-parameter (selected-frame) 'alpha '(92 97))
+  (add-to-list 'default-frame-alist '(alpha 92 97))
+)
+
+(defun disable-transparency ()
+  (interactive)
+  (set-frame-parameter (selected-frame) 'alpha '(100 100))
+  (add-to-list 'default-frame-alist '(alpha 100 100))
+)
+
+; (enable-transparency)
+(define-key global-map (kbd "C-z p 1") 'enable-transparency)
+(define-key global-map (kbd "C-z p 2") 'disable-transparency)
+(define-key global-map (kbd "C-z p 0") 'disable-transparency)

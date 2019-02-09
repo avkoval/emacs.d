@@ -1,0 +1,5 @@
+(:name base16-themes
+       :description "Base 16 themes (git)"
+       :type git
+       :prepare (add-to-list 'custom-theme-load-path default-directory)
+       :url "git@github.com:avkoval/base16-emacs.git")

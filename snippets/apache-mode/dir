@@ -1,0 +1,7 @@
+    <Directory $1>
+        DirectoryIndex index.php index.html
+        Options None
+        AllowOverride All
+        order allow,deny
+        allow from all
+    </Directory>

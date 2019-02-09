@@ -1,0 +1,237 @@
+;;; Emacs configuration file of avkoval
+;;; The primary location of my configuration is at: https://bitbucket.org/avkoval/.emacs.d
+
+;; User directory where everything is stored. Usually you do this:
+;; hg clone https://avkoval@bitbucket.org/avkoval/.emacs.d
+(setq user-emacs-directory "~/.emacs.d/")
+
+;; In case if there are no package for file I place it to 'lisp'
+(add-to-list 'load-path "~/.emacs.d/lisp")
+
+;; Define el-get place. But I prefer 'elpa' packages where possible
+(add-to-list 'load-path "~/.emacs.d/el-get/packages")
+(setq el-get-dir "~/.emacs.d/el-get/packages")
+(add-to-list 'load-path "~/.emacs.d/el-get/packages/el-get")
+(setq el-get-user-package-directory "~/.emacs.d/el-get/init-files")
+
+
+;; emacs-24.2 compat
+(unless (require 'cl-lib nil t)
+  (add-to-list 'load-path "~/.emacs.d/emacs-24.compat")
+  (require 'cl-lib))
+
+;; package system
+(package-initialize)
+(setq package-enable-at-startup nil)
+
+(defun add-something-to-mode-hooks (mode-list something)
+  "Helper function to add a callback to multiple hooks of MODE-LIST and SOMETHING is a function."
+  (dolist (mode mode-list)
+    (add-hook (intern (concat (symbol-name mode) "-mode-hook")) something)))
+
+;; Here comes the most powerful block of configuration. Enable any modules you use. Don't enable those which
+;; are not clear for you.
+(defconst emacs-config-dir "~/.emacs.d/configs/" "")
+(defun load-cfg-files (filelist)
+  (dolist (file filelist)
+    (load (expand-file-name
+       (concat emacs-config-dir file)))
+    (message "Loaded config file:%s" file)
+    (cond
+     (
+      (file-exists-p (concat emacs-config-dir file "_custom.el"))
+      (load (concat emacs-config-dir file "_custom"))
+      (message "Loaded custom config file: %s_custom.el" file)
+      )
+     )
+    ))
+
+(setq package-selected-packages
+      (quote
+       (git-link slack hl-todo org-redmine org-rich-yank pass org-mind-map ob-async helm-pass docker hyperbole ob-async beginend shrink-whitespace pdf-tools phi-search vlf underwater-theme tao-theme sunburn-theme moe-theme paradox avk-emacs-themes soft-stone-theme flatui-dark-theme flatui-theme circadian zpresent treemacs-projectile telephone-line micgoline anti-zenburn-theme helm-swoop ranger calfw calfw-org treemacs flymake-cursor flymake-jslint helm-dired-history elmacro importmagic dired-rainbow dired-collapse epresent json-navigator hierarchy smart-mode-line clipmon atom-dark-theme solaire-mode rjsx-mode gnuplot creamsody-theme emmet-mode wttrin seoul256-theme jinja2-mode jinja2-mode clues-theme dakrone-theme flatland-theme grandshell-theme elpy plan9-theme autumn-light-theme demo-it org-bullets sql-indent all-the-icons itail doom-themes ipython ob-restclient clojure-mode django-manage pony-mode sr-speedbar undo-tree helm-org-rifle org-jira ox-reveal nginx-mode ob-http helm-tramp hamburg-theme workgroups2 terraform-mode color-theme-sanityinc-tomorrow paganini-theme tangotango-theme subatomic-theme suscolors-theme ample-zen-theme ample-theme warm-night-theme leuven-theme base16-theme cyberpunk-theme po-mode ace-window f use-package annotate realgud paredit smtpmail-multi ox-jira multiple-cursors ledger-mode hledger-mode flycheck-ledger twittering-mode restclient engine-mode which-key expand-region ace-jump-mode magit markdown-mode ox-pandoc bm ztree dired-subtree bind-key elfeed helm-ag flycheck php-mode dockerfile-mode discover-my-major discover web-mode neotree yaml-mode crontab-mode hydra dash jedi jabber fsm helm-projectile helm-firefox helm auto-virtualenv org-bullets ob-restclient notmuchhl-todo org-bullets dired-sidebar yaml-imenu indent-tools ansible bln-mode visual-fill-column pipenv wgrep deadgrep helm-tail poet-theme dired-ranger magit-gh-pulls monky magithub gh md4rd lsp-typescript comb imenu-list tide emojify helm-bm company-lsp lsp-ui lsp-mode org-redmine orgtbl-aggregate org-rich-yank pass org-super-agenda org-mind-map ob-async eyebrowse helm-pass apache-mode helm-swoop go-mode notmuch dashboard base16-theme docker hyperbole ox-ioslide ox-textile ox-gfm nodejs-repl shrink-whitespace pdf-tools shackle phi-search vlf underwater-theme sunburn-theme moe-theme paradox avk-emacs-themes soft-stone-theme flatui-dark-theme flatui-theme circadian zpresent treemacs-projectile micgoline anti-zenburn-theme ranger calfw calfw-org treemacs flymake-cursor flymake-jslint helm-dired-history elmacro importmagic dired-rainbow dired-collapse epresent json-navigator hierarchy smart-mode-line clipmon atom-dark-theme solaire-mode rjsx-mode gnuplot creamsody-theme emmet-mode wttrin seoul256-theme jinja2-mode jinja2-mode clues-theme dakrone-theme flatland-theme grandshell-theme elpy plan9-theme autumn-light-theme demo-it sql-indent all-the-icons itail doom-themes ipython ob-restclient clojure-mode django-manage pony-mode sr-speedbar undo-tree helm-org-rifle org-jira ox-reveal nginx-mode ob-http helm-tramp hamburg-theme workgroups2 terraform-mode color-theme-sanityinc-tomorrow paganini-theme tangotango-theme subatomic-theme suscolors-theme ample-zen-theme ample-theme warm-night-theme leuven-theme cyberpunk-theme po-mode ace-window f use-package annotate realgud paredit smtpmail-multi ox-jira multiple-cursors ledger-mode hledger-mode flycheck-ledger twittering-mode restclient engine-mode which-key expand-region ace-jump-mode magit markdown-mode ox-pandoc bm ztree dired-subtree bind-key helm-ag flycheck php-mode dockerfile-mode discover-my-major discover web-mode neotree yaml-mode crontab-mode hydra dash jedi jabber fsm helm-projectile helm-firefox helm auto-virtualenv ob-restclient notmuch)))
+
+;; Comment out those modes which you don't use!
+(load-cfg-files '(
+          "cfg_melpa"         ; package.el http://melpa.milkbox.net/#/getting-started
+     	  "cfg_elget"
+          "cfg_keybindings"   ; personal keybindings.  Recommended
+          "cfg_helm"          ; optional module but very helpful.
+          "cfg_uniquify"      ; unique buffer names. Recommended
+          "cfg_python"        ; python language support
+          "cfg_javascript"    ; Javascript specific settings
+          "cfg_orgmode"       ; The best productivity tool ever created.
+          "cfg_outside_customize" ; unsorted custom variables
+          "cfg_bookmarks"     ; bookmark places in files
+          "cfg_dired"         ; emacs file browser customizations
+          "cfg_backups"       ; store edited backups locally
+          "cfg_whitespace"    ; my whitespace module settings
+          "cfg_scroll"        ; avoid "jumping" during scroll
+          "cfg_duplicate_line"  ; custom function to duplicate current line
+          "cfg_frame_title"   ; full path to file in window title
+          "cfg_passwords"     ; cache passwords in memory
+          "cfg_mode-line"     ; custom mode-line
+          "cfg_default_face"  ; default font[s]
+          "cfg_tab"           ; tab settings
+;          "cfg_notmuch"       ; enable this to read mail within emacs
+          "cfg_ahg"           ; improvements/changes to ahg
+          "cfg_pylookup"      ; python (+django) documentation search
+          "cfg_redmine"       ; org-redmine from https://github.com/gongo/org-redmine
+          "cfg_shell"         ; shell-0,1,2,3,...
+          "cfg_transparency"
+ ;         "cfg_translator"
+          "cfg_web-mode"
+          "cfg_jabber"
+          "cfg_ediff"
+          "cfg_ztree"
+          "cfg_ibuffer"
+          "cfg_multiple_cursors"
+          "cfg_ahg_hydras"
+          "cfg_expand_regions"
+          "cfg_alt_s_hydras"
+          "cfg_ace_jump"
+          "cfg_tramp"         ; open files under docker
+          "cfg_yaml"
+          "cfg_lisp"
+          "cfg_company"
+          "cfg_fixme"
+          "cfg_yasnippet"
+          "cfg_ob-tmux"
+          ))
+
+; Emacs 25.x packages
+(if (require 'xwidget nil 'noerror)
+    (load-cfg-files '("cfg_xwidget"))
+    (message "Need xwidget")
+    )
+
+; https://emacs.stackexchange.com/questions/598/how-do-i-prevent-extremely-long-lines-making-emacs-slow
+(setq-default bidi-display-reordering nil)
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(blink-cursor-mode t)
+ '(browse-url-browser-function 'browse-url-firefox)
+ '(browse-url-new-window-flag t)
+ '(buffers-menu-max-size 30)
+ '(buffers-menu-show-directories t)
+ '(buffers-menu-show-status nil)
+ '(case-fold-search t)
+ '(column-number-mode t)
+ '(cua-enable-cua-keys nil)
+ '(cua-global-mark-cursor-color "#2aa198")
+ '(cua-mode t nil (cua-base))
+ '(cua-overwrite-cursor-color "#b58900")
+ '(cua-read-only-cursor-color "#859900")
+ '(current-language-environment "UTF-8")
+ '(custom-enabled-themes '(avk-darkblue-yellow))
+ '(custom-safe-themes
+   '("5d75f9080a171ccf5508ce033e31dbf5cc8aa19292a7e0ce8071f024c6bcad2a" "08f5da7e1f5064a2917af94f0dab946adfb25665b25450168ded749ec78a1145" "1ed04f2c712898f2147975dbe30a1a5caaa51bf63ac8fcc1174c4e9c5817c2b6" "0a3a41085c19d8121ed0ad3eb658a475ccb948a70a83604641ee7d4c3575a4d5" "4cc0101bfac8bc44682c1137fb9d5c5c45ab0fec78411088174104399f850122" "1d079355c721b517fdc9891f0fda927fe3f87288f2e6cc3b8566655a64ca5453" "264b639ee1d01cd81f6ab49a63b6354d902c7f7ed17ecf6e8c2bd5eb6d8ca09c" "318317bf0188781fc9852633a8fa55b3ade2d01694643f21c2ce75597f277dfc" "974a4eba1202d84cda5e05d4f7f7079134fcb38d0079e893eb2209fa5925471a" "b9b1a8d2ec1d5c17700e1a09256f33c2520b26f49980ed9e217e444c381279a9" "60d4556ebff0dc94849f177b85dcb6956fe9bd394c18a37e339c0fcd7c83e4a9" "61811a0ba7efd10dce51edd0f71183b512309a95cb2860449c437b4a5f8a321b" "29af7993f426d7871a605776a48e38ecc22bc80dd9bff0bc65303dfe5798ac64" default))
+ '(debug-on-error nil)
+ '(debug-on-quit nil)
+ '(default-input-method "cyrillic-jcuken")
+ '(diary-entry-marker 'font-lock-variable-name-face)
+ '(dired-dwim-target t)
+ '(echo-keystrokes 0.1)
+ '(electric-pair-mode nil)
+ '(elpy-eldoc-show-current-function nil)
+ '(elpy-modules
+   '(elpy-module-company elpy-module-eldoc elpy-module-pyvenv elpy-module-yasnippet elpy-module-sane-defaults))
+ '(elpy-project-root-finder-functions
+   '(elpy-project-find-projectile-root elpy-project-find-git-root elpy-project-find-hg-root))
+ '(elpy-rpc-backend "jedi")
+ '(elpy-rpc-python-command "python")
+ '(fci-rule-color "#2a2a2a")
+ '(fill-column 78)
+ '(flycheck-pylintrc nil)
+ '(frame-brackground-mode 'dark)
+ '(fringe-mode 6 nil (fringe))
+ '(global-auto-complete-mode nil)
+ '(global-flycheck-mode t)
+ '(global-highlight-changes-mode nil)
+ '(global-hl-line-mode t)
+ '(global-linum-mode nil)
+ '(golden-ratio-exclude-buffer-regexp
+   '("*helm M-x*" "*helm for files*" "*helm find files*" "*Ediff Control Panel*"))
+ '(golden-ratio-exclude-modes '(nil))
+ '(golden-ratio-mode nil)
+ '(google-translate-default-source-language "en")
+ '(google-translate-default-target-language "uk")
+ '(grep-command "grep --color=never -nHr -e * | grep -v .svn --color=never")
+ '(grep-use-null-device nil)
+ '(hl-sexp-background-color "#efebe9")
+ '(ibuffer-always-show-last-buffer t)
+ '(ibuffer-expert t)
+ '(ido-default-buffer-method 'selected-window)
+ '(ido-enable-flex-matching nil)
+ '(ido-everywhere nil)
+ '(ido-max-directory-size 90000)
+ '(ido-max-work-directory-list 500)
+ '(ido-work-directory-list-ignore-regexps '(".*"))
+ '(inhibit-startup-screen t)
+ '(ivy-mode nil)
+ '(linum-format "%3i")
+ '(magit-diff-use-overlays nil)
+ '(magit-use-overlays nil)
+ '(markdown-command "/usr/bin/pandoc")
+ '(menu-bar-mode nil)
+ '(minimap-display-semantic-overlays nil)
+ '(minimap-enlarge-certain-faces 'always)
+ '(minimap-window-location 'right)
+ '(mm-text-html-renderer 'shr)
+ '(notmuch-crypto-process-mime t)
+ '(notmuch-fcc-dirs "ua2web/INBOX.sent")
+ '(notmuch-message-headers '("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent"))
+ '(notmuch-search-oldest-first nil)
+ '(org-babel-load-languages
+   '((shell . t)
+     (plantuml . t)
+     (lisp . t)
+     (clojure . t)
+     (python . t)
+     (dot . t)
+     (awk . t)
+     (emacs-lisp . t)))
+ '(package-selected-packages
+   '(wgrep deadgrep helm-tail poet-theme dired-ranger magit-gh-pulls monky magithub gh md4rd lsp-typescript comb imenu-list tide emojify helm-bm company-lsp lsp-ui lsp-mode org-redmine orgtbl-aggregate org-rich-yank pass org-super-agenda org-mind-map ob-async eyebrowse helm-pass apache-mode helm-swoop go-mode notmuch dashboard base16-theme docker hyperbole ox-ioslide ox-textile ox-gfm nodejs-repl shrink-whitespace pdf-tools shackle phi-search vlf underwater-theme sunburn-theme moe-theme paradox avk-emacs-themes soft-stone-theme flatui-dark-theme flatui-theme circadian zpresent treemacs-projectile micgoline anti-zenburn-theme ranger calfw calfw-org treemacs flymake-cursor flymake-jslint helm-dired-history elmacro importmagic dired-rainbow dired-collapse epresent json-navigator hierarchy smart-mode-line clipmon atom-dark-theme solaire-mode rjsx-mode gnuplot creamsody-theme emmet-mode wttrin seoul256-theme jinja2-mode jinja2-mode clues-theme dakrone-theme flatland-theme grandshell-theme elpy plan9-theme autumn-light-theme demo-it sql-indent all-the-icons itail doom-themes ipython ob-restclient clojure-mode django-manage pony-mode sr-speedbar undo-tree helm-org-rifle org-jira ox-reveal nginx-mode ob-http helm-tramp hamburg-theme workgroups2 terraform-mode color-theme-sanityinc-tomorrow paganini-theme tangotango-theme subatomic-theme suscolors-theme ample-zen-theme ample-theme warm-night-theme leuven-theme cyberpunk-theme po-mode ace-window f use-package annotate realgud paredit smtpmail-multi ox-jira multiple-cursors ledger-mode hledger-mode flycheck-ledger twittering-mode restclient engine-mode which-key expand-region ace-jump-mode magit markdown-mode ox-pandoc bm ztree dired-subtree bind-key helm-ag flycheck php-mode dockerfile-mode discover-my-major discover web-mode neotree yaml-mode crontab-mode hydra dash jedi jabber fsm helm-projectile helm-firefox helm auto-virtualenv ob-restclient notmuch))
+ '(save-place t nil (saveplace))
+ '(scroll-bar-mode nil)
+ '(scroll-margin 0)
+ '(scroll-preserve-screen-position t)
+ '(scroll-up-aggressively 0.5)
+ '(send-mail-function 'smtpmail-multi-send-it)
+ '(show-paren-mode t)
+ '(show-trailing-whitespace t)
+ '(shr-color-visible-luminance-min 10)
+ '(speedbar-vc-do-check nil)
+ '(tags-revert-without-query t)
+ '(tool-bar-mode nil)
+ '(tramp-auto-save-directory "~/tmp/" nil (tramp))
+ '(tramp-default-method "scp" nil (tramp))
+ '(tramp-verbose 1 nil (tramp))
+ '(transient-mark-mode t)
+ '(truncate-lines t)
+ '(uniquify-buffer-name-style 'post-forward nil (uniquify))
+ '(which-key-mode t)
+ '(whitespace-line-column 120))
+
+;; ; things which only work when they are placed at the end of .emacs:
+(put 'dired-find-alternate-file 'disabled nil)
+(fontify-frame nil)
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(jabber-chat-prompt-foreign ((t (:inherit custom-face-tag))))
+ '(jabber-chat-prompt-local ((t (:inherit org-level-4))))
+ '(jabber-roster-user-online ((t (:inherit font-lock-string-face))))
+ '(org-done ((t (:strike-through t)))))
+(put 'set-goal-column 'disabled nil)
+
+(if (file-exists-p "~/.emacs.local")
+    (load "~/.emacs.local"))
+
+; '(org-export-backends (quote (ascii html icalendar latex md confluence)))

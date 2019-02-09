@@ -1,0 +1,8 @@
+#+BEGIN_SRC dot :file files/somefile.png
+digraph {
+  label="Title";
+  node [fontname = "fira mono"];
+  node [style="filled", fillcolor="#bfefff"];
+  $1;
+}
+#+END_SRC

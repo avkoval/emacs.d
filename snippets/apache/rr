@@ -1,0 +1,1 @@
+RewriteRule ^/(${1:regexp})  http://${2:host}${3:port}/$1 [L,P]
