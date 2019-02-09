@@ -1,0 +1,6 @@
+(:name ahg
+       :website "https://bitbucket.org/avkoval/ahg"
+       :description "avkoval Version of Ahg."
+       :type hg
+       :url "https://avkoval@bitbucket.org/avkoval/ahg"
+       :features ahg)
