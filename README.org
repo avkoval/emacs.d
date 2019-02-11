@@ -1853,15 +1853,49 @@ Then you will only have your org file to handle all your emacs configuration. It
      (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
 
      )
-
-
-
-
-
  #+END_SRC
 
- #+RESULTS:
- : notmuch-show-tag-read
+**** reply from to: field
+
+     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
+     notmuch don't have this functionality by default, so I've monkey patched it here:
+
+     #+BEGIN_SRC emacs-lisp
+       (defun my-notmuch-reply (&optional prompt-for-sender)
+         "Extending notmuch reply function 'r' to use To: address as From:
+       for composed message"
+         (interactive "P")
+         (my-notmuch-mua-new-reply (notmuch-show-get-message-id) prompt-for-sender nil)
+       )
+
+       (defun my-notmuch-mua-new-reply (query-string &optional prompt-for-sender reply-all)
+         "Compose a reply to the message identified by QUERY-STRING.
+
+       If PROMPT-FOR-SENDER is non-nil, the user will be prompted for
+       the From: address first.  If REPLY-ALL is non-nil, the message
+       will be addressed to all recipients of the source message."
+
+       ;; In current emacs (24.3) select-active-regions is set to t by
+       ;; default. The reply insertion code sets the region to the quoted
+       ;; message to make it easy to delete (kill-region or C-w). These two
+       ;; things combine to put the quoted message in the primary selection.
+       ;;
+       ;; This is not what the user wanted and is a privacy risk (accidental
+       ;; pasting of the quoted message). We can avoid some of the problems
+       ;; by let-binding select-active-regions to nil. This fixes if the
+       ;; primary selection was previously in a non-emacs window but not if
+       ;; it was in an emacs window. To avoid the problem in the latter case
+       ;; we deactivate mark.
+
+         (let ((sender (if prompt-for-sender
+                          (notmuch-mua-prompt-for-sender)
+                         (notmuch-show-get-to)
+                         ))
+          (select-active-regions nil))
+           (notmuch-mua-reply query-string sender reply-all)
+           (deactivate-mark)))
+       (define-key notmuch-show-mode-map "r" 'my-notmuch-reply)
+     #+END_SRC
 
 *** magit
 
@@ -2098,6 +2132,18 @@ Another method to search
             )
            ))
 #+END_SRC
+*** git-link - Yank current line of code external link.
+
+    Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
+    #+BEGIN_SRC emacs-lisp
+    (use-package git-link)
+    #+END_SRC
+*** smtpmail
+
+#+BEGIN_SRC emacs-lisp
+(use-package smtpmail-multi)
+#+END_SRC
+
 
 ** Package customizations & keybindings, other snippets
 *** yaml
@@ -3208,7 +3254,17 @@ credits to: https://emacs.stackexchange.com/questions/31646/how-to-paste-with-in
 
 /Problem with this snippet: it narros and then widens, so my org narrowed region gots reset./
 
-***** 
+***** markdown support
+
+Export org mode docs to markdown
+
+#+BEGIN_SRC emacs-lisp
+(use-package ox-gfm)
+(use-package ox-qmd)
+(use-package markdown-toc)
+(use-package ox-pandoc)
+#+END_SRC
+
 **** org-trello
 
  /Not using its now. Thats why 'example' block here/
