@@ -27,3 +27,4 @@ var
 /el-get/packages
 *.elc
 /README.md
+/README.el
