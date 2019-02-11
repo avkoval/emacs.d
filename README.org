@@ -354,7 +354,7 @@ Usually, your algorighm is this:
  * Google or try to find in emacs configuration (~M-x configure-*~) the settings you wish to change
  * Find /Lisp/ example code, put into your configuration file (I usually suggest to split this to configs/cfg_*)
    try to execute with ~C-x C-e~.
-* Settings
+* My Configuration
 
 I am using this file as a configuration and documentation source for my emacs config. This is
 /literate programming/ approach introduced by Donald Knuth and it seems org-mode is one of the
@@ -2144,7 +2144,6 @@ Another method to search
 (use-package smtpmail-multi)
 #+END_SRC
 
-
 ** Package customizations & keybindings, other snippets
 *** yaml
  #+BEGIN_SRC emacs-lisp
@@ -3377,6 +3376,14 @@ Export org mode docs to markdown
 **** export org-mode files to different formats
 
 (use-package ox-rst)
+
+**** org-bullets
+
+     Nice bullets for org-mode but somehow it makes editor a little slower, so I don't always enable it.
+
+     #+BEGIN_SRC emacs-lisp
+     (use-package org-bullets)
+     #+END_SRC
 
 *** Duplicate line
  I like this variation from
