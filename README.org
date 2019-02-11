@@ -3375,7 +3375,10 @@ Export org mode docs to markdown
 
 **** export org-mode files to different formats
 
-(use-package ox-rst)
+     #+BEGIN_SRC emacs-lisp
+     (use-package ox-rst)
+     (use-package ox-jira)
+     #+END_SRC
 
 **** org-bullets
 
