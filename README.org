@@ -2883,6 +2883,14 @@ Real good debugger.
    (erase-buffer)
    (helm-show-kill-ring)
  )
+
+ (defun switch-to-scratch()
+ (interactive)
+ (switch-to-buffer "*scratch*")
+ )
+
+  (global-set-key "\C-z." 'switch-to-scratch)
+
  #+END_SRC
 
 *** Lisp
