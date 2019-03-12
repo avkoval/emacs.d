@@ -64,6 +64,7 @@ bookmarks
 syntax: glob
 .mc-lists.el
 .git
+transient/history.el
 
 el-get/.loaddefs.el
 el-get/.status.el

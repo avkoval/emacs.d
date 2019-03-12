@@ -880,11 +880,6 @@ Then you will only have your org file to handle all your emacs configuration. It
  please check ~C-x r m~ (bookmark-set) and other emacs bookmarks. Also, org-mode org-store-link can be treated
  as a form of permanent bookmark.
 
- /Session Bookmarks/ last for session - when you exit your emacs, those will be lost.
-
- Note: I am just [[https://github.com/joodland/bm][double checked]] and it seems that bookmarks can be saved in repository and restored during
- next session load. But I don't really need it, my primary case is to use bookmarks along the session. For
- more permanent bookmarks standard bookmark module is used.
 
  #+BEGIN_SRC emacs-lisp
  (use-package bm
@@ -895,7 +890,10 @@ Then you will only have your org file to handle all your emacs configuration. It
  ("C-z <down>" . bm-next)
  ("C-z C-n" . bm-next)
  ("C-z <SPC>" . bm-show-all)
- ))
+ )
+ ;; :config
+ ;; (setq-default bm-buffer-persistence t)
+ )
  #+END_SRC
 
 **** company
@@ -918,7 +916,7 @@ Then you will only have your org file to handle all your emacs configuration. It
 
  #+END_SRC
 
-*** conf-mode
+*** conf-mode & other conf modes
 
     Mode for configuration files. Mostly about nice highlighting.
 
@@ -938,6 +936,11 @@ Then you will only have your org file to handle all your emacs configuration. It
     (add-to-list 'auto-mode-alist '("\\.network\\'" . conf-unix-mode))
     (add-to-list 'auto-mode-alist '("\\.link\\'" . conf-unix-mode))
     (add-to-list 'auto-mode-alist '("\\.automount\\'" . conf-unix-mode))
+    #+END_SRC
+
+    nginx
+    #+BEGIN_SRC emacs-lisp
+    (use-package nginx-mode)
     #+END_SRC
 
 **** helm-bm
@@ -1039,7 +1042,6 @@ Then you will only have your org file to handle all your emacs configuration. It
              ("C-c h s p" . helm-multi-swoop-projectile))
   )
   #+END_SRC
-
 
 *** Always display file name in frame title
 
@@ -1233,136 +1235,13 @@ Then you will only have your org file to handle all your emacs configuration. It
    (lambda ()
      (my-web-mode-hook)))
  #+END_SRC
-** Themes
-
-*** moe-theme
-
- Bright colors.
-
- #+BEGIN_SRC emacs-lisp
- (use-package moe-theme)
- #+END_SRC
-
+*** recentf
+#+BEGIN_SRC emacs-lisp
+(defun recentf-cleanup() 
+(interactive)
+)
+#+END_SRC
 ** Packages
-*** treemacs
- #+BEGIN_SRC emacs-lisp
- (use-package treemacs
-      :config
-      (progn
-         (defun treemacs-my-ignore-files-list (file)
-           "The default predicate to detect ignored files.
-         Will return t when FILE
-         1) starts with '.#' (lockfiles)
-         2) starts with 'flycheck_' (flycheck temp files)
-         3) ends with '~' (backup files)
-         4) is surrounded with # (auto save files)
-         5) is '.' or '..' (default dirs)"
-           (s-matches? (rx bol
-                           (or (seq (or ".#" "flycheck_") (1+ any))
-                               (seq (1+ any) ".pyc")
-                               (seq "#" (1+ any) "#")
-                               (or "." ".."))
-                           eol)
-                       file))
-         (add-hook 'treemacs-mode-hook
-                   '(lambda ()
-                                                 ;	     (local-set-key [(s menu)] 'rope-code-assist)
-                      (local-set-key [(mouse-3)] 'treemacs-visit-node-no-split)
-                      )
-                   )
-                   (define-key treemacs-mode-map [mouse-1] #'treemacs-single-click-expand-action)
-                       )
-
-      :bind (([f5] . treemacs)
-             ([(shift f5)]  . treemacs-add-project-to-workspace))
-             )
- #+END_SRC
-*** yasnippet
- Snippets for various languages
- #+BEGIN_SRC emacs-lisp
- (use-package yasnippet)
- (yas-global-mode 1)
- #+END_SRC
-*** treemacs-dired
-
- Nice icons for dired mode (borrowed from treemacs)
-
- #+BEGIN_SRC emacs-lisp
- (use-package treemacs-icons-dired
-   :config
-   (treemacs-icons-dired-mode t))
- #+END_SRC
-
-*** dired
- #+BEGIN_SRC emacs-lisp
- (dired-async-mode 1)
- (setq dired-omit-files "^\\...+$")
- (defun avk-dired-mode-hook ()
-   (local-set-key [(tab)] 'other-window))
-
- (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
- (defun open-file-externally(arg)
-   (async-shell-command (format "xdg-open \"%s\"" arg))
-   )
-
- (defun open-files-externally()
-   "Open marked files (or current one) to edit via ansible-vault."
-   (interactive)
-   (mapc 'open-file-externally (dired-get-marked-files t))
-   )
-
- (global-set-key (kbd "C-c e") 'open-files-externally)
-
- (add-to-list 'auto-mode-alist '("all.open" . yaml-mode))
-
- (define-key dired-mode-map ";" 'dired-subtree-toggle)
-
-  (defun dired-get-size ()
-   (interactive)
-   (let ((files (dired-get-marked-files)))
-     (with-temp-buffer
-       (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
-       (message "Size of all marked files: %s"
-                (progn
-                  (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
-                   (match-string 1))))))
-
-  (define-key dired-mode-map (kbd "?") 'dired-get-size)
- (define-key global-map  "\C-xj"         'dired-jump)
- (define-key global-map  "\C-cfd"         'find-dired)
-
- (autoload 'dired-async-mode "dired-async.el" nil t)
- #+END_SRC
-
- Ansible/DevOps related - edit ~vault~ files with emacsclient.
-
- #+BEGIN_SRC emacs-lisp
- (defun open-vault-file(arg)
-   "Decrypt vault file specified in ARG by calling ansible-vault and .vaultfile password
-    from any upper directory"
-   (let ((vaultfile ".vaultfile"))
-     (let ((vault-file-dir (locate-dominating-file default-directory vaultfile)))
-       (if vault-file-dir
-           (call-process "ansible-vault" nil 0 nil
-                         "--vault-password-file"
-                         (concat vault-file-dir ".vaultfile")
-                             "edit" arg)
-         (message (format "%s not found in current or upper directories" vaultfile)))
-       ))
-   )
- (defun open-vault-files()
-   "Open marked files (or current one) to edit via ansible-vault."
-   (interactive)
-   (require 'server)
-   (unless (server-running-p)
-     (server-start))
-   (setenv "EDITOR" "emacsclient")
-   (mapc 'open-vault-file (dired-get-marked-files t))
-   )
-
- (global-set-key (kbd "C-z v") 'open-vault-files)
- #+END_SRC
-
 *** ace, avy
 
   Jumping between frames, windows, lines, etc.
@@ -1563,136 +1442,163 @@ Then you will only have your org file to handle all your emacs configuration. It
 
  #+END_SRC
 
-*** Python support
+*** apache-mode
+#+BEGIN_SRC emacs-lisp
+(use-package apache-mode)
+#+END_SRC
+*** clipmon
 
+Clipboard monitoring and so I don't need external packages like klipper, copyq etc.
+
+#+BEGIN_SRC emacs-lisp
+  ;; (use-package clipmon
+  ;; :config
+  ;; (clipmon-mode)
+  ;; ;; my fix 
+  ;; (defun clipmon--get-selection ()
+  ;;   "Get the clipboard contents"
+  ;;   ;; Note: When the OS is first started these functions will throw
+  ;;   ;; (error "No selection is available"), so need to ignore errors.
+  ;;   (cond ((boundp 'mac-carbon-version-string) ; emacs mac port
+  ;;          ;; Need to have this before emacs25 since `gui-get-selection' is also
+  ;;          ;; bound in the mac port, but it doesn't work right
+  ;;          (ignore-errors (funcall interprogram-paste-function)))
+  ;;         ((fboundp 'gui-get-selection) ; emacs25
+  ;;          ; better to (setq selection-coding-system 'utf-8) to handle chinese,
+  ;;          ; which is the default value for gui-get-selection etc
+  ;;          ; because windows needs STRING. same below.
+  ;;          ; (ignore-errors (gui-get-selection 'CLIPBOARD 'UTF8_STRING)))
+  ;;          (gui--selection-value-internal 'CLIPBOARD)) ; for windows needs STRING
+  ;;         ((eq window-system 'w32) ; windows/emacs24
+  ;;          ;; Note: (x-get-selection 'CLIPBOARD) doesn't work on Windows.
+  ;;          (ignore-errors (x-get-selection-value))) ; can be nil
+  ;;         (t ; linux+osx/emacs24
+  ;;          ; (ignore-errors (x-get-selection 'CLIPBOARD 'UTF8_STRING)))))
+  ;;          (ignore-errors (x-get-selection 'CLIPBOARD)))))
+  ;; )
+#+END_SRC
+
+/Temp. disabled due to locks in UI/
+
+*** comb
+searching/structured
+#+BEGIN_SRC emacs-lisp
+(use-package comb)
+#+END_SRC
+
+*** deadgrep
+Another method to search
+#+BEGIN_SRC emacs-lisp
+  (use-package deadgrep
+    :bind (
+           (
+            ("C-c d" . deadgrep)
+            )
+           ))
+#+END_SRC
+*** dired
  #+BEGIN_SRC emacs-lisp
- (setq pymacs-python-command "/usr/bin/python3")
- (defun pycodestyle-current-buffer()
-   (interactive)
-   (compile (concat "pycodestyle " (buffer-file-name)) nil)
-   (rename-buffer "*pep8*")
+ (dired-async-mode 1)
+ (setq dired-omit-files "^\\...+$")
+ (defun avk-dired-mode-hook ()
+   (local-set-key [(tab)] 'other-window))
+
+ (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
+ (defun open-file-externally(arg)
+   (async-shell-command (format "xdg-open \"%s\"" arg))
    )
- (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
 
- (defun pylint-current-buffer()
+ (defun open-files-externally()
+   "Open marked files (or current one) to edit via ansible-vault."
    (interactive)
-   (compile (concat "pylint " (buffer-file-name)) nil)
-   (rename-buffer "*pylint*")
+   (mapc 'open-file-externally (dired-get-marked-files t))
    )
- (global-set-key (kbd "C-c p l") 'pylint-current-buffer)
 
- (add-hook 'python-mode-hook
-           '(lambda ()
-                                         ;	     (local-set-key [(s menu)] 'rope-code-assist)
-              (global-set-key [(control shift menu)] 'pylookup-lookup)
-              (local-set-key (kbd "C-c >") 'python-indent-shift-right)
-              (local-set-key (kbd "C-c <") 'python-indent-shift-left)
-              (local-set-key [(control up)] 'backward-paragraph)
-			  (local-set-key [(control down)] 'forward-paragraph)
- ;             (local-set-key [mouse-3] 'helm-imenu)
-              (display-line-numbers-mode t)
-              (define-key python-mode-map "\r" 'newline-and-indent))
-           )
+ (global-set-key (kbd "C-c e") 'open-files-externally)
 
+ (add-to-list 'auto-mode-alist '("all.open" . yaml-mode))
 
- (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
- (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
+ (define-key dired-mode-map ";" 'dired-subtree-toggle)
 
- (defun python-create-empty-init-py()
+  (defun dired-get-size ()
    (interactive)
-   (shell-command "touch __init__.py")
- )
- (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
+   (let ((files (dired-get-marked-files)))
+     (with-temp-buffer
+       (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+       (message "Size of all marked files: %s"
+                (progn
+                  (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+                   (match-string 1))))))
 
- (defun create-TAGS()
-   (interactive)
-   (shell-command "find . -type f -name '*.py' | xargs etags")
- )
- (global-set-key (kbd "C-x p t") 'create-TAGS)
+  (define-key dired-mode-map (kbd "?") 'dired-get-size)
+ (define-key global-map  "\C-xj"         'dired-jump)
+ (define-key global-map  "\C-cfd"         'find-dired)
 
- (defun elpy-show-current-func()
-   (interactive)
-   (let ((current-defun (python-info-current-defun)))
-     (when current-defun
-       (message (format "In: %s()" current-defun))))
-   )
- (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
-
+ (autoload 'dired-async-mode "dired-async.el" nil t)
  #+END_SRC
 
-**** elpy
-  #+BEGIN_SRC emacs-lisp
-  (use-package elpy
-    :commands elpy-enable
-    :init (run-with-idle-timer 10 nil #'elpy-enable)
-    :config
-    (progn
-      (setq elpy-rpc-backend "jedi"
-            elpy-rpc-project-specific 't)
-      (when (fboundp 'flycheck-mode)
-        (setq elpy-modules (delete 'elpy-module-flymake elpy-modules)))))
+ Ansible/DevOps related - edit ~vault~ files with emacsclient.
 
-  (defun elpy-nav-backward-block()
-    (interactive)
-    (backward-paragraph)
-  )
-
-  (defun elpy-nav-forward-block()
-    (interactive)
-    (forward-paragraph)
-  )
-  (defun elpy-show-current-func()
-   (interactive)
-   (let ((current-defun (python-info-current-defun)))
-     (when current-defun
-       (message (format "In: %s()" current-defun))))
-   )
-  (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
-
-  #+END_SRC
-
-**** auto-virtualenv? FIXME
-
- #+BEGIN_EXAMPLE
- ;; https://github.com/marcwebbie/auto-virtualenv
- (setq load-path (cons "~/.emacs.d/lisp/auto-virtualenv/" load-path))
- (require 'auto-virtualenv)
- (setq auto-virtualenv-verbose t)
-
- (defun auto-virtualenv-set-virtualenv-interactive ()
-   "Interactive call to set virtualenv"
-   (interactive)
-   (auto-virtualenv-set-virtualenv)
-   )
-
- (global-set-key (kbd "C-z p v") 'auto-virtualenv-set-virtualenv-interactive)
- #+END_EXAMPLE
-
-*** Javascript
  #+BEGIN_SRC emacs-lisp
- (autoload 'javascript-mode "javascript" nil t)
- (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
- (setq js-indent-level 2)
+ (defun open-vault-file(arg)
+   "Decrypt vault file specified in ARG by calling ansible-vault and .vaultfile password
+    from any upper directory"
+   (let ((vaultfile ".vaultfile"))
+     (let ((vault-file-dir (locate-dominating-file default-directory vaultfile)))
+       (if vault-file-dir
+           (call-process "ansible-vault" nil 0 nil
+                         "--vault-password-file"
+                         (concat vault-file-dir ".vaultfile")
+                             "edit" arg)
+         (message (format "%s not found in current or upper directories" vaultfile)))
+       ))
+   )
+ (defun open-vault-files()
+   "Open marked files (or current one) to edit via ansible-vault."
+   (interactive)
+   (require 'server)
+   (unless (server-running-p)
+     (server-start))
+   (setenv "EDITOR" "emacsclient")
+   (mapc 'open-vault-file (dired-get-marked-files t))
+   )
 
- ;; jslint
- (use-package flymake-jslint)
- (use-package flymake-cursor)
+ (global-set-key (kbd "C-z v") 'open-vault-files)
  #+END_SRC
-*** Org-mode
+*** dired-sidebar
+Interesting alternative to treemacs
+#+BEGIN_SRC emacs-lisp
+(use-package dired-sidebar
+  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
+  :ensure t
+  :commands (dired-sidebar-toggle-sidebar)
+  :init
+  (add-hook 'dired-sidebar-mode-hook
+            (lambda ()
+              (unless (file-remote-p default-directory)
+                (auto-revert-mode))))
+  :config
+  (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
+  (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
 
-*** Custom themes
+  (setq dired-sidebar-subtree-line-prefix "__")
+  (setq dired-sidebar-theme 'vscode)
+  (setq dired-sidebar-use-term-integration t)
+  (setq dired-sidebar-use-custom-font t))
+#+END_SRC
+*** docker
+#+BEGIN_SRC emacs-lisp
+(use-package docker)
+#+END_SRC
 
-**** Favourites
-
-***** dracula
-
-  #+BEGIN_SRC emacs-lisp
-    (use-package dracula-theme)
-  #+END_SRC
-
-
-**** Other, also good themes
-
+*** dockerfile-mode
+#+BEGIN_SRC emacs-lisp
+(use-package dockerfile-mode)
+#+END_SRC
+*** elfeed
+#+BEGIN_SRC emacs-lisp
+(use-package elfeed)
+#+END_SRC
 *** easy-kill
 
  #+BEGIN_SRC emacs-lisp
@@ -1714,6 +1620,16 @@ Then you will only have your org file to handle all your emacs configuration. It
  ))
  #+END_SRC
 
+*** flycheck, flymake
+#+BEGIN_SRC emacs-lisp
+(use-package flycheck)
+#+END_SRCdo
+*** git-link - Yank current line of code external link.
+
+    Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
+    #+BEGIN_SRC emacs-lisp
+    (use-package git-link)
+    #+END_SRC
 *** hl-todo
 
  Highlight TODO, FIXME, etc faces
@@ -1724,9 +1640,6 @@ Then you will only have your org file to handle all your emacs configuration. It
  (global-hl-todo-mode)
  )
  #+END_SRC
-
-*** remaininng
-  forge  poporg logview w3m panda-theme easy-kill git-link ob-tmux hl-todo org-bullets dired-sidebar yaml-imenu indent-tools ansible bln-mode visual-fill-column pipenv wgrep deadgrep helm-tail poet-theme dired-ranger magit-gh-pulls monky magithub gh md4rd lsp-typescript comb imenu-list tide emojify helm-bm company-lsp lsp-ui lsp-mode org-redmine orgtbl-aggregate org-rich-yank pass org-super-agenda org-mind-map ob-async eyebrowse helm-pass apache-mode helm-swoop go-mode notmuch dashboard base16-theme docker hyperbole ox-ioslide ox-textile ox-gfm nodejs-repl shrink-whitespace pdf-tools shackle phi-search vlf underwater-theme sunburn-theme moe-theme paradox avk-emacs-themes soft-stone-theme flatui-dark-theme flatui-theme circadian zpresent treemacs-projectile micgoline anti-zenburn-theme ranger calfw calfw-org treemacs flymake-cursor flymake-jslint helm-dired-history elmacro importmagic dired-rainbow dired-collapse epresent json-navigator hierarchy smart-mode-line clipmon atom-dark-theme solaire-mode rjsx-mode gnuplot creamsody-theme emmet-mode wttrin seoul256-theme jinja2-mode jinja2-mode clues-theme dakrone-theme flatland-theme grandshell-theme elpy plan9-theme autumn-light-theme demo-it sql-indent all-the-icons itail doom-themes ipython ob-restclient clojure-mode django-manage pony-mode sr-speedbar undo-tree helm-org-rifle org-jira ox-reveal nginx-mode ob-http helm-tramp hamburg-theme workgroups2 terraform-mode color-theme-sanityinc-tomorrow paganini-theme tangotango-theme subatomic-theme suscolors-theme ample-zen-theme ample-theme warm-night-theme leuven-theme cyberpunk-theme po-mode ace-window f use-package annotate realgud paredit smtpmail-multi ox-jira multiple-cursors ledger-mode hledger-mode flycheck-ledger twittering-mode restclient which-key expand-region ace-jump-mode magit markdown-mode ox-pandoc bm ztree dired-subtree bind-key helm-ag flycheck php-mode dockerfile-mode discover-my-major discover web-mode neotree yaml-mode crontab-mode hydra dash jedi jabber fsm helm-projectile helm-firefox helm auto-virtualenv ob-restclient notmuch
 
 *** hyperbole
 
@@ -1763,6 +1676,61 @@ Then you will only have your org file to handle all your emacs configuration. It
             ))
  #+END_SRC
 
+*** Javascript
+ #+BEGIN_SRC emacs-lisp
+ (autoload 'javascript-mode "javascript" nil t)
+ (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
+ (setq js-indent-level 2)
+
+ ;; jslint
+ (use-package flymake-jslint)
+ (use-package flymake-cursor)
+ #+END_SRC
+*** imenu
+#+BEGIN_SRC emacs-lisp
+(use-package imenu-list)
+
+#+END_SRC
+*** ledger
+
+#+BEGIN_EXAMPLE emacs-lisp
+(use-package ledger-mode)
+#+END_EXAMPLE
+*** logview
+https://github.com/doublep/logview
+#+BEGIN_SRC emacs-lisp
+(use-package logview)
+#+END_SRC
+*** magit
+
+ #+BEGIN_SRC emacs-lisp
+ (use-package magit)
+ (use-package forge)
+ #+END_SRC
+
+*** multiple-cursors
+ #+BEGIN_SRC emacs-lisp
+   (use-package multiple-cursors
+   ;; :bind (
+   ;; ("C-z c e" . mc/edit-lines)
+   ;; ("C-z c *" . mc/mark-all-like-this)
+   ;; ("s-." . mc/mark-next-like-this)
+   ;; ("s-," . mc/mark-previous-like-this)
+   ;; )
+   )
+   (global-set-key (kbd "C-z c e") 'mc/edit-lines)
+   (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
+   (global-set-key (kbd "s-.") 'mc/mark-next-like-this)
+   (global-set-key (kbd "s-,") 'mc/mark-previous-like-this)
+ #+END_SRC
+**** phi-search
+ #+BEGIN_SRC emacs-lisp
+ (use-package phi-search
+ :bind (
+ ("C-c C-s" . phi-search)
+ ("C-c C-r" . phi-search-backward)
+ ))
+ #+END_SRC
 *** notmuch
  Email setup
 
@@ -1861,7 +1829,8 @@ Then you will only have your org file to handle all your emacs configuration. It
      notmuch don't have this functionality by default, so I've monkey patched it here:
 
      #+BEGIN_SRC emacs-lisp
-       (defun my-notmuch-reply (&optional prompt-for-sender)
+     (require 'notmuch)
+     (defun my-notmuch-reply (&optional prompt-for-sender)
          "Extending notmuch reply function 'r' to use To: address as From:
        for composed message"
          (interactive "P")
@@ -1894,15 +1863,239 @@ Then you will only have your org file to handle all your emacs configuration. It
           (select-active-regions nil))
            (notmuch-mua-reply query-string sender reply-all)
            (deactivate-mark)))
-       (define-key notmuch-show-mode-map "r" 'my-notmuch-reply)
+      ;; (define-key notmuch-show-mode-map "r" 'my-notmuch-reply)
      #+END_SRC
 
-*** magit
+*** pdf-tools
+ #+BEGIN_SRC emacs-lisp
+ (use-package pdf-tools
+ :config
+ (pdf-tools-install)
+ )
+ #+END_SRC
+*** COMMENT projectile
+ #+BEGIN_SRC emacs-lisp
+   (use-package projectile
+     :init
+     (setq projectile-mode nil)
+     (setq projectile-enable-caching t)
+     :bind (
+            ("C-c p k" . projectile-kill-buffers)
+            ))
+
+
+   (use-package helm-projectile
+     :config
+     (progn (
+             (helm-projectile-on)
+             ))
+     :bind (
+            ("C-c p h" . helm-projectile)
+            ))
+
+   ;; (defalias 'helm-buffer-match-major-mode 'helm-buffers-list--match-fn)
+
+   ;; ;; https://github.com/bbatsov/projectile/issues/1183
+   ;; (setq projectile-mode-line
+   ;;          '(:eval (format " Projectile[%s]"
+   ;;                         (projectile-project-name))))
+
+   (setq projectile-file-exists-local-cache-expire (* 5 60))
+
+   (defadvice projectile-on (around exlude-tramp activate)
+     "This should disable projectile when visiting a remote file"
+     (unless  (--any? (and it (file-remote-p it))
+                      (list
+                       (buffer-file-name)
+                       list-buffers-directory
+                       default-directory
+                       dired-directory))
+       ad-do-it))
+   (setq projectile-mode-line "Pt")
+ #+END_SRC
+*** pylookup
+
+ FIXME
+
+ (require 'pylookup)
+ (setq pylookup-program "~/.emacs.d/pylookup.py")
+ (setq pylookup-db-file "~/var/pylookup/pylookup.db")
+ (global-set-key [(control shift menu)] 'pylookup-lookup)
+*** pylookup
+
+https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
+
+#+BEGIN_SRC emacs-lisp
+;; load pylookup when compile time
+(eval-when-compile (require 'pylookup))
+(setq pylookup-program "~/.emacs.d/pylookup.py")
+(setq pylookup-db-file "~/var/pylookup/pylookup.db")
+(global-set-key [(control shift menu)] 'pylookup-lookup)
+#+END_SRC
+*** Python support
 
  #+BEGIN_SRC emacs-lisp
- (use-package magit)
- (use-package forge)
+   (setq pymacs-python-command "/usr/bin/python3")
+   (defun pycodestyle-current-buffer()
+     (interactive)
+     (compile (concat "pycodestyle " (buffer-file-name)) nil)
+     (rename-buffer "*pep8*")
+     )
+   (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
+
+   (defun pylint-current-buffer()
+     (interactive)
+     (compile (concat "pylint " (buffer-file-name)) nil)
+     (rename-buffer "*pylint*")
+     )
+   (global-set-key (kbd "C-c p l") 'pylint-current-buffer)
+
+   (use-package highlight-indentation
+   :defer t)
+
+   (add-hook 'python-mode-hook
+             '(lambda ()
+                                           ;	     (local-set-key [(s menu)] 'rope-code-assist)
+                (global-set-key [(control shift menu)] 'pylookup-lookup)
+                (local-set-key (kbd "C-c >") 'python-indent-shift-right)
+                (local-set-key (kbd "C-c <") 'python-indent-shift-left)
+                (local-set-key [(control up)] 'backward-paragraph)
+                (local-set-key [(control down)] 'forward-paragraph)
+                                           ;             (local-set-key [mouse-3] 'helm-imenu)
+                (highlight-indentation-mode t)
+                (display-line-numbers-mode nil)
+                (define-key python-mode-map "\r" 'newline-and-indent))
+             )
+
+
+   (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
+   (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
+
+   (defun python-create-empty-init-py()
+     (interactive)
+     (shell-command "touch __init__.py")
+     )
+   (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
+
+   (defun create-TAGS()
+     (interactive)
+     (shell-command "find . -type f -name '*.py' | xargs etags")
+     )
+   (global-set-key (kbd "C-x p t") 'create-TAGS)
+
+   (defun elpy-show-current-func()
+     (interactive)
+     (let ((current-defun (python-info-current-defun)))
+       (when current-defun
+         (message (format "In: %s()" current-defun))))
+     )
+   (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
  #+END_SRC
+
+**** elpy
+  #+BEGIN_SRC emacs-lisp
+  (use-package elpy
+    :commands elpy-enable
+    :init (run-with-idle-timer 10 nil #'elpy-enable)
+    :config
+    (progn
+      (setq elpy-rpc-backend "jedi"
+            elpy-rpc-project-specific 't)
+      (when (fboundp 'flycheck-mode)
+        (setq elpy-modules (delete 'elpy-module-flymake elpy-modules)))))
+
+  (defun elpy-nav-backward-block()
+    (interactive)
+    (backward-paragraph)
+  )
+
+  (defun elpy-nav-forward-block()
+    (interactive)
+    (forward-paragraph)
+  )
+  (defun elpy-show-current-func()
+   (interactive)
+   (let ((current-defun (python-info-current-defun)))
+     (when current-defun
+       (message (format "In: %s()" current-defun))))
+   )
+  (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
+
+  #+END_SRC
+
+**** auto-virtualenv? FIXME
+
+ #+BEGIN_EXAMPLE
+ ;; https://github.com/marcwebbie/auto-virtualenv
+ (setq load-path (cons "~/.emacs.d/lisp/auto-virtualenv/" load-path))
+ (require 'auto-virtualenv)
+ (setq auto-virtualenv-verbose t)
+
+ (defun auto-virtualenv-set-virtualenv-interactive ()
+   "Interactive call to set virtualenv"
+   (interactive)
+   (auto-virtualenv-set-virtualenv)
+   )
+
+ (global-set-key (kbd "C-z p v") 'auto-virtualenv-set-virtualenv-interactive)
+ #+END_EXAMPLE
+
+*** remaininng
+  forge  poporg logview w3m panda-theme easy-kill git-link ob-tmux hl-todo org-bullets dired-sidebar yaml-imenu indent-tools ansible bln-mode visual-fill-column pipenv wgrep deadgrep helm-tail poet-theme dired-ranger magit-gh-pulls monky magithub gh md4rd lsp-typescript comb imenu-list tide emojify helm-bm company-lsp lsp-ui lsp-mode org-redmine orgtbl-aggregate org-rich-yank pass org-super-agenda org-mind-map ob-async eyebrowse helm-pass apache-mode helm-swoop go-mode notmuch dashboard base16-theme docker hyperbole ox-ioslide ox-textile ox-gfm nodejs-repl shrink-whitespace pdf-tools shackle phi-search vlf underwater-theme sunburn-theme moe-theme paradox avk-emacs-themes soft-stone-theme flatui-dark-theme flatui-theme circadian zpresent treemacs-projectile micgoline anti-zenburn-theme ranger calfw calfw-org treemacs flymake-cursor flymake-jslint helm-dired-history elmacro importmagic dired-rainbow dired-collapse epresent json-navigator hierarchy smart-mode-line clipmon atom-dark-theme solaire-mode rjsx-mode gnuplot creamsody-theme emmet-mode wttrin seoul256-theme jinja2-mode jinja2-mode clues-theme dakrone-theme flatland-theme grandshell-theme elpy plan9-theme autumn-light-theme demo-it sql-indent all-the-icons itail doom-themes ipython ob-restclient clojure-mode django-manage pony-mode sr-speedbar undo-tree helm-org-rifle org-jira ox-reveal nginx-mode ob-http helm-tramp hamburg-theme workgroups2 terraform-mode color-theme-sanityinc-tomorrow paganini-theme tangotango-theme subatomic-theme suscolors-theme ample-zen-theme ample-theme warm-night-theme leuven-theme cyberpunk-theme po-mode ace-window f use-package annotate realgud paredit smtpmail-multi ox-jira multiple-cursors ledger-mode hledger-mode flycheck-ledger twittering-mode restclient which-key expand-region ace-jump-mode magit markdown-mode ox-pandoc bm ztree dired-subtree bind-key helm-ag flycheck php-mode dockerfile-mode discover-my-major discover web-mode neotree yaml-mode crontab-mode hydra dash jedi jabber fsm helm-projectile helm-firefox helm auto-virtualenv ob-restclient notmuch
+
+*** Slack
+ #+BEGIN_SRC emacs-lisp
+ (use-package slack)
+ (defun helm-slack ()
+     "Helm Slack"
+     (interactive)
+     (setf helm-slack-source
+           `((name . "Helm Slack")
+             (action . (lambda (candidate)
+                         (setf foo candidate)
+                         (slack-room-display (first candidate) (second candidate))))
+             (candidates
+              ,@(loop
+                 for team in slack-teams
+                 as team-name = (oref team name)
+                 nconc (let ((channels
+                              (loop
+                               for channel in (oref team channels)
+                               as channel-name = (oref channel name)
+                               as label = (format "%s channel %s" team-name channel-name)
+                               unless (oref channel is-archived)
+                               collect `(,label ,channel ,team)))
+                             (users nil)
+                             ;;  (loop
+                             ;;   for (user-name . user-plist) in (slack-user-names team)
+                             ;;   as label = (format "%s member %s, %s"
+                             ;;                      team-name user-name (getf user-plist :real_name))
+                             ;;   collect `(,label ,team ,user-plist)))
+                             )
+                         (nconc channels users))))))
+     (helm
+      :prompt "Channel or user: "
+      :sources 'helm-slack-source
+      :history 'helm-slack-source-history))
+
+ #+END_SRC
+*** smtpmail
+
+#+BEGIN_SRC emacs-lisp
+(use-package smtpmail-multi)
+#+END_SRC
+*** shrink-whitespace
+#+BEGIN_SRC emacs-lisp
+(use-package shrink-whitespace
+:bind (
+ ("M-\\" . shrink-whitespace)
+))
+#+END_SRC
+*** tide - Tide - TypeScript Interactive Development Environment for Emacs
+#+BEGIN_SRC emacs-lisp
+(use-package tide)
+
+#+END_SRC
 
 *** tramp
  #+BEGIN_SRC emacs-lisp
@@ -1985,120 +2178,69 @@ Then you will only have your org file to handle all your emacs configuration. It
    (tramp-cleanup-all-buffers)
    (tramp-cleanup-all-connections))
 
+   ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
+ (add-to-list 'backup-directory-alist
+                  (cons tramp-file-name-regexp nil))
+
+
  #+END_SRC
 
-*** pdf-tools
+*** treemacs
  #+BEGIN_SRC emacs-lisp
- (use-package pdf-tools
+ (use-package treemacs
+      :config
+      (progn
+         (defun treemacs-my-ignore-files-list (file)
+           "The default predicate to detect ignored files.
+         Will return t when FILE
+         1) starts with '.#' (lockfiles)
+         2) starts with 'flycheck_' (flycheck temp files)
+         3) ends with '~' (backup files)
+         4) is surrounded with # (auto save files)
+         5) is '.' or '..' (default dirs)"
+           (s-matches? (rx bol
+                           (or (seq (or ".#" "flycheck_") (1+ any))
+                               (seq (1+ any) ".pyc")
+                               (seq "#" (1+ any) "#")
+                               (or "." ".."))
+                           eol)
+                       file))
+         (add-hook 'treemacs-mode-hook
+                   '(lambda ()
+                                                 ;	     (local-set-key [(s menu)] 'rope-code-assist)
+                      (local-set-key [(mouse-3)] 'treemacs-visit-node-no-split)
+                      )
+                   )
+                   (define-key treemacs-mode-map [mouse-1] #'treemacs-single-click-expand-action)
+                       )
+
+      :bind (([f5] . treemacs)
+             ([(shift f5)]  . treemacs-add-project-to-workspace))
+             ([(meta f5)] . treemacs-switch-workspace)
+             )
+ #+END_SRC
+*** treemacs-dired
+
+ Nice icons for dired mode (borrowed from treemacs)
+
+ #+BEGIN_SRC emacs-lisp
+ (use-package treemacs-icons-dired
  :config
- (pdf-tools-install)
- )
+ (treemacs-icons-dired-mode)
+ ) 
  #+END_SRC
-*** multiple-cursors
+
+*** undo-tree
+
+#+BEGIN_SRC emacs-lisp
+(use-package undo-tree)
+#+END_SRC
+
+*** yasnippet
+ Snippets for various languages
  #+BEGIN_SRC emacs-lisp
-   (use-package multiple-cursors
-   ;; :bind (
-   ;; ("C-z c e" . mc/edit-lines)
-   ;; ("C-z c *" . mc/mark-all-like-this)
-   ;; ("s-." . mc/mark-next-like-this)
-   ;; ("s-," . mc/mark-previous-like-this)
-   ;; )
-   )
-   (global-set-key (kbd "C-z c e") 'mc/edit-lines)
-   (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
-   (global-set-key (kbd "s-.") 'mc/mark-next-like-this)
-   (global-set-key (kbd "s-,") 'mc/mark-previous-like-this)
- #+END_SRC
-**** phi-search
- #+BEGIN_SRC emacs-lisp
- (use-package phi-search
- :bind (
- ("C-c C-s" . phi-search)
- ("C-c C-r" . phi-search-backward)
- ))
- #+END_SRC
-*** projectile
- #+BEGIN_SRC emacs-lisp
- (use-package projectile
- :init
- (setq projectile-enable-caching t)
- :bind (
- ("C-c p k" . projectile-kill-buffers)
- ))
-
-
- (use-package helm-projectile
- :config
- (progn (
- (helm-projectile-on)
- ))
- :bind (
- ("C-c p h" . helm-projectile)
- ))
-
- ;(defalias 'helm-buffer-match-major-mode 'helm-buffers-list--match-fn)
-
- ; https://github.com/bbatsov/projectile/issues/1183
- ;(setq projectile-mode-line
- ;         '(:eval (format " Projectile[%s]"
- ;                        (projectile-project-name))))
-
- (setq projectile-file-exists-local-cache-expire (* 5 60))
-
- ;; (defadvice projectile-on (around exlude-tramp activate)
- ;;   "This should disable projectile when visiting a remote file"
- ;;   (unless  (--any? (and it (file-remote-p it))
- ;;                    (list
- ;;                     (buffer-file-name)
- ;;                     list-buffers-directory
- ;;                     default-directory
- ;;                     dired-directory))
- ;;     ad-do-it))
- (setq projectile-mode-line "Pt")
- #+END_SRC
-*** pylookup
-
- FIXME
-
- (require 'pylookup)
- (setq pylookup-program "~/.emacs.d/pylookup.py")
- (setq pylookup-db-file "~/var/pylookup/pylookup.db")
- (global-set-key [(control shift menu)] 'pylookup-lookup)
-*** Slack
- #+BEGIN_SRC emacs-lisp
- (use-package slack)
- (defun helm-slack ()
-     "Helm Slack"
-     (interactive)
-     (setf helm-slack-source
-           `((name . "Helm Slack")
-             (action . (lambda (candidate)
-                         (setf foo candidate)
-                         (slack-room-display (first candidate) (second candidate))))
-             (candidates
-              ,@(loop
-                 for team in slack-teams
-                 as team-name = (oref team name)
-                 nconc (let ((channels
-                              (loop
-                               for channel in (oref team channels)
-                               as channel-name = (oref channel name)
-                               as label = (format "%s channel %s" team-name channel-name)
-                               unless (oref channel is-archived)
-                               collect `(,label ,channel ,team)))
-                             (users nil)
-                             ;;  (loop
-                             ;;   for (user-name . user-plist) in (slack-user-names team)
-                             ;;   as label = (format "%s member %s, %s"
-                             ;;                      team-name user-name (getf user-plist :real_name))
-                             ;;   collect `(,label ,team ,user-plist)))
-                             )
-                         (nconc channels users))))))
-     (helm
-      :prompt "Channel or user: "
-      :sources 'helm-slack-source
-      :history 'helm-slack-source-history))
-
+ (use-package yasnippet)
+ (yas-global-mode 1)
  #+END_SRC
 *** ztree
  #+BEGIN_SRC emacs-lisp
@@ -2122,28 +2264,31 @@ Then you will only have your org file to handle all your emacs configuration. It
  (global-set-key (kbd "<C-f3>") 'ztree-side)
 
  #+END_SRC
-*** deadgrep
-Another method to search
+*** which-key - Discover key bindings
 #+BEGIN_SRC emacs-lisp
-  (use-package deadgrep
-    :bind (
-           (
-            ("C-c d" . deadgrep)
-            )
-           ))
+(use-package which-key
+:config
+(setq which-key-mode t)
+(setq which-key-idle-delay 0.7) 
+)
+
 #+END_SRC
-*** git-link - Yank current line of code external link.
+*** recentf wierdness
+Since yesterday emacs update [2019-03-07 Thu] recentf started aggressive cleanup
+of all tramp-related buffers, and no controls affect it (auto cleanup was always
+disabled).
 
-    Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
-    #+BEGIN_SRC emacs-lisp
-    (use-package git-link)
-    #+END_SRC
-*** smtpmail
-
+Quick workaround:
 #+BEGIN_SRC emacs-lisp
-(use-package smtpmail-multi)
+(defun recentf-cleanup()
+(interactive)
+)
 #+END_SRC
-
+*** realgud
+Real good debugger.
+#+BEGIN_SRC emacs-lisp
+(use-package realgud)
+#+END_SRC
 ** Package customizations & keybindings, other snippets
 *** yaml
  #+BEGIN_SRC emacs-lisp
@@ -2301,6 +2446,7 @@ Another method to search
  Always display line numbers in all sub-modes
  #+BEGIN_SRC emacs-lisp
  (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+ (add-hook 'prog-mode-hook 'flycheck-mode)
  #+END_SRC
 
 *** Various keybindings
@@ -2330,7 +2476,10 @@ Another method to search
 
  ; other function key combinations
  (global-set-key [C-f9] 'compile)
+ (global-set-key (kbd "C-z 9") 'compile)
+ (global-set-key (kbd "C-z c c") 'compile)
  (global-set-key [C-f7] 'rgrep)
+ (global-set-key (kbd "C-z 7") 'rgrep)
 
  ;; alternative ways to open file
  (global-set-key [M-f3] 'find-file) ;; this is using IDO mode/std
@@ -2411,7 +2560,7 @@ Another method to search
  (global-set-key (kbd "C-z l") 'display-line-numbers-mode)
  (global-set-key (kbd "C-z s") 'whitespace-mode)
  (global-set-key (kbd "C-c r") 'revert-buffer)
- (global-set-key [(meta f5)] 'revert-buffer)
+ ;; (global-set-key [(meta f5)] 'revert-buffer)
  (global-set-key [(control shift f)] 'find-name-dired)
  (global-set-key [M-f11] 'global-hl-line-mode)
 
@@ -2690,7 +2839,6 @@ Another method to search
 
  ;; (global-set-key (kbd "C-c x") 'xml-pretty-print)
 
- (global-set-key (kbd "M-\\") 'shrink-whitespace)
 
  (fset 'insert_org_fileref
     [?\C-x ?\C-s C-f9 ?\C-  ?\C-a ?m ?v ?  ?\C-y ?  ?. return ?\[ ?\[ ?f ?i ?l ?e ?: ?\C-u escape ?! ?b ?a ?s ?e ?n ?a ?m ?e ?  ?\C-y return ?\C-e ?\] ?\] ?\C-a ?\C-e return])
@@ -2718,6 +2866,7 @@ Another method to search
  (global-set-key (kbd "C-x 6 x") 'replace-selected-with-clipboard)
 
  (global-set-key (kbd "M-g l") 'avy-goto-line)
+ (global-set-key (kbd "M-n") 'avy-goto-line)
  (global-set-key "\C-z+" 'ivy-push-view)
  (global-set-key "\C-z-" 'ivy-pop-view)
  (global-set-key "\C-z=" 'imenu-list)
@@ -3262,6 +3411,11 @@ Export org mode docs to markdown
 (use-package ox-qmd)
 (use-package markdown-toc)
 (use-package ox-pandoc)
+(use-package ox-jira)
+
+(fset 'promote-ox-jira-headings
+   (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '([134217848 113 101 117 114 121 backspace backspace backspace backspace backspace 113 117 101 114 121 45 114 101 112 108 97 99 101 45 61 114 101 backspace backspace backspace 114 101 102 101 120 backspace backspace backspace 103 101 120 112 return 94 104 92 40 48 45 57 left left left 91 5 93 92 41 92 46 92 40 46 42 92 41 return 104 92 44 1 17 10 5 40 49 43 32 92 35 49 41 46 32 92 50 17 10 return 33] 0 "%d") arg)))
+
 #+END_SRC
 
 **** org-trello
@@ -3294,6 +3448,12 @@ Export org mode docs to markdown
      (define-key org-trello-mode-map (kbd "C-c o u") 'org-trello-update-board-metadata)
      (define-key org-trello-mode-map (kbd "C-c o h") 'org-trello-help-describing-bindings)))
  #+END_EXAMPLE
+
+**** org-jira
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-jira)
+#+END_SRC
 
 **** javascript
  #+BEGIN_SRC emacs-lisp
@@ -3388,6 +3548,7 @@ Export org mode docs to markdown
      (use-package org-bullets)
      #+END_SRC
 
+
 *** Duplicate line
  I like this variation from
  http://stackoverflow.com/questions/88399/how-do-i-duplicate-a-whole-line-in-emacs
@@ -3429,6 +3590,7 @@ Export org mode docs to markdown
 
 *** Terraform
  #+BEGIN_SRC emacs-lisp
+ (use-package terraform-mode)
  (add-to-list 'auto-mode-alist '("\\.tf\\.j2\\'" . terraform-mode))
  #+END_SRC
 
@@ -3444,28 +3606,32 @@ Export org mode docs to markdown
 ** Favourite themes
 
    #+BEGIN_SRC emacs-lisp
-   (use-package ample-theme)
-   (use-package ample-zen-theme)
-   (use-package avk-emacs-themes)
-   (use-package base16-theme)
-   (use-package clues-theme)
-   (use-package color-theme-sanityinc-tomorrow)
-   (use-package creamsody-theme)
-   (use-package cyberpunk-theme)
-   (use-package dakrone-theme)
-   (use-package doom-themes)
-   (use-package dracula-theme)
-   (use-package flatland-theme)
-   (use-package flatui-dark-theme)
-   (use-package flatui-theme)
-   (use-package grandshell-theme)
-   (use-package hamburg-theme)
-   (use-package leuven-theme)
-   (use-package moe-theme)
-   (use-package paganini-theme)
-   (use-package panda-theme)
-   (use-package subatomic-theme)
-   (use-package suscolors-theme)
-   (use-package tangotango-theme)
-   (use-package warm-night-theme)
+   (use-package ample-theme :defer t)
+   (use-package ample-zen-theme :defer t)
+   (use-package avk-emacs-themes :defer t)
+   (use-package base16-theme :defer t)
+   (use-package clues-theme :defer t)
+   (use-package color-theme-sanityinc-tomorrow :defer t)
+   (use-package creamsody-theme :defer t)
+   (use-package cyberpunk-theme :defer t)
+   (use-package dakrone-theme :defer t)
+   (use-package doom-themes :defer t)
+   (use-package dracula-theme :defer t)
+   (use-package flatland-theme :defer t)
+   (use-package flatui-dark-theme :defer t)
+   (use-package flatui-theme :defer t)
+   (use-package grandshell-theme :defer t)
+   (use-package hamburg-theme :defer t)
+   (use-package leuven-theme :defer t)
+   (use-package moe-theme :defer t)
+   (use-package paganini-theme :defer t)
+   (use-package panda-theme :defer t)
+   (use-package subatomic-theme :defer t)
+   (use-package suscolors-theme :defer t)
+   (use-package tangotango-theme :defer t)
+   (use-package warm-night-theme :defer t)
+   (use-package nimbus-theme :defer t)
+   (use-package moe-theme :defer t)
+   (use-package dracula-theme :defer t)
    #+END_SRC
+   

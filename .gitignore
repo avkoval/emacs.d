@@ -28,3 +28,4 @@ var
 *.elc
 /README.md
 /README.el
+transient/
