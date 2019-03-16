@@ -1175,6 +1175,7 @@ Then you will only have your org file to handle all your emacs configuration. It
               (yas-minor-mode)
               (yas-activate-extra-mode 'web-mode)
               (display-line-numbers-mode)
+              (highlight-indentation-mode t)
               )
            )
 
@@ -1446,6 +1447,15 @@ Then you will only have your org file to handle all your emacs configuration. It
 #+BEGIN_SRC emacs-lisp
 (use-package apache-mode)
 #+END_SRC
+
+*** annotate-mode
+#+BEGIN_SRC emacs-lisp
+(use-package annotate
+:defer t
+:bind (
+("\C-cma" . annotate-mode)
+))
+#+END_SRC
 *** clipmon
 
 Clipboard monitoring and so I don't need external packages like klipper, copyq etc.
@@ -1486,6 +1496,11 @@ searching/structured
 (use-package comb)
 #+END_SRC
 
+*** crontab
+#+BEGIN_SRC emacs-lisp
+(use-package crontab-mode)
+#+END_SRC
+
 *** deadgrep
 Another method to search
 #+BEGIN_SRC emacs-lisp
@@ -1500,10 +1515,10 @@ Another method to search
  #+BEGIN_SRC emacs-lisp
  (dired-async-mode 1)
  (setq dired-omit-files "^\\...+$")
- (defun avk-dired-mode-hook ()
-   (local-set-key [(tab)] 'other-window))
+ ;;(defun avk-dired-mode-hook ()
+  ;; (local-set-key [(tab)] 'other-window))
 
- (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
+ ;; (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
  (defun open-file-externally(arg)
    (async-shell-command (format "xdg-open \"%s\"" arg))
    )
@@ -1568,6 +1583,8 @@ Another method to search
 *** dired-sidebar
 Interesting alternative to treemacs
 #+BEGIN_SRC emacs-lisp
+(use-package all-the-icons-dired)
+
 (use-package dired-sidebar
   :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
   :ensure t
@@ -1581,10 +1598,11 @@ Interesting alternative to treemacs
   (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
   (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
 
-  (setq dired-sidebar-subtree-line-prefix "__")
-  (setq dired-sidebar-theme 'vscode)
+  ;; (setq dired-sidebar-subtree-line-prefix "__")
+  ;; (setq dired-sidebar-theme 'vscode)
   (setq dired-sidebar-use-term-integration t)
-  (setq dired-sidebar-use-custom-font t))
+  ;;(setq dired-sidebar-use-custom-font t)
+)
 #+END_SRC
 *** docker
 #+BEGIN_SRC emacs-lisp
@@ -2183,6 +2201,17 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
                   (cons tramp-file-name-regexp nil))
 
 
+     (add-to-list 'tramp-connection-properties
+                  (list (regexp-quote "/sudo:")
+                        "session-timeout" nil)
+                  )
+
+     (add-to-list 'tramp-connection-properties
+                  (list (regexp-quote "/ssh:")
+                        "session-timeout" nil)
+                  )
+
+
  #+END_SRC
 
 *** treemacs
@@ -2224,10 +2253,10 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
  Nice icons for dired mode (borrowed from treemacs)
 
  #+BEGIN_SRC emacs-lisp
- (use-package treemacs-icons-dired
- :config
- (treemacs-icons-dired-mode)
- ) 
+ ;;(use-package treemacs-icons-dired
+ ;;:config
+ ;;(treemacs-icons-dired-mode t)
+ ;;) 
  #+END_SRC
 
 *** undo-tree
@@ -2469,7 +2498,7 @@ Real good debugger.
  (global-set-key [C-f10] 'menu-bar-mode)
  (global-set-key [f12] 'toggle-truncate-lines)
  (global-set-key (kbd "C-x t") 'toggle-truncate-lines)
- (global-set-key (kbd "C-x b") 'ivy-switch-buffer)
+;; (global-set-key (kbd "C-x b") 'ivy-switch-buffer)
 
  ;; man/help
  ;; (global-set-key [(meta f1)] 'man)
@@ -2519,8 +2548,7 @@ Real good debugger.
  (define-key global-map  "\C-cmd"         'django-html-mumamo-mode)
  (define-key global-map  "\C-cmc"         'conf-mode)
  (define-key global-map  "\C-cmc"         'conf-mode)
- (define-key global-map  "\C-cma"         'annotate-mode)
- (define-key global-map  "\C-cms"         'speedbar)
+  (define-key global-map  "\C-cms"         'speedbar)
 
  (defun show-trailing-whitespace ()
    (interactive)
@@ -3555,6 +3583,11 @@ Export org mode docs to markdown
      #+BEGIN_SRC emacs-lisp
      (use-package org-bullets)
      #+END_SRC
+
+**** htmlize
+#+BEGIN_SRC emacs-lisp
+(use-package htmlize)
+#+END_SRC
 
 
 *** Duplicate line
