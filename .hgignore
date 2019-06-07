@@ -37,6 +37,7 @@ treemacs/*
 ./lisp/auto-virtualenv/*
 .cache/*
 emojis/*
+lisp/org-gantt
 
 syntax: regexp
 .*\#.*\#$

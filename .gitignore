@@ -29,3 +29,9 @@ var
 /README.md
 /README.el
 transient/
+el-get/.loaddefs.el
+el-get/.status.el
+el-get/ahg/
+lisp/org-gantt/
+*~
+recentf

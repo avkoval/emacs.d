@@ -663,14 +663,12 @@ Then you will only have your org file to handle all your emacs configuration. It
              ("C-x /" . helm-surfraw)
              ([(s-tab)] . helm-buffers-list)
              ("C-z C-b" . helm-buffers-list)
-             ([(M-s-tab)] . helm-projectile-switch-to-buffer)
              ("C-z C-a" . helm-mini)
              ("C-z C-r" . helm-recentf)
              ([f4] . helm-recentf)
              ("C-z C-f" . helm-find-files)
              ("C-z f f" . helm-etags-select)
              ("C-c h h" . helm-comint-input-ring)
-             ("C-c h p" . helm-projectile)
              ("C-c h m" . helm-mark-ring)
              ("C-c h r" . helm-resume)
              ([M-f12] . helm-resume)
@@ -998,7 +996,15 @@ Then you will only have your org file to handle all your emacs configuration. It
   #+BEGIN_SRC emacs-lisp
     (use-package helm-projectile
       :init
-      :bind (("C-c h p" . helm-projectile)))
+      :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
+             ("C-c h p p" . helm-projectile)
+             ("C-c h p f" . helm-projectile-find-file)
+             ("C-c h p s" . helm-projectile-switch-project)
+             ("C-c h p r" . helm-projectile-recentf)
+             ("C-c h p g" . helm-projectile-grep)
+             ("C-c h p d" . helm-projectile-rg)
+             )
+      )
   #+END_SRC
 
 **** helm-tramp
@@ -1025,10 +1031,16 @@ Then you will only have your org file to handle all your emacs configuration. It
  Searching using [[https://github.com/ggreer/the_silver_searcher]["The silver searcher"]] with Helm.
 
   #+BEGIN_SRC emacs-lisp
-    (use-package helm-ag
-      :init
-      :bind (("C-c h a" . helm-ag)
-             ("C-c s" . helm-projectile-ag)))
+        (use-package helm-ag
+          :init
+          :config
+        (progn
+;;             (setq helm-ag-base-command "rg --no-heading")
+             (setq helm-ag-base-command "ag --nocolor --nogroup")
+            )
+        (setq org-log-done 'time)
+          :bind (("C-c h a" . helm-ag)
+                 ("C-c s" . helm-projectile-ag)))
   #+END_SRC
 
 **** helm-swoop
@@ -1042,6 +1054,11 @@ Then you will only have your org file to handle all your emacs configuration. It
              ("C-c h s p" . helm-multi-swoop-projectile))
   )
   #+END_SRC
+
+**** edit grep results
+#+BEGIN_SRC emacs-lisp
+(use-package wgrep)
+#+END_SRC
 
 *** Always display file name in frame title
 
@@ -1238,7 +1255,7 @@ Then you will only have your org file to handle all your emacs configuration. It
  #+END_SRC
 *** recentf
 #+BEGIN_SRC emacs-lisp
-(defun recentf-cleanup() 
+(defun recentf-cleanup()
 (interactive)
 )
 #+END_SRC
@@ -1464,7 +1481,7 @@ Clipboard monitoring and so I don't need external packages like klipper, copyq e
   ;; (use-package clipmon
   ;; :config
   ;; (clipmon-mode)
-  ;; ;; my fix 
+  ;; ;; my fix
   ;; (defun clipmon--get-selection ()
   ;;   "Get the clipboard contents"
   ;;   ;; Note: When the OS is first started these functions will throw
@@ -1639,9 +1656,18 @@ Interesting alternative to treemacs
  #+END_SRC
 
 *** flycheck, flymake
+
 #+BEGIN_SRC emacs-lisp
-(use-package flycheck)
-#+END_SRCdo
+  (use-package flycheck-pycheckers)
+  (use-package flycheck
+    :config
+    (global-flycheck-mode 1)
+    (add-hook 'flycheck-mode-hook #'flycheck-pycheckers-setup)
+  )
+
+
+#+END_SRC
+
 *** git-link - Yank current line of code external link.
 
     Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
@@ -1696,14 +1722,52 @@ Interesting alternative to treemacs
 
 *** Javascript
  #+BEGIN_SRC emacs-lisp
- (autoload 'javascript-mode "javascript" nil t)
- (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
- (setq js-indent-level 2)
+      ;; (autoload 'javascript-mode "javascript" nil t)
+      ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
+      (use-package js2-mode)
+      (use-package js3-mode)
+      (use-package js2-refactor)
+      (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+      (setq js-indent-level 2)
 
- ;; jslint
- (use-package flymake-jslint)
- (use-package flymake-cursor)
+      ;; jslint
+      ;; (use-package flymake-jslint)
+      ;; (use-package flymake-cursor)
+      (require 'json)
+      ;; (require 'flycheck)
+      ;; (defun my-parse-jslinter-warning (warning)
+      ;;   (flycheck-error-new
+      ;;    :line (1+ (cdr (assoc 'line warning)))
+      ;;    :column (1+ (cdr (assoc 'column warning)))
+      ;;    :message (cdr (assoc 'message warning))
+      ;;    :level 'error
+      ;;    :buffer (current-buffer)
+      ;;    :checker 'javascript-jslinter))
+      ;; (defun jslinter-error-parser (output checker buffer)
+      ;;   (mapcar 'parse-jslinter-warning
+      ;;           (cdr (assoc 'warnings (aref (json-read-from-string output) 0)))))
+      ;; (flycheck-define-checker javascript-jslinter
+      ;;   "A JavaScript syntax and style checker based on JSLinter.
+
+      ;; See URL `https://github.com/tensor5/JSLinter'."
+      ;;   :command ("jslint" "--raw" source)
+      ;;   :error-parser jslinter-error-parser
+      ;;   :modes (js-mode js2-mode js3-mode))
+
+
+   (add-hook 'js2-mode-hook
+             (defun my-js2-mode-setup ()
+               (flycheck-mode t)
+               (when (executable-find "eslint")
+                 (flycheck-select-checker 'javascript-eslint))))
  #+END_SRC
+
+**** React
+
+#+BEGIN_SRC emacs-lisp
+(use-package rjsx-mode)
+#+END_SRC
+
 *** imenu
 #+BEGIN_SRC emacs-lisp
 (use-package imenu-list)
@@ -1711,19 +1775,33 @@ Interesting alternative to treemacs
 #+END_SRC
 *** ledger
 
-#+BEGIN_EXAMPLE emacs-lisp
+#+BEGIN_SRC emacs-lisp
 (use-package ledger-mode)
-#+END_EXAMPLE
+#+END_SRC
+
 *** logview
 https://github.com/doublep/logview
 #+BEGIN_SRC emacs-lisp
 (use-package logview)
 #+END_SRC
-*** magit
+*** git, magit, code reviews
+**** Magit itself
+
+  #+BEGIN_SRC emacs-lisp
+  (use-package magit)
+  #+END_SRC
+
+**** Forge - interface to see code reviews
+
+  #+BEGIN_SRC emacs-lisp
+  (use-package forge
+  :after magit)
+  #+END_SRC
+
+**** Github-reviews as a plain text
 
  #+BEGIN_SRC emacs-lisp
- (use-package magit)
- (use-package forge)
+  (use-package github-review)
  #+END_SRC
 
 *** multiple-cursors
@@ -1847,41 +1925,10 @@ https://github.com/doublep/logview
      notmuch don't have this functionality by default, so I've monkey patched it here:
 
      #+BEGIN_SRC emacs-lisp
-     (require 'notmuch)
-     (defun my-notmuch-reply (&optional prompt-for-sender)
-         "Extending notmuch reply function 'r' to use To: address as From:
-       for composed message"
-         (interactive "P")
-         (my-notmuch-mua-new-reply (notmuch-show-get-message-id) prompt-for-sender nil)
-       )
-
-       (defun my-notmuch-mua-new-reply (query-string &optional prompt-for-sender reply-all)
-         "Compose a reply to the message identified by QUERY-STRING.
-
-       If PROMPT-FOR-SENDER is non-nil, the user will be prompted for
-       the From: address first.  If REPLY-ALL is non-nil, the message
-       will be addressed to all recipients of the source message."
-
-       ;; In current emacs (24.3) select-active-regions is set to t by
-       ;; default. The reply insertion code sets the region to the quoted
-       ;; message to make it easy to delete (kill-region or C-w). These two
-       ;; things combine to put the quoted message in the primary selection.
-       ;;
-       ;; This is not what the user wanted and is a privacy risk (accidental
-       ;; pasting of the quoted message). We can avoid some of the problems
-       ;; by let-binding select-active-regions to nil. This fixes if the
-       ;; primary selection was previously in a non-emacs window but not if
-       ;; it was in an emacs window. To avoid the problem in the latter case
-       ;; we deactivate mark.
-
-         (let ((sender (if prompt-for-sender
-                          (notmuch-mua-prompt-for-sender)
-                         (notmuch-show-get-to)
-                         ))
-          (select-active-regions nil))
-           (notmuch-mua-reply query-string sender reply-all)
-           (deactivate-mark)))
-      ;; (define-key notmuch-show-mode-map "r" 'my-notmuch-reply)
+       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
+         (let ((sender (notmuch-mua-prompt-for-sender)))
+           ad-do-it))
+       (ad-activate 'notmuch-mua-reply)
      #+END_SRC
 
 *** pdf-tools
@@ -1961,12 +2008,25 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
      )
    (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
 
-   (defun pylint-current-buffer()
-     (interactive)
-     (compile (concat "pylint " (buffer-file-name)) nil)
-     (rename-buffer "*pylint*")
+   ;; (defun pylint-current-buffer()
+   ;;   (interactive)
+   ;;   (compile (concat "pylint " (buffer-file-name)) nil)
+   ;;   (switch-to-buffer "*compilation*")
+   ;;   (rename-buffer "*pylint*")
+   ;;   )
+   (use-package pylint
+     :bind (("C-c p l" . pylint))
      )
-   (global-set-key (kbd "C-c p l") 'pylint-current-buffer)
+
+
+   (defun flake8-current-buffer()
+     (interactive)
+     (compile (concat "flake8 " (buffer-file-name)) nil)
+     (switch-to-buffer "*compilation*")
+     (rename-buffer "*flake8*")
+     )
+   (global-set-key (kbd "C-c p f") 'flake8-current-buffer)
+
 
    (use-package highlight-indentation
    :defer t)
@@ -2117,99 +2177,99 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
 
 *** tramp
  #+BEGIN_SRC emacs-lisp
- ; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
- (require 'tramp)
- (require 'password-cache)
- (setq password-cache-expiry nil)
+   ; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
+   (require 'tramp)
+   (require 'password-cache)
+   (setq password-cache-expiry nil)
 
- ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
- (push
-  (cons
-   "docker"
-   '((tramp-login-program "docker")
-     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
+   ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
+   ;; (push
+   ;;  (cons
+   ;;   "docker"
+   ;;   '((tramp-login-program "docker")
+   ;;     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
+   ;;     (tramp-remote-shell "/bin/sh")
+   ;;     (tramp-remote-shell-args ("-i") ("-c"))))
+   ;;  tramp-methods)
+
+   (defadvice tramp-completion-handle-file-name-all-completions
+     (around dotemacs-completion-docker activate)
+     "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
+       a list of active Docker container names, followed by colons."
+     (if (equal (ad-get-arg 1) "/docker:")
+         (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
+                (dockernames (cl-remove-if-not
+                              #'(lambda (dockerline) (string-match ":$" dockerline))
+                              (split-string dockernames-raw "\n"))))
+           (setq ad-return-value dockernames)
+           (message dockernames)
+           )
+       ad-do-it))
+
+   ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
+   ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
+   ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
+   (push
+    (cons
+     "sush"
+     '((tramp-login-program "su")
+     (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
      (tramp-remote-shell "/bin/sh")
-     (tramp-remote-shell-args ("-i") ("-c"))))
-  tramp-methods)
+     (tramp-remote-shell-login
+      ("-l"))
+     (tramp-remote-shell-args
+      ("-c"))
+     (tramp-connection-timeout 10)))
+    tramp-methods)
+   ;;
 
- (defadvice tramp-completion-handle-file-name-all-completions
-   (around dotemacs-completion-docker activate)
-   "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
-     a list of active Docker container names, followed by colons."
-   (if (equal (ad-get-arg 1) "/docker:")
-       (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
-              (dockernames (cl-remove-if-not
-                            #'(lambda (dockerline) (string-match ":$" dockerline))
-                            (split-string dockernames-raw "\n"))))
-         (setq ad-return-value dockernames)
-         (message dockernames)
-         )
-     ad-do-it))
-
- ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
- ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
- ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
- (push
-  (cons
-   "sush"
-   '((tramp-login-program "su")
-   (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
-   (tramp-remote-shell "/bin/sh")
-   (tramp-remote-shell-login
-    ("-l"))
-   (tramp-remote-shell-args
-    ("-c"))
-   (tramp-connection-timeout 10)))
-  tramp-methods)
- ;;
-
- ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
- (setq remote-file-name-inhibit-cache nil)
- (setq vc-ignore-dir-regexp
-       (format "%s\\|%s"
-                     vc-ignore-dir-regexp
-                     tramp-file-name-regexp))
- (setq tramp-verbose 1)
+   ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
+   (setq remote-file-name-inhibit-cache nil)
+   (setq vc-ignore-dir-regexp
+         (format "%s\\|%s"
+                       vc-ignore-dir-regexp
+                       tramp-file-name-regexp))
+   (setq tramp-verbose 1)
 
 
- (push
-  (cons
-   "ocrsh"
-   '((tramp-login-program "oc")
-     (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
-     (tramp-remote-shell "/bin/sh")
-     (tramp-remote-shell-args ("-i"))))
-  tramp-methods)
+   (push
+    (cons
+     "ocrsh"
+     '((tramp-login-program "oc")
+       (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
+       (tramp-remote-shell "/bin/sh")
+       (tramp-remote-shell-args ("-i"))))
+    tramp-methods)
 
- (push
-  (cons
-   "kube"
-   '((tramp-login-program "kubectl")
-     (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
-     (tramp-remote-shell "/bin/sh")
-     (tramp-remote-shell-args ("-i"))))
-  tramp-methods)
+   (push
+    (cons
+     "kube"
+     '((tramp-login-program "kubectl")
+       (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
+       (tramp-remote-shell "/bin/sh")
+       (tramp-remote-shell-args ("-i"))))
+    tramp-methods)
 
- (defun tramp-refresh ()
-   (interactive)
-   ;; (recentf-cleanup)
-   (tramp-cleanup-all-buffers)
-   (tramp-cleanup-all-connections))
+   (defun tramp-refresh ()
+     (interactive)
+     ;; (recentf-cleanup)
+     (tramp-cleanup-all-buffers)
+     (tramp-cleanup-all-connections))
 
-   ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
- (add-to-list 'backup-directory-alist
-                  (cons tramp-file-name-regexp nil))
+     ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
+   (add-to-list 'backup-directory-alist
+                    (cons tramp-file-name-regexp nil))
 
 
-     (add-to-list 'tramp-connection-properties
-                  (list (regexp-quote "/sudo:")
-                        "session-timeout" nil)
-                  )
+       (add-to-list 'tramp-connection-properties
+                    (list (regexp-quote "/sudo:")
+                          "session-timeout" nil)
+                    )
 
-     (add-to-list 'tramp-connection-properties
-                  (list (regexp-quote "/ssh:")
-                        "session-timeout" nil)
-                  )
+       (add-to-list 'tramp-connection-properties
+                    (list (regexp-quote "/ssh:")
+                          "session-timeout" nil)
+                    )
 
 
  #+END_SRC
@@ -2256,7 +2316,7 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
  ;;(use-package treemacs-icons-dired
  ;;:config
  ;;(treemacs-icons-dired-mode t)
- ;;) 
+ ;;)
  #+END_SRC
 
 *** undo-tree
@@ -2298,7 +2358,7 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
 (use-package which-key
 :config
 (setq which-key-mode t)
-(setq which-key-idle-delay 0.7) 
+(setq which-key-idle-delay 0.7)
 )
 
 #+END_SRC
@@ -2539,7 +2599,8 @@ Real good debugger.
 
  ;; quick manual override of mode switch
  ;; memoize: c -Control m -Mode
- (define-key global-map  "\C-cmj"         'javascript-mode)
+ ;;(define-key global-map  "\C-cmj"         'javascript-mode)
+ (define-key global-map  "\C-cmj"         'js2-mode)
  (define-key global-map  "\C-cmp"         'python-mode)
  (define-key global-map  "\C-cmh"         'html-mode)
  (define-key global-map  "\C-cmw"         'web-mode)
@@ -2928,486 +2989,490 @@ Real good debugger.
 
 *** Org-mode
 
-**** org-mode
+**** Org-mode
  #+BEGIN_SRC emacs-lisp
- ;; Org-mode settings
- (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
- ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
- (require 'org-checklist)
+   ;; Org-mode settings
+   (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
+                                           ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+   (require 'org-checklist)
 
- (when (featurep 'notmuch)
-   (require 'org-notmuch)
-   )
+   (when (featurep 'notmuch)
+     (require 'org-notmuch)
+     )
 
- ;; to store links from eww
- (require 'org-eww)
- (use-package ob-http)
- ;(require 'org-bullets) - they slow down emacs org mode
- (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
- (use-package ob-async)
- (use-package restclient)
- (use-package ob-restclient)
- (use-package org-rich-yank)
- ; (require 'ox-beamer)
+   ;; to store links from eww
+   (require 'org-eww)
+   (use-package ob-http)
+                                           ;(require 'org-bullets) - they slow down emacs org mode
+   (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+   (use-package ob-async)
+   (use-package restclient)
+   (use-package ob-restclient)
+   (use-package org-rich-yank)
+                                           ; (require 'ox-beamer)
 
- (org-babel-do-load-languages
-  'org-babel-load-languages
-  '((emacs-lisp . t)
-    (http . t)
-    (restclient . t)
-    (gnuplot . t)
-    ))
+   (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((shell . t)
+      (plantuml . t)
+      (lisp . t)
+      (clojure . t)
+      (python . t)
+      (dot . t)
+      (awk . t)
+      (emacs-lisp . t))
+    )
 
- ;; optional exporters
- (with-eval-after-load 'ox
-   (require 'ox-latex)
-   (loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
-         do (unless (require pkg nil 'noerror)
-              (message (format "You need to install package %s" pkg))))
- )
+   ;; optional exporters
+   (with-eval-after-load 'ox
+     (require 'ox-latex)
+     (loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
+           do (unless (require pkg nil 'noerror)
+                (message (format "You need to install package %s" pkg))))
+     )
 
- (require 'org-clock)
- (setq org-replace-disputed-keys t)
- (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
-
-
- (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
- (global-set-key "\C-cl" 'org-store-link)
- (global-set-key "\C-ca" 'org-agenda)
-
- (fset 'goto-org-agenda
-    "\C-caa")
+   (require 'org-clock)
+   (setq org-replace-disputed-keys t)
+   (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
 
 
- (global-set-key [XF86HomePage] 'goto-org-agenda)
+   (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+   (global-set-key "\C-cl" 'org-store-link)
+   (global-set-key "\C-ca" 'org-agenda)
+
+   (fset 'goto-org-agenda
+         "\C-caa")
 
 
- (global-set-key [(meta f8)]  'org-clock-goto)
- (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
- (global-set-key "\C-z`" 'org-clock-in)
- (global-set-key "\C-z~" 'org-clock-out)
- (fset 'my-clock-in-current-task
-    (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
- (global-set-key "\C-z1" 'my-clock-in-current-task)
-
- (global-set-key [(control shift f5)] 'org-clock-out)
+   (global-set-key [XF86HomePage] 'goto-org-agenda)
 
 
- (global-font-lock-mode 1)
+   (global-set-key [(meta f8)]  'org-clock-goto)
+   (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
+   (global-set-key "\C-z`" 'org-clock-in)
+   (global-set-key "\C-z~" 'org-clock-out)
+   (fset 'my-clock-in-current-task
+         (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
+   (global-set-key "\C-z1" 'my-clock-in-current-task)
 
- ;; temp disabled
- ;; (defun my-org-mode-hook ()
- ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
- ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
- ;;   (yas-minor-mode)
- ;;   ;(org-bullets-mode 1)
- ;;   )
- ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
-
+   (global-set-key [(control shift f5)] 'org-clock-out)
 
 
- (setq org-directory "~/org/")
+   (global-font-lock-mode 1)
 
- (setq org-default-notes-file (concat org-directory "/notes.org"))
- (define-key global-map "\C-cc" 'org-capture)
-
- (defun org-todo-keyword-faces-dark()
-   (interactive)
-   (setq org-todo-keyword-faces
-	 '(
-	   ("IDEA" . (:foreground "chartreuse" :weight bold))
-	   ("WORKING" . (:foreground "forest green" :weight bold))
-	   ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
-	   ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
-	   ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
-	   ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
-	   ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
-	   ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
-	   ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-	   ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-	   )
-	 )
- )
-
- (defun switch-to-agenda() ()
-   (interactive)
-   (if (get-buffer "*Org Agenda*")
-       (switch-to-buffer "*Org Agenda*")
-     (org-agenda))
- )
- (global-set-key (kbd "s-`") 'switch-to-agenda)
+   ;; temp disabled
+   ;; (defun my-org-mode-hook ()
+   ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
+   ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
+   ;;   (yas-minor-mode)
+   ;;   ;(org-bullets-mode 1)
+   ;;   )
+   ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
 
 
- (setq org-completion-use-ido t)
 
- (defun org-todo-keyword-faces-light()
-   (interactive)
-   (setq org-todo-keyword-faces
-	 '(
-	 ("WORKING" . (:background "green yellow"))
-	 ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
-	 ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
-	 ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
-	 ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
-	 ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
-	 ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
-	 ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-	 ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-	 )
- ))
+   (setq org-directory "~/org/")
 
- (defun insert-time-with-seconds ()
-   (interactive)
-   (insert (format-time-string "%H:%M.%S")))
+   (setq org-default-notes-file (concat org-directory "/notes.org"))
+   (define-key global-map "\C-cc" 'org-capture)
 
+   (defun org-todo-keyword-faces-dark()
+     (interactive)
+     (setq org-todo-keyword-faces
+           '(
+             ("IDEA" . (:foreground "chartreuse" :weight bold))
+             ("WORKING" . (:foreground "forest green" :weight bold))
+             ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
+             ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
+             ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
+             ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
+             ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
+             ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
+             ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+             ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+             )
+           )
+     )
 
- (global-set-key "\C-c0" 'insert-time-with-seconds)
-
- ;; (custom-set-variables
- ;;  '(org-agenda-custom-commands
- ;;    (quote
- ;;     (("p" . "Project TODOs")
- ;;      ("py" "Yacapaca" tags-todo "YP" nil)
- ;;      ("pt" "Tagvillage" tags-todo "tgv" nil)
- ;;      ("pb" "BonjourParis" tags-todo "BP" nil)
- ;;      ("pm" "Miles" tags-todo "miles" nil)
- ;;      ("p2" "UA2WEB" tags-todo "ua2web" nil)
- ;;      ("kevin" "Kevin Feltner" tags "kevin" nil)
- ;;      ("P" "projects GTD Block Agenda"
- ;;       ((tags-todo "YP" nil)
- ;;        (tags-todo "tgv" nil)
- ;;        (tags-todo "BP" nil)
- ;;        (tags-todo "miles" nil)
- ;;        (tags-todo "ua2web" nil)
- ;;        (tags-todo "taxi" nil))
- ;;       nil
- ;;       ("~/next-actions.html"))
- ;;      ("1" "AVK Custom Plan"
- ;;       ((agenda ""
- ;;                ((org-agenda-overriding-header "My Today Plan (AVK)")
- ;;                 (org-agenda-span
- ;;                  (quote day))))
- ;;        (todo "WORKING" nil)
- ;;        (todo "TOPAIR" nil)
- ;;        (todo "REVIEW" nil))
- ;;       nil nil))))
- ;;  '(org-agenda-files
- ;;    (quote
- ;;     ("~/org/work.org" "~/org/avk.org" "~/org/notes.org" "~/CData/hdgshare.org" "~/org/journal.org")))
- ;;  '(org-agenda-prefix-format
- ;;    (quote
- ;;     ((agenda . " %i %-6:c%?-12t% s")
- ;;      (timeline . "  % s")
- ;;      (todo . " %i %-6:c")
- ;;      (tags . " %i %-6:c")
- ;;      (search . " %i %-6:c"))))
- ;;  '(org-agenda-scheduled-leaders (quote ("S[.]: " "S[x].%2dx:")))
- ;;  '(org-agenda-skip-scheduled-if-deadline-is-shown nil)
- ;;  '(org-capture-templates
- ;;    (quote
- ;;     (("t" "Todo" entry
- ;;       (file+headline "~/org/notes.org" "Unsorted Tasks")
- ;;       "* TODO %?
- ;;   %i
- ;;   %a")
- ;;      ("j" "Journal" entry
- ;;       (file+datetree "~/org/journal.org")
- ;;       "* %?
- ;; Entered on %U
- ;;   %i
- ;;   %a")
- ;;      ("c" "Comment on project code" entry
- ;;       (file+headline "~/org/notes.org" "Code")
- ;;       "* TODO %?
- ;;   %i
- ;;   %a")
- ;;      ("m" "Money log" entry
- ;;       (file+datetree+prompt "~/org/money.org")
- ;;       "* %?
- ;; Entered on %U
- ;;   %i
- ;;   %a"))))
- ;;  '(org-clock-mode-line-total (quote all))
- ;;  '(org-directory "~/org")
- ;;  '(org-export-html-style
- ;;    "<style type=\"text/css\">
- ;;   html {
- ;; 	font-family: verdana, serif;
- ;; 	font-size: 12pt;
- ;;   }
- ;;   .title { text-align: center; }
- ;;   .todo  { color: red; }
- ;;   .done { color: green; }
- ;;   .timestamp { color: grey }
- ;;   .timestamp-kwd { color: CadetBlue }
- ;;   .tag { background-color:lightblue; font-weight:normal }
- ;;   .target { background-color: lavender; }
- ;;   pre {
- ;; 	border: 1pt solid #AEBDCC;
- ;; 	background-color: #F3F5F7;
- ;; 	padding: 5pt;
- ;; 	font-family: courier, monospace;
- ;;   }
- ;;   table { border-collapse: collapse; }
- ;;   td, th {
- ;; 	vertical-align: top;
- ;; 	<!--border: 1pt solid #ADB9CC;-->
- ;;   }
- ;; </style>")
- ;;  '(org-file-apps
- ;;    (quote
- ;;     ((auto-mode . emacs)
- ;;      ("\\.mm\\'" . default)
- ;;      ("\\.x?html?\\'" . emacs)
- ;;      ("\\.pdf\\'" . default))))
- ;;  '(org-fontify-done-headline t)
- ;;  '(org-fontify-emphasized-text t)
- ;;  '(org-hide-leading-stars t)
- ;;  '(org-insert-labeled-timestamps-at-point nil)
- ;;  '(org-log-done (quote time))
- ;;  '(org-log-into-drawer t)
- ;;  '(org-log-redeadline (quote time))
- ;;  '(org-priority-faces (quote ((65 . "red"))))
- ;;  '(org-replace-disputed-keys t)
- ;;  '(org-time-stamp-rounding-minutes (quote (5 5)))
- ;;  '(org-todo-keywords
- ;;    (quote
- ;;     ((sequence "IDEA(i!) TODO(t!)" "WORKING(w!)" "SLEEP(s@!)" "|" "DONE(x!)")
- ;;      (sequence "DELEGATE(e=!)" "DELEGATED(1!)" "FEEDBACK(f!)" "ASSIGNED(a!)" "REVIEW(r!)" "TOPAIR(p!)" "|" "TIMEOK(o!)")
- ;;      (sequence "DUP(d!)")
- ;;      (sequence "|" "CANCELLED(c@!)")
- ;;      (sequence "UNCLEAR(u!)")
- ;;      (sequence "REJECTED(j!)")
- ;;      (sequence "WORKSFORME(0!)")))))
-
- (custom-set-faces
-  '(org-done ((t (:strike-through t)))))
-
-
- (defun my-org-insert-current-item-time()
-   "Insert HH:MM into the buffer. Used during reporting of work done"
-   (interactive)
-   (let* (
-          (clocked-time (org-clock-get-clocked-time))
-          (h (/ clocked-time 60))
-          (m (- clocked-time (* 60 h)))
+   (defun switch-to-agenda() ()
+          (interactive)
+          (if (get-buffer "*Org Agenda*")
+              (switch-to-buffer "*Org Agenda*")
+            (org-agenda))
           )
-     (insert (format "%.2d:%.2d" h m))
+   (global-set-key (kbd "s-`") 'switch-to-agenda)
+
+
+   (setq org-completion-use-ido t)
+
+   (defun org-todo-keyword-faces-light()
+     (interactive)
+     (setq org-todo-keyword-faces
+           '(
+             ("WORKING" . (:background "green yellow"))
+             ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
+             ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
+             ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
+             ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
+             ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
+             ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
+             ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+             ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+             )
+           ))
+
+   (defun insert-time-with-seconds ()
+     (interactive)
+     (insert (format-time-string "%H:%M.%S")))
+
+
+   (global-set-key "\C-c0" 'insert-time-with-seconds)
+
+   ;; (custom-set-variables
+   ;;  '(org-agenda-custom-commands
+   ;;    (quote
+   ;;     (("p" . "Project TODOs")
+   ;;      ("py" "Yacapaca" tags-todo "YP" nil)
+   ;;      ("pt" "Tagvillage" tags-todo "tgv" nil)
+   ;;      ("pb" "BonjourParis" tags-todo "BP" nil)
+   ;;      ("pm" "Miles" tags-todo "miles" nil)
+   ;;      ("p2" "UA2WEB" tags-todo "ua2web" nil)
+   ;;      ("kevin" "Kevin Feltner" tags "kevin" nil)
+   ;;      ("P" "projects GTD Block Agenda"
+   ;;       ((tags-todo "YP" nil)
+   ;;        (tags-todo "tgv" nil)
+   ;;        (tags-todo "BP" nil)
+   ;;        (tags-todo "miles" nil)
+   ;;        (tags-todo "ua2web" nil)
+   ;;        (tags-todo "taxi" nil))
+   ;;       nil
+   ;;       ("~/next-actions.html"))
+   ;;      ("1" "AVK Custom Plan"
+   ;;       ((agenda ""
+   ;;                ((org-agenda-overriding-header "My Today Plan (AVK)")
+   ;;                 (org-agenda-span
+   ;;                  (quote day))))
+   ;;        (todo "WORKING" nil)
+   ;;        (todo "TOPAIR" nil)
+   ;;        (todo "REVIEW" nil))
+   ;;       nil nil))))
+   ;;  '(org-agenda-files
+   ;;    (quote
+   ;;     ("~/org/work.org" "~/org/avk.org" "~/org/notes.org" "~/CData/hdgshare.org" "~/org/journal.org")))
+   ;;  '(org-agenda-prefix-format
+   ;;    (quote
+   ;;     ((agenda . " %i %-6:c%?-12t% s")
+   ;;      (timeline . "  % s")
+   ;;      (todo . " %i %-6:c")
+   ;;      (tags . " %i %-6:c")
+   ;;      (search . " %i %-6:c"))))
+   ;;  '(org-agenda-scheduled-leaders (quote ("S[.]: " "S[x].%2dx:")))
+   ;;  '(org-agenda-skip-scheduled-if-deadline-is-shown nil)
+   ;;  '(org-capture-templates
+   ;;    (quote
+   ;;     (("t" "Todo" entry
+   ;;       (file+headline "~/org/notes.org" "Unsorted Tasks")
+   ;;       "* TODO %?
+   ;;   %i
+   ;;   %a")
+   ;;      ("j" "Journal" entry
+   ;;       (file+datetree "~/org/journal.org")
+   ;;       "* %?
+   ;; Entered on %U
+   ;;   %i
+   ;;   %a")
+   ;;      ("c" "Comment on project code" entry
+   ;;       (file+headline "~/org/notes.org" "Code")
+   ;;       "* TODO %?
+   ;;   %i
+   ;;   %a")
+   ;;      ("m" "Money log" entry
+   ;;       (file+datetree+prompt "~/org/money.org")
+   ;;       "* %?
+   ;; Entered on %U
+   ;;   %i
+   ;;   %a"))))
+   ;;  '(org-clock-mode-line-total (quote all))
+   ;;  '(org-directory "~/org")
+   ;;  '(org-export-html-style
+   ;;    "<style type=\"text/css\">
+   ;;   html {
+   ;; 	font-family: verdana, serif;
+   ;; 	font-size: 12pt;
+   ;;   }
+   ;;   .title { text-align: center; }
+   ;;   .todo  { color: red; }
+   ;;   .done { color: green; }
+   ;;   .timestamp { color: grey }
+   ;;   .timestamp-kwd { color: CadetBlue }
+   ;;   .tag { background-color:lightblue; font-weight:normal }
+   ;;   .target { background-color: lavender; }
+   ;;   pre {
+   ;; 	border: 1pt solid #AEBDCC;
+   ;; 	background-color: #F3F5F7;
+   ;; 	padding: 5pt;
+   ;; 	font-family: courier, monospace;
+   ;;   }
+   ;;   table { border-collapse: collapse; }
+   ;;   td, th {
+   ;; 	vertical-align: top;
+   ;; 	<!--border: 1pt solid #ADB9CC;-->
+   ;;   }
+   ;; </style>")
+   ;;  '(org-file-apps
+   ;;    (quote
+   ;;     ((auto-mode . emacs)
+   ;;      ("\\.mm\\'" . default)
+   ;;      ("\\.x?html?\\'" . emacs)
+   ;;      ("\\.pdf\\'" . default))))
+   ;;  '(org-fontify-done-headline t)
+   ;;  '(org-fontify-emphasized-text t)
+   ;;  '(org-hide-leading-stars t)
+   ;;  '(org-insert-labeled-timestamps-at-point nil)
+   ;;  '(org-log-done (quote time))
+   ;;  '(org-log-into-drawer t)
+   ;;  '(org-log-redeadline (quote time))
+   ;;  '(org-priority-faces (quote ((65 . "red"))))
+   ;;  '(org-replace-disputed-keys t)
+   ;;  '(org-time-stamp-rounding-minutes (quote (5 5)))
+   ;;  '(org-todo-keywords
+   ;;    (quote
+   ;;     ((sequence "IDEA(i!) TODO(t!)" "WORKING(w!)" "SLEEP(s@!)" "|" "DONE(x!)")
+   ;;      (sequence "DELEGATE(e=!)" "DELEGATED(1!)" "FEEDBACK(f!)" "ASSIGNED(a!)" "REVIEW(r!)" "TOPAIR(p!)" "|" "TIMEOK(o!)")
+   ;;      (sequence "DUP(d!)")
+   ;;      (sequence "|" "CANCELLED(c@!)")
+   ;;      (sequence "UNCLEAR(u!)")
+   ;;      (sequence "REJECTED(j!)")
+   ;;      (sequence "WORKSFORME(0!)")))))
+
+   (custom-set-faces
+    '(org-done ((t (:strike-through t)))))
+
+
+   (defun my-org-insert-current-item-time()
+     "Insert HH:MM into the buffer. Used during reporting of work done"
+     (interactive)
+     (let* (
+            (clocked-time (org-clock-get-clocked-time))
+            (h (/ clocked-time 60))
+            (m (- clocked-time (* 60 h)))
+            )
+       (insert (format "%.2d:%.2d" h m))
+       )
      )
-   )
 
 
- ;; (defun display-debug ()
- ;;   (interactive)
- ;;   (message (format "%.2f" org-clock-file-total-minutes))
- ;;   )
- (defun my-org-insert-item-report-line()
-   "Interactive reporting during work done"
-   (interactive)
-   (insert-time-with-seconds)
-   (insert " (")
-   (my-org-insert-current-item-time)
-   (insert ") ")
-   )
-
- (global-set-key "\C-cit" 'my-org-insert-item-report-line)
-
- (setq org-global-properties
-       '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
-
- (setq org-columns-default-format
-       "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
-
- (add-hook 'org-clock-out-hook
-   (lambda ()
-     (fix-frame-title)))
-
- ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
- ;; (org-babel-do-load-languages
- ;;  'org-babel-load-languages
- ;;  '((dot . t))) ; this line activates dot
-
- ;; (org-babel-do-load-languages
- ;;  'org-babel-load-languages
- ;;  '((ditaa . t)))
-
- ;; (org-babel-do-load-languages
- ;;  'org-babel-load-languages
- ;;  '((plantuml . t)))
-
- (defun switch-to-orgfile(bufname)
-   (if (get-buffer bufname)
-       (switch-to-buffer bufname)
-     (pop-to-buffer (find-file (concat "~/org/" bufname))))
-   )
-
- (defun switch-to-labster()
-   (interactive)
-   (switch-to-orgfile "labster.org"))
-
- (defun switch-to-work()
-   (interactive)
-   (switch-to-orgfile "work.org"))
-
- (global-set-key "\C-z\C-l" 'switch-to-labster)
- (global-set-key "\C-cw" 'switch-to-work)
-
-
- (global-set-key (kbd "C-z n") 'helm-org-agenda-files-headings)
- (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
- (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
- (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
- (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
-
- (custom-set-variables
-  '(markdown-command "/usr/bin/pandoc"))
-
-
- (defun sync-google-calendar ()
-   "Save google calender entries into dairy.
- See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
-   (interactive)
-   ;; (call-process "~/org/get_ical.py" nil 0 nil)
-   (call-process "~/org/get_ical.py" nil nil)
-   (switch-to-buffer "diary")
-   (erase-buffer)
-   (save-buffer)
-   ;; (delete-file "~/.emacs.d/diary")
-   (mapcar (
-            lambda (icsfile)
-                   (icalendar-import-file icsfile "~/.emacs.d/diary")
-                   )
-           (file-expand-wildcards "~/org/*.ics"))
-   )
-
- ;;
-
- (defun copy-password-to-buffer()
-   "Yank password property"
-   (interactive)
-   (let ((password (org-entry-get (point) "password")))
-     (kill-new password)
-     (gui-set-selection "PRIMARY" password)
+   ;; (defun display-debug ()
+   ;;   (interactive)
+   ;;   (message (format "%.2f" org-clock-file-total-minutes))
+   ;;   )
+   (defun my-org-insert-item-report-line()
+     "Interactive reporting during work done"
+     (interactive)
+     (insert-time-with-seconds)
+     (insert " (")
+     (my-org-insert-current-item-time)
+     (insert ") ")
      )
-   )
 
- (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
+   (global-set-key "\C-cit" 'my-org-insert-item-report-line)
 
- ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
- (defvar org-babel-eval-verbose nil
-   "A non-nil value makes `org-babel-eval' display")
+   (setq org-global-properties
+         '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
 
- ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
- (setq org-babel-default-header-args:sh
- '((:prologue . "exec 2>&1") (:epilogue . ":"))
- )
- ; (set-time-zone-rule "GMT-2")
+   (setq org-columns-default-format
+         "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
 
- (setq org-babel-default-header-args:bash
- '((:prologue . "exec 2>&1") (:epilogue . ":"))
- )
+   (add-hook 'org-clock-out-hook
+             (lambda ()
+               (fix-frame-title)))
 
+                                           ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
+   ;; (org-babel-do-load-languages
+   ;;  'org-babel-load-languages
+   ;;  '((dot . t))) ; this line activates dot
 
- (defun org-babel-eval (cmd body)
-   "Run CMD on BODY.
- If CMD succeeds then return its results, otherwise display
- STDERR with `org-babel-eval-error-notify'."
-   (let ((err-buff (get-buffer-create " *Org-Babel Error*")) exit-code)
-     (with-current-buffer err-buff (erase-buffer))
-     (with-temp-buffer
-       (insert body)
-       (setq exit-code
-             (org-babel--shell-command-on-region
-              (point-min) (point-max) cmd err-buff))
-       (if (or (not (numberp exit-code)) (> exit-code 0)
-               (and org-babel-eval-verbose (> (buffer-size err-buff) 0))) ; new condition
-           (progn
-             (with-current-buffer err-buff
-               (org-babel-eval-error-notify exit-code (buffer-string)))
-             nil)
-         (buffer-string)))))
+   ;; (org-babel-do-load-languages
+   ;;  'org-babel-load-languages
+   ;;  '((ditaa . t)))
 
- ; (require 'async-org-babel)
+   ;; (org-babel-do-load-languages
+   ;;  'org-babel-load-languages
+   ;;  '((plantuml . t)))
 
- ; redisplay inline images inline in realtime?
- (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
- (add-hook 'org-mode-hook #'yas-minor-mode)
- (add-hook 'org-mode-hook (lambda ()
-                            (visual-line-mode -1)))
- ;;
+   (defun switch-to-orgfile(bufname)
+     (if (get-buffer bufname)
+         (switch-to-buffer bufname)
+       (pop-to-buffer (find-file (concat "~/org/" bufname))))
+     )
 
- (require 'ox-latex)
- (add-to-list 'org-latex-classes
-              '("beamer"
-                "\\documentclass\[presentation\]\{beamer\}"
-                ("\\section\{%s\}" . "\\section*\{%s\}")
-                ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
-                ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
+   (defun switch-to-labster()
+     (interactive)
+     (switch-to-orgfile "labster.org"))
 
- ;; https://github.com/unhammer/org-rich-yank
- (require 'org-rich-yank)
- (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
+   (defun switch-to-work()
+     (interactive)
+     (switch-to-orgfile "work.org"))
+
+   (global-set-key "\C-z\C-l" 'switch-to-labster)
+   (global-set-key "\C-cw" 'switch-to-work)
 
 
- ;; org speed keys
- ;; https://emacs.stackexchange.com/questions/33310/how-to-use-org-mode-speed-commands-speed-keys
- ;; https://notesyoujustmightwanttosave.blogspot.com/2011/12/org-speed-keys.html?showComment=1535219875417
- (defun forward-and-preview ()
+   (global-set-key (kbd "C-z n") 'helm-org-agenda-files-headings)
+   (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
+   (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
+   (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
+   (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
+
+   (custom-set-variables
+    '(markdown-command "/usr/bin/pandoc"))
+
+
+   (defun sync-google-calendar ()
+     "Save google calender entries into dairy.
+   See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
+     (interactive)
+     ;; (call-process "~/org/get_ical.py" nil 0 nil)
+     (call-process "~/org/get_ical.py" nil nil)
+     (switch-to-buffer "diary")
+     (erase-buffer)
+     (save-buffer)
+     ;; (delete-file "~/.emacs.d/diary")
+     (mapcar (
+              lambda (icsfile)
+              (icalendar-import-file icsfile "~/.emacs.d/diary")
+              )
+             (file-expand-wildcards "~/org/*.ics"))
+     )
+
+   ;;
+
+   (defun copy-password-to-buffer()
+     "Yank password property"
+     (interactive)
+     (let ((password (org-entry-get (point) "password")))
+       (kill-new password)
+       (gui-set-selection "PRIMARY" password)
+       )
+     )
+
+   (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
+
+                                           ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
+   (defvar org-babel-eval-verbose nil
+     "A non-nil value makes `org-babel-eval' display")
+
+                                           ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
+   (setq org-babel-default-header-args:sh
+         '((:prologue . "exec 2>&1") (:epilogue . ":"))
+         )
+                                           ; (set-time-zone-rule "GMT-2")
+
+   (setq org-babel-default-header-args:bash
+         '((:prologue . "exec 2>&1") (:epilogue . ":"))
+         )
+
+
+   (defun org-babel-eval (cmd body)
+     "Run CMD on BODY.
+   If CMD succeeds then return its results, otherwise display
+   STDERR with `org-babel-eval-error-notify'."
+     (let ((err-buff (get-buffer-create " *Org-Babel Error*")) exit-code)
+       (with-current-buffer err-buff (erase-buffer))
+       (with-temp-buffer
+         (insert body)
+         (setq exit-code
+               (org-babel--shell-command-on-region
+                (point-min) (point-max) cmd err-buff))
+         (if (or (not (numberp exit-code)) (> exit-code 0)
+                 (and org-babel-eval-verbose (> (buffer-size err-buff) 0))) ; new condition
+             (progn
+               (with-current-buffer err-buff
+                 (org-babel-eval-error-notify exit-code (buffer-string)))
+               nil)
+           (buffer-string)))))
+
+                                           ; (require 'async-org-babel)
+
+                                           ; redisplay inline images inline in realtime?
+   (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
+   (add-hook 'org-mode-hook #'yas-minor-mode)
+   (add-hook 'org-mode-hook (lambda ()
+                              (visual-line-mode -1)))
+   ;;
+
+   (require 'ox-latex)
+   (add-to-list 'org-latex-classes
+                '("beamer"
+                  "\\documentclass\[presentation\]\{beamer\}"
+                  ("\\section\{%s\}" . "\\section*\{%s\}")
+                  ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
+                  ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
+
+   ;; https://github.com/unhammer/org-rich-yank
+   (require 'org-rich-yank)
+   (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
+
+
+   ;; org speed keys
+   ;; https://emacs.stackexchange.com/questions/33310/how-to-use-org-mode-speed-commands-speed-keys
+   ;; https://notesyoujustmightwanttosave.blogspot.com/2011/12/org-speed-keys.html?showComment=1535219875417
+   (defun forward-and-preview ()
      "Go to same level next heading and show preview in dedicated buffer"
      (hide-subtree)
      (org-speed-move-safe (quote outline-next-visible-heading))
      (show-children)
      (org-tree-to-indirect-buffer)
      )
- (defun back-and-preview ()
+   (defun back-and-preview ()
      "Go to same level previous heading and show preview in dedicated buffer"
      (hide-subtree)
      (org-speed-move-safe (quote outline-previous-visible-heading))
      (show-children)
      (org-tree-to-indirect-buffer)
      )
- (defun up-back-and-preview ()
+   (defun up-back-and-preview ()
      "Go to previous level heading and show preview in dedicated buffer"
      (org-speed-move-safe (quote outline-up-heading))
      (org-tree-to-indirect-buffer)
      (hide-subtree)
      )
- (defun up-forward-and-preview ()
+   (defun up-forward-and-preview ()
      "Go to previous level next heading and show preview in dedicated buffer"
      (org-speed-move-safe (quote outline-up-heading))
      (hide-subtree)
      (org-speed-move-safe (quote outline-next-visible-heading))
      (org-tree-to-indirect-buffer)
      )
- (defun inside-and-preview ()
+   (defun inside-and-preview ()
      "Go to next level heading and show preview in dedicated buffer"
      (org-speed-move-safe (quote outline-next-visible-heading))
      (show-children)
      (org-tree-to-indirect-buffer)
      )
- (add-to-list 'org-speed-commands-user '("l" inside-and-preview))
- (add-to-list 'org-speed-commands-user '("j" forward-and-preview))
- (add-to-list 'org-speed-commands-user '("k" back-and-preview))
- (add-to-list 'org-speed-commands-user '("J" up-forward-and-preview))
- (add-to-list 'org-speed-commands-user '("K" up-back-and-preview))
+   (add-to-list 'org-speed-commands-user '("l" inside-and-preview))
+   (add-to-list 'org-speed-commands-user '("j" forward-and-preview))
+   (add-to-list 'org-speed-commands-user '("k" back-and-preview))
+   (add-to-list 'org-speed-commands-user '("J" up-forward-and-preview))
+   (add-to-list 'org-speed-commands-user '("K" up-back-and-preview))
 
- (setq org-use-speed-commands t)
- (setq org-use-speed-commands t)
+   (setq org-use-speed-commands t)
+   (setq org-use-speed-commands t)
 
- ;; (require 'org-sidebar)
- ;;
+   ;; (require 'org-sidebar)
+   ;;
 
- ;; https://emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
- (defvar org-blocks-hidden nil)
- (defun org-toggle-blocks ()
-   (interactive)
-   (if org-blocks-hidden
-       (org-show-block-all)
-     (org-hide-block-all))
-   (setq-local org-blocks-hidden (not org-blocks-hidden)))
- (add-hook 'org-mode-hook 'org-toggle-blocks)
- (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
- (global-set-key "\C-z'" 'poporg-dwim)
+   ;; https://emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
+   (defvar org-blocks-hidden nil)
+   (defun org-toggle-blocks ()
+     (interactive)
+     (if org-blocks-hidden
+         (org-show-block-all)
+       (org-hide-block-all))
+     (setq-local org-blocks-hidden (not org-blocks-hidden)))
+   (add-hook 'org-mode-hook 'org-toggle-blocks)
+   (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
+   (global-set-key "\C-z'" 'poporg-dwim)
  #+END_SRC
 
  #+RESULTS:
@@ -3454,6 +3519,14 @@ Export org mode docs to markdown
 
 #+END_SRC
 
+***** org-reveal
+
+Nice presentation package
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-re-reveal)
+#+END_SRC
+
 **** org-trello
 
  /Not using its now. Thats why 'example' block here/
@@ -3494,17 +3567,17 @@ Export org mode docs to markdown
 **** javascript
  #+BEGIN_SRC emacs-lisp
 
- (autoload 'javascript-mode "javascript" nil t)
- (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
- (setq js-indent-level 2)
+   ;; (autoload 'javascript-mode "javascript" nil t)
+   (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+   (setq js-indent-level 2)
 
- ;; jslint
- (use-package flymake-jslint
- :config
- (add-hook 'js-mode-hook 'flymake-jslint-load)
- )
+   ;; jslint
+   ;; (use-package flymake-jslint
+   ;; :config
+   ;; (add-hook 'js-mode-hook 'flymake-jslint-load)
+   ;; )
 
- (use-package flymake-cursor)
+   ;; (use-package flymake-cursor)
 
  #+END_SRC
 
@@ -3674,5 +3747,5 @@ Export org mode docs to markdown
    (use-package nimbus-theme :defer t)
    (use-package moe-theme :defer t)
    (use-package dracula-theme :defer t)
+   (use-package parchment-theme :defer t)
    #+END_SRC
-   
