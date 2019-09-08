@@ -85,3 +85,7 @@ logview-cache.extmap
 # added by aHg on Mon Dec 31 11:12:27 2018
 syntax: glob
 magithub/cache
+
+# added by aHg on Mon Aug  5 12:34:51 2019
+syntax: glob
+org-gcal/.org-gcal-token

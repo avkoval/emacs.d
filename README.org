@@ -941,6 +941,12 @@ Then you will only have your org file to handle all your emacs configuration. It
     (use-package nginx-mode)
     #+END_SRC
 
+**** helm-org
+  #+BEGIN_SRC emacs-lisp
+    (use-package helm-org)
+  #+END_SRC
+
+
 **** helm-bm
 
  Bookmarks management. Usually bookmarks are managed by:
@@ -1039,8 +1045,25 @@ Then you will only have your org file to handle all your emacs configuration. It
              (setq helm-ag-base-command "ag --nocolor --nogroup")
             )
         (setq org-log-done 'time)
-          :bind (("C-c h a" . helm-ag)
+          :bind (
+                 ("C-c h s g" . helm-ag)
                  ("C-c s" . helm-projectile-ag)))
+  #+END_SRC
+
+**** helm-rg
+
+  #+BEGIN_SRC emacs-lisp
+        (use-package helm-rg
+          :init
+          :config
+        (progn
+;;             (setq helm-ag-base-command "rg --no-heading")
+             (setq helm-ag-base-command "ag --nocolor --nogroup")
+            )
+        (setq org-log-done 'time)
+          :bind (("C-c h s r" . helm-rg)
+                 ("C-c h s R" . helm-projectile-rg)
+          ))
   #+END_SRC
 
 **** helm-swoop
@@ -1228,7 +1251,27 @@ Then you will only have your org file to handle all your emacs configuration. It
 
  (setq tab-stop-list (number-sequence 4 200 4))
  #+END_SRC
-*** whitespaces
+*** COMMENT whitespaces
+    CLOSED: [2019-08-12 Mon 23:00]
+    :LOGBOOK:
+    - State "DONE"       from "DELEGATE"   [2019-08-12 Mon 23:00]
+    - State "ADDRESS"    from "ASSIGNED"   [2019-08-12 Mon 23:00]
+    - State "ASSIGNED"   from "REVIEW"     [2019-08-12 Mon 23:00]
+    - State "REVIEW"     from "QUESTION"   [2019-08-12 Mon 23:00]
+    - State "QUESTION"   from "TOPAIR"     [2019-08-12 Mon 23:00]
+    - State "TOPAIR"     from "DELEGATED"  [2019-08-12 Mon 23:00]
+    - State "DELEGATED"  from "DUP"        [2019-08-12 Mon 23:00]
+    - State "DUP"        from "CANCELLED"  [2019-08-12 Mon 23:00]
+    - State "UNCLEAR"    from "IDEA"       [2019-08-12 Mon 23:00]
+    - State "IDEA"       from "LEARN"      [2019-08-12 Mon 23:00]
+    - State "LEARN"      from "EPIC"       [2019-08-12 Mon 23:00]
+    - State "EPIC"       from "REJECTED"   [2019-08-12 Mon 23:00]
+    - State "REJECTED"   from "WORKSFORME" [2019-08-12 Mon 23:00]
+    - State "WORKSFORME" from "TIMESLOT"   [2019-08-12 Mon 23:00]
+    - State "TIMESLOT"   from "FINISHED"   [2019-08-12 Mon 23:00]
+    - State "FINISHED"   from              [2019-08-12 Mon 23:00]
+    - State "TODO"       from              [2019-08-12 Mon 23:00]
+    :END:
  #+BEGIN_SRC emacs-lisp
  (setq whitespace-style '(face empty tabs lines-tail trailing))
  (setq whitespace-line-column 79)
@@ -1776,7 +1819,10 @@ Interesting alternative to treemacs
 *** ledger
 
 #+BEGIN_SRC emacs-lisp
-(use-package ledger-mode)
+(use-package ledger-mode
+  :init
+  (magit-todos-mode)
+)
 #+END_SRC
 
 *** logview
@@ -1803,6 +1849,12 @@ https://github.com/doublep/logview
  #+BEGIN_SRC emacs-lisp
   (use-package github-review)
  #+END_SRC
+
+**** magit-todos
+https://github.com/alphapapa/magit-todos
+#+BEGIN_SRC emacs-lisp
+(use-package magit-todos)
+#+END_SRC
 
 *** multiple-cursors
  #+BEGIN_SRC emacs-lisp
@@ -1978,6 +2030,10 @@ https://github.com/doublep/logview
        ad-do-it))
    (setq projectile-mode-line "Pt")
  #+END_SRC
+*** php
+#+BEGIN_SRC emacs-list
+(use-package php-mode)
+#+END_SRC
 *** pylookup
 
  FIXME
@@ -2004,7 +2060,6 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
    (defun pycodestyle-current-buffer()
      (interactive)
      (compile (concat "pycodestyle " (buffer-file-name)) nil)
-     (rename-buffer "*pep8*")
      )
    (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
 
@@ -2068,6 +2123,10 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
          (message (format "In: %s()" current-defun))))
      )
    (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
+
+  (fset 'insert-docstring
+   (kmacro-lambda-form [67108923 67108923 134217847 ?\C-e return ?\" ?\" ?\" return ?\C-y return ?\" ?\" ?\" ?\C-c ?. ?u ?n C-right right] 0 "%d"))
+
  #+END_SRC
 
 **** elpy
@@ -2378,6 +2437,10 @@ Real good debugger.
 #+BEGIN_SRC emacs-lisp
 (use-package realgud)
 #+END_SRC
+*** i18n related
+#+BEGIN_SRC emacs-lisp
+(use-package po-mode)
+#+END_SRC
 ** Package customizations & keybindings, other snippets
 *** yaml
  #+BEGIN_SRC emacs-lisp
@@ -2566,6 +2629,7 @@ Real good debugger.
  ; other function key combinations
  (global-set-key [C-f9] 'compile)
  (global-set-key (kbd "C-z 9") 'compile)
+ (global-set-key (kbd "C-z R") 'recompile)
  (global-set-key (kbd "C-z c c") 'compile)
  (global-set-key [C-f7] 'rgrep)
  (global-set-key (kbd "C-z 7") 'rgrep)
@@ -3001,7 +3065,7 @@ Real good debugger.
      )
 
    ;; to store links from eww
-   (require 'org-eww)
+   ; (require 'org-eww)
    (use-package ob-http)
                                            ;(require 'org-bullets) - they slow down emacs org mode
    (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
@@ -3527,6 +3591,18 @@ Nice presentation package
 (use-package org-re-reveal)
 #+END_SRC
 
+***** calendar sync
+
+#+BEGIN_SRC emacs-lisp
+  (defun my-gcal-sync ()
+    """Sync google calendars & add tags"""
+    (interactive)
+    ;; (org-gcal-sync)
+    (async-shell-command "~/org/calendar/postprocess_calendars.py")
+    )
+  (use-package org-gcal)
+#+END_SRC
+
 **** org-trello
 
  /Not using its now. Thats why 'example' block here/
@@ -3602,7 +3678,7 @@ Nice presentation package
      (:socket  . nil)              ; The default tmux socket to communicate with
      ;; You can use "xterm" and "gnome-terminal".
      ;; On mac, you can use "iterm" as well.
-     (:terminal . "urxvt")))
+     ))
  :config
  ;; The tmux sessions are prefixed with the following string.
  ;; You can customize this if you like.
