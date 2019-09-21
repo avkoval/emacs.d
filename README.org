@@ -61,7 +61,7 @@ A very short introduction to emacs keys:
 | About recursive edit (command line) | C-]        | /Press it when you list in emacs command line/                                                                                                                                                              |
 | Undo                                | C-x u, C-_ | ~Control+Shift+-~ for *Undo.*  Alternatively have a look at ~C-x u~ - ~undo-tree-visualize~                                                                                                                       |
 | Dired (file browser)                | C-x d      |                                                                                                                                                                                                           |
-| Treemacs (side tree brower)         | F5         | ~F5~ shows it, while ~Shift F5~ adds new project into treemacs projects list                                                                                                                                  |
+| Treemacs (side tree brower)         | F6         | ~F6~ shows it, while ~Shift F6~ adds new project into treemacs projects list                                                                                                                                  |
 
 Where:
   - C = Control key
@@ -354,6 +354,7 @@ Usually, your algorighm is this:
  * Google or try to find in emacs configuration (~M-x configure-*~) the settings you wish to change
  * Find /Lisp/ example code, put into your configuration file (I usually suggest to split this to configs/cfg_*)
    try to execute with ~C-x C-e~.
+
 * My Configuration
 
 I am using this file as a configuration and documentation source for my emacs config. This is
@@ -1004,6 +1005,7 @@ Then you will only have your org file to handle all your emacs configuration. It
       :init
       :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
              ("C-c h p p" . helm-projectile)
+             ("<f5>" . helm-projectile-find-file)
              ("C-c h p f" . helm-projectile-find-file)
              ("C-c h p s" . helm-projectile-switch-project)
              ("C-c h p r" . helm-projectile-recentf)
@@ -1704,7 +1706,6 @@ Interesting alternative to treemacs
   (use-package flycheck-pycheckers)
   (use-package flycheck
     :config
-    (global-flycheck-mode 1)
     (add-hook 'flycheck-mode-hook #'flycheck-pycheckers-setup)
   )
 
@@ -1829,6 +1830,16 @@ Interesting alternative to treemacs
 https://github.com/doublep/logview
 #+BEGIN_SRC emacs-lisp
 (use-package logview)
+#+END_SRC
+
+*** link-hint
+https://github.com/noctuid/link-hint.el
+#+BEGIN_SRC emacs-lisp
+(use-package link-hint
+  :ensure t
+  :bind
+  ("C-c l o" . link-hint-open-link)
+  ("C-c l c" . link-hint-copy-link))
 #+END_SRC
 *** git, magit, code reviews
 **** Magit itself
@@ -2019,7 +2030,7 @@ https://github.com/alphapapa/magit-todos
 
    (setq projectile-file-exists-local-cache-expire (* 5 60))
 
-   (defadvice projectile-on (around exlude-tramp activate)
+   (defadvice projectile-on (around exclude-tramp activate)
      "This should disable projectile when visiting a remote file"
      (unless  (--any? (and it (file-remote-p it))
                       (list
@@ -2084,7 +2095,7 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
 
 
    (use-package highlight-indentation
-   :defer t)
+     :defer t)
 
    (add-hook 'python-mode-hook
              '(lambda ()
@@ -2097,9 +2108,12 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
                                            ;             (local-set-key [mouse-3] 'helm-imenu)
                 (highlight-indentation-mode t)
                 (display-line-numbers-mode nil)
-                (define-key python-mode-map "\r" 'newline-and-indent))
+                (define-key python-mode-map "\r" 'newline-and-indent)
+                (if (file-remote-p (buffer-file-name))
+                    (flymake-mode)
+                  (flycheck-mode t))
+                )
              )
-
 
    (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
    (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
@@ -2124,39 +2138,39 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
      )
    (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
 
-  (fset 'insert-docstring
-   (kmacro-lambda-form [67108923 67108923 134217847 ?\C-e return ?\" ?\" ?\" return ?\C-y return ?\" ?\" ?\" ?\C-c ?. ?u ?n C-right right] 0 "%d"))
+   (fset 'insert-docstring
+         (kmacro-lambda-form [67108923 67108923 134217847 ?\C-e return ?\" ?\" ?\" return ?\C-y return ?\" ?\" ?\" ?\C-c ?. ?u ?n C-right right] 0 "%d"))
 
  #+END_SRC
 
 **** elpy
   #+BEGIN_SRC emacs-lisp
-  (use-package elpy
-    :commands elpy-enable
-    :init (run-with-idle-timer 10 nil #'elpy-enable)
-    :config
-    (progn
-      (setq elpy-rpc-backend "jedi"
-            elpy-rpc-project-specific 't)
-      (when (fboundp 'flycheck-mode)
-        (setq elpy-modules (delete 'elpy-module-flymake elpy-modules)))))
+    (use-package elpy
+      :commands elpy-enable
+      :init (run-with-idle-timer 10 nil #'elpy-enable)
+      :config
+      (progn
+        (setq elpy-rpc-backend "jedi"
+              elpy-rpc-project-specific 't)
+        (when (fboundp 'flycheck-mode)
+          (setq elpy-modules (delete 'elpy-module-flymake elpy-modules)))))
 
-  (defun elpy-nav-backward-block()
-    (interactive)
-    (backward-paragraph)
-  )
+    (defun elpy-nav-backward-block()
+      (interactive)
+      (backward-paragraph)
+    )
 
-  (defun elpy-nav-forward-block()
-    (interactive)
-    (forward-paragraph)
-  )
-  (defun elpy-show-current-func()
-   (interactive)
-   (let ((current-defun (python-info-current-defun)))
-     (when current-defun
-       (message (format "In: %s()" current-defun))))
-   )
-  (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
+    (defun elpy-nav-forward-block()
+      (interactive)
+      (forward-paragraph)
+    )
+    (defun elpy-show-current-func()
+     (interactive)
+     (let ((current-defun (python-info-current-defun)))
+       (when current-defun
+         (message (format "In: %s()" current-defun))))
+     )
+    (global-set-key (kbd "C-z f d") 'elpy-show-current-func)
 
   #+END_SRC
 
@@ -2362,9 +2376,9 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
                    (define-key treemacs-mode-map [mouse-1] #'treemacs-single-click-expand-action)
                        )
 
-      :bind (([f5] . treemacs)
-             ([(shift f5)]  . treemacs-add-project-to-workspace))
-             ([(meta f5)] . treemacs-switch-workspace)
+      :bind (([f6] . treemacs)
+             ([(shift f6)]  . treemacs-add-project-to-workspace))
+             ([(meta f6)] . treemacs-switch-workspace)
              )
  #+END_SRC
 *** treemacs-dired
@@ -2598,7 +2612,7 @@ Real good debugger.
  Always display line numbers in all sub-modes
  #+BEGIN_SRC emacs-lisp
  (add-hook 'prog-mode-hook 'display-line-numbers-mode)
- (add-hook 'prog-mode-hook 'flycheck-mode)
+ ;; (add-hook 'prog-mode-hook 'flycheck-mode)
  #+END_SRC
 
 *** Various keybindings
@@ -2908,7 +2922,7 @@ Real good debugger.
  ;; speedbar and neotree
  ; (global-set-key [(meta f7)] 'sr-speedbar-toggle)
  (global-set-key [(meta f6)] 'neotree-toggle)
- (global-set-key [(S-f3)] 'neotree-find)
+ (global-set-key [(S-f3)] 'helm-fzf)
 
  (defun fit-window-to-buffer-width (&optional window max-width min-width)
    "Fit WINDOW according to its buffer's width.
@@ -3101,7 +3115,7 @@ Real good debugger.
 
 
    (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-   (global-set-key "\C-cl" 'org-store-link)
+   (global-set-key "\C-cls" 'org-store-link)
    (global-set-key "\C-ca" 'org-agenda)
 
    (fset 'goto-org-agenda
