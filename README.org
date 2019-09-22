@@ -3752,6 +3752,27 @@ Nice presentation package
 (use-package htmlize)
 #+END_SRC
 
+**** switch to org-agenda file
+My custom helm extension
+#+BEGIN_SRC emacs-lisp
+  (defvar avk-switch-to-org-agenda-file
+    (helm-build-sync-source "Switch to org agenda file"
+      :candidates 'org-agenda-files
+      :action '(("Navidate to" . (lambda (file-name)
+                                   (find-file file-name)
+                                   ))
+
+                )
+      :persistent-help "Switch to org agenda file"))
+
+  (defun avk-switch-org-agenda-file ()
+    (interactive)
+    (helm :sources '(avk-switch-to-org-agenda-file))
+    )
+
+  (define-key global-map (kbd "C-x O") 'avk-switch-org-agenda-file)
+#+END_SRC
+
 
 *** Duplicate line
  I like this variation from
