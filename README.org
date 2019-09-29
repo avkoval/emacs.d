@@ -678,6 +678,10 @@ Then you will only have your org file to handle all your emacs configuration. It
              ))
     (ido-mode -1) ;; Turn off ido mode in case I enabled it accidentally
   #+END_SRC
+**** helm-fzf
+#+BEGIN_SRC emacs-lisp
+(require 'helm-fzf)
+#+END_SRC
 
 *** mode-line
 

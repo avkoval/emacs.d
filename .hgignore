@@ -38,6 +38,7 @@ treemacs/*
 .cache/*
 emojis/*
 lisp/org-gantt
+./elpy
 
 syntax: regexp
 .*\#.*\#$
