@@ -2113,9 +2113,11 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
                 (highlight-indentation-mode t)
                 (display-line-numbers-mode nil)
                 (define-key python-mode-map "\r" 'newline-and-indent)
+                (if (buffer-file-name)
                 (if (file-remote-p (buffer-file-name))
                     (flymake-mode)
                   (flycheck-mode t))
+                )
                 )
              )
 
