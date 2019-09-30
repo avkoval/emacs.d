@@ -2212,6 +2212,14 @@ https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing
      (or
             (vc-find-root (or (buffer-file-name) "") ".git")
             (vc-find-root (or (buffer-file-name) "") ".hg")))
+
+   (defun disable-auto-virtualenv ()
+   (interactive)
+   (remove-hook  'python-mode-hook 'auto-virtualenv-set-virtualenv))
+
+   (defun enable-auto-virtualenv-again ()
+   (interactive)
+   (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv))
  #+END_SRC
 
 *** remaininng
