@@ -680,6 +680,7 @@ Then you will only have your org file to handle all your emacs configuration. It
   #+END_SRC
 **** helm-fzf
 #+BEGIN_SRC emacs-lisp
+(use-package s)
 (require 'helm-fzf)
 #+END_SRC
 
@@ -1010,6 +1011,7 @@ Then you will only have your org file to handle all your emacs configuration. It
       :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
              ("C-c h p p" . helm-projectile)
              ("<f5>" . helm-projectile-find-file)
+             ("C-<f1>" . helm-projectile-find-file)
              ("C-c h p f" . helm-projectile-find-file)
              ("C-c h p s" . helm-projectile-switch-project)
              ("C-c h p r" . helm-projectile-recentf)
@@ -1522,36 +1524,36 @@ Then you will only have your org file to handle all your emacs configuration. It
 ("\C-cma" . annotate-mode)
 ))
 #+END_SRC
-*** clipmon
+*** COMMENT clipmon
 
 Clipboard monitoring and so I don't need external packages like klipper, copyq etc.
 
 #+BEGIN_SRC emacs-lisp
-  ;; (use-package clipmon
-  ;; :config
-  ;; (clipmon-mode)
-  ;; ;; my fix
-  ;; (defun clipmon--get-selection ()
-  ;;   "Get the clipboard contents"
-  ;;   ;; Note: When the OS is first started these functions will throw
-  ;;   ;; (error "No selection is available"), so need to ignore errors.
-  ;;   (cond ((boundp 'mac-carbon-version-string) ; emacs mac port
-  ;;          ;; Need to have this before emacs25 since `gui-get-selection' is also
-  ;;          ;; bound in the mac port, but it doesn't work right
-  ;;          (ignore-errors (funcall interprogram-paste-function)))
-  ;;         ((fboundp 'gui-get-selection) ; emacs25
-  ;;          ; better to (setq selection-coding-system 'utf-8) to handle chinese,
-  ;;          ; which is the default value for gui-get-selection etc
-  ;;          ; because windows needs STRING. same below.
-  ;;          ; (ignore-errors (gui-get-selection 'CLIPBOARD 'UTF8_STRING)))
-  ;;          (gui--selection-value-internal 'CLIPBOARD)) ; for windows needs STRING
-  ;;         ((eq window-system 'w32) ; windows/emacs24
-  ;;          ;; Note: (x-get-selection 'CLIPBOARD) doesn't work on Windows.
-  ;;          (ignore-errors (x-get-selection-value))) ; can be nil
-  ;;         (t ; linux+osx/emacs24
-  ;;          ; (ignore-errors (x-get-selection 'CLIPBOARD 'UTF8_STRING)))))
-  ;;          (ignore-errors (x-get-selection 'CLIPBOARD)))))
-  ;; )
+   (use-package clipmon
+   :config
+   (clipmon-mode)
+   ;; my fix
+   (defun clipmon--get-selection ()
+     "Get the clipboard contents"
+     ;; Note: When the OS is first started these functions will throw
+     ;; (error "No selection is available"), so need to ignore errors.
+     (cond ((boundp 'mac-carbon-version-string) ; emacs mac port
+            ;; Need to have this before emacs25 since `gui-get-selection' is also
+            ;; bound in the mac port, but it doesn't work right
+            (ignore-errors (funcall interprogram-paste-function)))
+           ((fboundp 'gui-get-selection) ; emacs25
+            ; better to (setq selection-coding-system 'utf-8) to handle chinese,
+            ; which is the default value for gui-get-selection etc
+            ; because windows needs STRING. same below.
+            ; (ignore-errors (gui-get-selection 'CLIPBOARD 'UTF8_STRING)))
+            (gui--selection-value-internal 'CLIPBOARD)) ; for windows needs STRING
+           ((eq window-system 'w32) ; windows/emacs24
+            ;; Note: (x-get-selection 'CLIPBOARD) doesn't work on Windows.
+            (ignore-errors (x-get-selection-value))) ; can be nil
+           (t ; linux+osx/emacs24
+            ; (ignore-errors (x-get-selection 'CLIPBOARD 'UTF8_STRING)))))
+            (ignore-errors (x-get-selection 'CLIPBOARD)))))
+   )
 #+END_SRC
 
 /Temp. disabled due to locks in UI/
@@ -1646,30 +1648,48 @@ Another method to search
 
  (global-set-key (kbd "C-z v") 'open-vault-files)
  #+END_SRC
+
+**** coloring
+
+ #+BEGIN_SRC emacs-lisp
+   (use-package diredfl
+     :ensure t
+     :config
+     (diredfl-global-mode 1)) 
+ #+END_SRC
+
+**** git info
+
+ #+BEGIN_SRC emacs-lisp
+ (use-package dired-git-info
+    :ensure t
+    :bind (:map dired-mode-map
+                (")" . dired-git-info-mode)))
+ #+END_SRC
 *** dired-sidebar
-Interesting alternative to treemacs
-#+BEGIN_SRC emacs-lisp
-(use-package all-the-icons-dired)
+ Interesting alternative to treemacs
+ #+BEGIN_SRC emacs-lisp
+ (use-package all-the-icons-dired)
 
-(use-package dired-sidebar
-  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
-  :ensure t
-  :commands (dired-sidebar-toggle-sidebar)
-  :init
-  (add-hook 'dired-sidebar-mode-hook
-            (lambda ()
-              (unless (file-remote-p default-directory)
-                (auto-revert-mode))))
-  :config
-  (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
-  (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
+ (use-package dired-sidebar
+   :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
+   :ensure t
+   :commands (dired-sidebar-toggle-sidebar)
+   :init
+   (add-hook 'dired-sidebar-mode-hook
+             (lambda ()
+               (unless (file-remote-p default-directory)
+                 (auto-revert-mode))))
+   :config
+   (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
+   (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
 
-  ;; (setq dired-sidebar-subtree-line-prefix "__")
-  ;; (setq dired-sidebar-theme 'vscode)
-  (setq dired-sidebar-use-term-integration t)
-  ;;(setq dired-sidebar-use-custom-font t)
-)
-#+END_SRC
+   ;; (setq dired-sidebar-subtree-line-prefix "__")
+   ;; (setq dired-sidebar-theme 'vscode)
+   (setq dired-sidebar-use-term-integration t)
+   ;;(setq dired-sidebar-use-custom-font t)
+ )
+ #+END_SRC
 *** docker
 #+BEGIN_SRC emacs-lisp
 (use-package docker)
@@ -3783,6 +3803,12 @@ Nice presentation package
 **** htmlize
 #+BEGIN_SRC emacs-lisp
 (use-package htmlize)
+#+END_SRC
+
+**** org-sidebar
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-sidebar)
 #+END_SRC
 
 **** switch to org-agenda file
