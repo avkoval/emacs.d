@@ -67,6 +67,7 @@ syntax: glob
 .mc-lists.el
 .git
 transient/history.el
+elpa.26
 
 el-get/.loaddefs.el
 el-get/.status.el
