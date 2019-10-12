@@ -2840,7 +2840,7 @@ Real good debugger.
  ;(global-set-key [(control tab)] 'previous-buffer)
  (global-set-key (kbd "C-z g") 'magit-status)
 
- (define-key global-map (kbd "C-z t t") 'customize-themes)
+ (define-key global-map (kbd "C-z c t") 'customize-themes)
  (define-key global-map (kbd "C-z r r") 'revert-buffer)
  (define-key global-map (kbd "C-c p k") 'projectile-kill-buffers)
 
@@ -3821,7 +3821,11 @@ Nice presentation package
 **** org-sidebar
 
 #+BEGIN_SRC emacs-lisp
-(use-package org-sidebar)
+  (use-package org-sidebar
+    :bind (
+           ("C-z t" . org-sidebar-tree-toggle)
+           )
+    )
 #+END_SRC
 
 **** switch to org-agenda file
