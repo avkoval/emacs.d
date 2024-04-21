@@ -1,0 +1,4 @@
+#+BEGIN_SRC tmux :session ${1:livit-learn-provision}
+cd ~/dev/livit/Livit.Learn.Provision || exit 0
+./venv-ansible-playbook -i clusters/${2:staging4}/hosts ${3:01-local.yml}
+#+END_SRC

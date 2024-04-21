@@ -1,0 +1,56 @@
+# -*- mode: snippet -*-
+# --
+
+#+BEGIN_SRC restclient :async t
+POST http://simlic.127.0.0.1.nip.io:8201/api/licenses/keys/
+Content-Type: application/json
+Authorization: Token xxx
+
+[{
+  "id": "${1:proto}${2:1}",
+  "protocol": "$1",
+  "software": "moodle",
+  "name": "LMS_$2",
+  "server_domain": "region.127.0.0.1.nip.io",
+  "access_data": {
+    "consumer_key": "Ck$1-$2",
+    "shared_secret": "Sk$1-$2"
+  }                
+}]
+#+END_SRC
+
+
+#+BEGIN_SRC restclient :async t
+POST http://simlic.127.0.0.1.nip.io:8201/api/licenses/
+Content-Type: application/json
+Authorization: Token xxx
+
+{
+  "id": "$1$2",
+  "code": "$1$2",
+  "license_type": 0,
+  "valid_from": "2021-01-01",
+  "valid_to": "2023-01-01",
+  "simulations": [],
+  "simulation_packages": [
+    {
+      "simulation_package": "a0Iw000000IFFU7EAP",
+      "quantity": 1000
+    }
+  ],
+  "per_course": true,
+  "consumer_keys": [
+    {
+      "id": "SALES_FORCE_ID_$2",
+      "protocol": "$1",
+      "software": "moodle",
+      "name": "LMS_$2",
+      "server_domain": "region.127.0.0.1.nip.io",
+      "access_data": {
+        "consumer_key": "Ck$1-$2",
+        "shared_secret": "Sk$1-$2"
+      }
+    }
+  ]
+}
+#+END_SRC

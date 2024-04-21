@@ -32,7 +32,7 @@
 (global-set-key (kbd "C-z C-f") 'helm-find-files)
 (global-set-key (kbd "C-z f f") 'helm-etags-select)
 (global-set-key (kbd "C-z p s") 'helm-pass)
-(global-set-key (kbd "C-c h h") 'helm-comint-input-ring) ;; search history for shell
+; (global-set-key (kbd "C-c h h") 'helm-comint-input-ring) ;; search history for shell
 (global-set-key (kbd "C-c h f") 'helm-firefox-bookmarks)
 (global-set-key (kbd "C-c h c") 'helm-chrome-bookmarks)
 (global-set-key (kbd "C-c h b") 'helm-bookmarks)
