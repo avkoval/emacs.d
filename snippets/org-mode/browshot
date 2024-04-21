@@ -1,0 +1,5 @@
+#+BEGIN_SRC sh :dir ~ :results output raw :async t :exports both :var my_api_key=browshot-api-key
+file=$(mktemp --suffix=.png -p ~/tmp/screenshots)
+curl -L "https://api.browshot.com/api/v1/simple?url=${1:httpaddr}&key=$my_api_key" -o $file
+echo '[['$file']]'
+#+END_SRC

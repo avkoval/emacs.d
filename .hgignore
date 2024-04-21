@@ -21,6 +21,7 @@ projectile.cache
 el-get/packages/*
 url/cookies
 eshell/*
+anaconda-mode/*
 places
 plantuml.jar
 reveal.js*
@@ -35,8 +36,19 @@ history
 snippets/ledger-mode
 treemacs/*
 ./lisp/auto-virtualenv/*
+eln-cache/*
 .cache/*
 emojis/*
+lisp/org-gantt
+./elpy
+code-review*
+persist/*
+lisp/moldable-emacs*
+.dap-breakpoints
+lisp/lsp-bridge
+org-gtasks
+lisp/org-cv/
+quelpa
 
 syntax: regexp
 .*\#.*\#$
@@ -64,6 +76,11 @@ bookmarks
 syntax: glob
 .mc-lists.el
 .git
+transient/history.el
+elpa.26
+.mypy_cache
+.lsp-session-v1
+forge-database*
 
 el-get/.loaddefs.el
 el-get/.status.el
@@ -83,3 +100,19 @@ logview-cache.extmap
 # added by aHg on Mon Dec 31 11:12:27 2018
 syntax: glob
 magithub/cache
+
+# added by aHg on Mon Aug  5 12:34:51 2019
+syntax: glob
+org-gcal/.org-gcal-token
+
+# added by aHg on Tue May 19 07:22:50 2020
+syntax: glob
+annotations
+
+# added by aHg on Mon Jan 16 23:06:52 2023
+syntax: glob
+org-roam.db
+
+# added by aHg on Fri Mar  3 20:34:27 2023
+syntax: glob
+projects

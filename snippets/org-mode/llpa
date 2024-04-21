@@ -1,0 +1,4 @@
+#+BEGIN_SRC tmux :session livit-learn-provision
+cd ~/dev/livit/Livit.Learn.Provision || exit 0
+./venv-ansible-playbook -i clusters/${1:cluster}/hosts 05-k8s-app-${2:app}.yaml -e tier=${3:staging} -e version=${4:version} -t app
+#+END_SRC
