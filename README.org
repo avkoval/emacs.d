@@ -1956,6 +1956,14 @@ https://github.com/minad/vertico
       :bind (("C-c p l" . pylint))
       )
 
+    (defun my-flake8-current-dir()
+      (interactive)
+      (compile "flake8" nil)
+      )
+
+    (global-set-key (kbd "C-z 8") 'my-flake8-current-dir)
+
+
     ;; (defun flake8-current-buffer()
     ;;   (interactive)
     ;;   (compile (concat "flake8 " (buffer-file-name)) nil)
@@ -2598,7 +2606,7 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
   (global-set-key [M-f8]  'my-f8key)
   (global-set-key [f8]  'my-f8key)
 
-  (global-set-key [C-f8] 'bookmark-jump)
+  (global-set-key [C-f6] 'bookmark-jump)
   (global-set-key [(shift f8)] 'flymake-goto-previous-error)
   (global-set-key [f11] 'display-line-numbers-mode)
   ;; f10 - std emacs key binding (menu-bar)
@@ -2704,7 +2712,7 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
                                           ;
   ;;(global-set-key (kbd "C-` qp") 'sql-postgres)
   ;;(global-set-key (kbd "C-` qm") 'sql-mysql)
-  (global-set-key (kbd "C-c t") 'proced)
+  (global-set-key (kbd "C-z t") 'proced)
 
   (global-set-key (kbd "<C-Scroll_Lock>") 'scroll-lock-mode)
   (global-set-key "\M- " 'hippie-expand)
@@ -3656,6 +3664,8 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   (global-flycheck-mode t)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode)
   ;; note that these bindings are optional
+  :bind 
+  ([C-f8] . flycheck-list-errors)
   )
 (use-package flycheck-pycheckers
   :after flycheck
@@ -3908,3 +3918,11 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 
 
 
+* window management
+
+  #+begin_src emacs-lisp :results output none
+  (global-set-key (kbd "C-s-<down>") 'enlarge-window)
+  (global-set-key (kbd "C-s-<up>") 'shrink-window)
+  ;; (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
+  ;; (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
+  #+end_src
