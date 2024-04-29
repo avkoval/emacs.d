@@ -2676,8 +2676,6 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
   (define-key global-map  "\C-cmt"         'global-tab-line-mode)
   ; scroll-other-window alt->
   ; scroll-other-window-down alt-<
-  
-
 
 
   (defun show-trailing-whitespace ()
@@ -2721,7 +2719,9 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
   (global-set-key (kbd "C-c r") 'revert-buffer)
   ;; (global-set-key [(meta f5)] 'revert-buffer)
   (global-set-key [(control shift f)] 'find-name-dired)
-  (global-set-key [M-f11] 'global-hl-line-mode)
+  (define-key esc-map [f11] #'global-hl-line-mode)
+
+
 
   ;; (defun switch-to-sql ()
   ;;   (interactive)
