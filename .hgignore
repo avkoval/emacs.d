@@ -36,6 +36,7 @@ history
 snippets/ledger-mode
 treemacs/*
 ./lisp/auto-virtualenv/*
+./lisp/combobulate/*
 eln-cache/*
 .cache/*
 emojis/*
@@ -49,6 +50,7 @@ lisp/lsp-bridge
 org-gtasks
 lisp/org-cv/
 quelpa
+straight/*
 
 syntax: regexp
 .*\#.*\#$
