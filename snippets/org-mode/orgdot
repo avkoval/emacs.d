@@ -1,8 +1,9 @@
-#+BEGIN_SRC dot :file files/somefile.png
+#+BEGIN_SRC dot :file files/ok-2024-09-08-1725815362.png
 digraph {
-  label="Title";
-  node [fontname = "fira mono"];
-  node [style="filled", fillcolor="#bfefff"];
-  $1;
+  layout="circo"
+  beautify=true
+  label="Sequence of actions";
+  node [fontname = "Noto Serif"];
+  node [shape=box];
 }
 #+END_SRC

@@ -77,6 +77,7 @@
         ;; (setq )
         ;; From https://gist.github.com/antifuchs/9238468
         (setq helm-M-x-requires-pattern nil
+              ;; helm-display-function 'helm-display-buffer-in-own-frame
               helm-autoresize-max-height 50
               helm-autoresize-min-height 3
               helm-autoresize-mode t
@@ -86,7 +87,6 @@
               helm-candidate-number-limit 20000
               helm-debug-root-directory "/home/k/tmp/helm/"
               helm-display-buffer-reuse-frame nil
-              ;; helm-display-function 'helm-display-buffer-in-own-frame
               helm-display-header-line nil
               helm-display-source-at-screen-top nil
               helm-ff-keep-cached-candidates nil
@@ -97,15 +97,16 @@
               helm-idle-delay 0.0 ; update fast sources immediately (doesn't).
               helm-input-idle-delay 0.01  ; this actually updates things
               helm-input-idle-delay 0.1
-              hmelm-org-format-outline-path t
               helm-org-headings-fontify nil
               helm-org-headings-max-depth 30
               helm-org-rifle-show-path t
               helm-org-show-filename t
               helm-org-truncate-lines nil
               helm-quick-update t
+              helm-split-window-default-side 'right
               helm-use-undecorated-frame-option nil
               helm-yas-display-key-on-candidate t
+              hmelm-org-format-outline-path t
               ))
       :config
       (progn
@@ -124,7 +125,7 @@
          '(helm-idle-delay 0.2 t)
          )
         ;; (helm-mode) - I don't enable global helm-mode
-        (define-key helm-find-files-map [(control tab)] 'helm-select-action)
+        ; (define-key helm-find-files-map [(control tab)] 'helm-buffers-list)
         (define-key helm-map (kbd "C-z") 'helm-select-action)
         (define-key helm-map (kbd "<tab>")         'helm-execute-persistent-action)
         (define-key helm-find-files-map (kbd "C-<backspace>") 'helm-find-files-up-one-level)
@@ -133,14 +134,13 @@
        (savehist-mode 1))
 
       :bind (("C-z C-r" . helm-recentf)
-             ([S-f3] . helm-find-files)
+             ([M-f3] . helm-find-files)
              ("C-z C-f" . helm-find-files)
              ([M-f9] . helm-mark-ring)
              ("s-x" . helm-M-x)
              ("<mouse-9>" . helm-imenu)
              ("\C-c v" . helm-imenu)
-             ([(meta f2)] . helm-imenu) ;; not valid for Ubuntu!
-             ("C-x /" . helm-surfraw)
+             ;;           ("C-x /" . helm-surfraw)
              ([(s-tab)] . helm-buffers-list)
              ("C-z C-b" . helm-buffers-list)
              ("C-z C-a" . helm-mini)
@@ -157,6 +157,7 @@
              ([C-f2] . helm-bookmarks)
              )
       )
+    (global-set-key (kbd "<f2>")  'helm-imenu)
 
     (ido-mode -1) ;; Turn off ido mode in case I enabled it accidentally
     ;; (require 'helm-mode)
@@ -184,7 +185,7 @@
 #+END_SRC
 
 
-** helm-bm
+** COMMENT helm-bm
 
 Bookmarks management. Usually bookmarks are managed by:
 
@@ -200,7 +201,6 @@ And this helm function makes it easy to choose bookmarks using Helm
      :init
      :bind (
             ("C-c h b" . helm-bookmarks)
-            ([(meta f1)] . helm-bm)
             ("C-z <SPC>" . helm-bm)
             ))
  #+END_SRC
@@ -404,6 +404,7 @@ many of other password managers available, including most of commercial.
    #+BEGIN_SRC emacs-lisp :results output none
    (use-package ahg)
    (global-set-key (kbd "C-z h") 'ahg-status)
+   (global-set-key (kbd "C-<f4>") 'ahg-status)
    #+END_SRC
 
 * Dash
@@ -494,7 +495,7 @@ many of other password managers available, including most of commercial.
   (tool-bar-mode -1)
   #+END_SRC
 
-* org-html export 
+* org-html export
 
   from: https://emacs.stackexchange.com/questions/3374/set-the-background-of-org-exported-code-blocks-according-to-theme
   #+begin_src emacs-lisp :results output none
@@ -516,9 +517,11 @@ many of other password managers available, including most of commercial.
   #+end_src
 
 * org-mode
+
+
 ** embed images into export
    - https://emacs.stackexchange.com/questions/27060/embed-image-as-base64-on-html-export-from-orgmode
-   - https://www.reddit.com/r/orgmode/comments/7dyywu/creating_a_selfcontained_html/   
+   - https://www.reddit.com/r/orgmode/comments/7dyywu/creating_a_selfcontained_html/
 
    #+begin_src emacs-lisp :results output none
    (defun replace-prefix-if-present (string prefix new-prefix)
@@ -540,7 +543,7 @@ many of other password managers available, including most of commercial.
                 (buffer-string)))
              (file-name-nondirectory source)))
    (advice-add #'org-html--format-image :override #'org-org-html--format-image)
-   #+end_src 
+   #+end_src
 
 ** ellipsis
 
@@ -618,353 +621,365 @@ many of other password managers available, including most of commercial.
   (setq org-babel-clojure-backend 'cider)
   (require 'cider)
   #+end_src
-   
+
 ** main settings
   https://orgmode.org/manual/Structure-Templates.html
   #+begin_src emacs-lisp :results output none
-  ;; Org-mode settings
-  (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
-                                          ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
-  ;;(require 'org-checklist)
-  (require 'org-tempo)
+      ;; Org-mode settings
+      (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
+                                              ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+      ;;(require 'org-checklist)
+      (require 'org-tempo)
 
-  (when (featurep 'notmuch)
-    (require 'org-notmuch)
-    )
+      (when (featurep 'notmuch)
+        (require 'org-notmuch)
+        )
 
-  ;; to store links from eww
-                                          ; (require 'org-eww)
-  (use-package ob-http)
-                                          ;(require 'org-bullets) - they slow down emacs org mode
-  (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
-  (use-package ob-async)
-  (use-package restclient)
-  (use-package ob-restclient)
-  (use-package org-rich-yank)
-  (require 'ox-beamer)
+      ;; to store links from eww
+                                              ; (require 'org-eww)
+      (use-package ob-http)
+                                              ;(require 'org-bullets) - they slow down emacs org mode
+      (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+      (use-package ob-async)
+      (use-package restclient)
+      (use-package ob-restclient)
+      (use-package org-rich-yank)
+      (require 'ox-beamer)
 
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((shell . t)
-     ;;      (plantuml . t)
-     (lisp . t)
-     (clojure . t)
-     (python . t)
-     (dot . t)
-     (awk . t)
-     (emacs-lisp . t))
-   )
-
-  ;; optional exporters
-  (with-eval-after-load 'ox
-    (require 'ox-latex)
-    (loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
-          do (unless (require pkg nil 'noerror)
-               (message (format "You need to install package %s" pkg))))
-    )
-
-  (use-package ox-pandoc)
-
-  (require 'org-clock)
-  (setq org-replace-disputed-keys t)
-  (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
-
-
-  (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-  (global-set-key "\C-cls" 'org-store-link)
-  (global-set-key "\C-ca" 'org-agenda)
-
-  (fset 'goto-org-agenda
-        "\C-caa")
-
-
-  (global-set-key [XF86HomePage] 'goto-org-agenda)
-
-
-  (global-set-key [(shift f5)]  'org-clock-goto)
-  (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
-  (global-set-key "\C-z`" 'org-clock-in)
-  (global-set-key "\C-z~" 'org-clock-out)
-  (fset 'my-clock-in-current-task
-        (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
-  (global-set-key "\C-z1" 'my-clock-in-current-task)
-
-  (global-set-key [(control f5)] 'org-clock-in)
-  (global-set-key [(control shift f5)] 'org-clock-out)
-
-
-  (global-font-lock-mode 1)
-
-  ;; temp disabled
-  ;; (defun my-org-mode-hook ()
-  ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
-  ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
-  ;;   (yas-minor-mode)
-  ;;   ;(org-bullets-mode 1)
-  ;;   )
-  ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
-
-  (setq org-src-fontify-natively t)
-  (setq org-capture-bookmark nil) ;; remove side effect  - bm face over the all new captured items!
-
-  (setq org-directory "~/org/")
-
-  (setq org-default-notes-file (concat org-directory "/notes.org"))
-  (define-key global-map "\C-cc" 'org-capture)
-
-  (defun org-todo-keyword-faces-dark()
-    (interactive)
-    (setq org-todo-keyword-faces
-          '(
-            ("IDEA" . (:foreground "chartreuse" :weight bold))
-            ("WORKING" . (:foreground "forest green" :weight bold))
-            ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
-            ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
-            ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
-            ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
-            ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
-            ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
-            ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-            ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-            )
-          )
-    )
-
-  (defun switch-to-agenda() ()
-         (interactive)
-         (if (get-buffer "*Org Agenda*")
-             (switch-to-buffer "*Org Agenda*")
-           (org-agenda))
+      (org-babel-do-load-languages
+       'org-babel-load-languages
+       '((shell . t)
+         ;;      (plantuml . t)
+         (lisp . t)
+         (clojure . t)
+         (python . t)
+         (dot . t)
+         (awk . t)
+         (emacs-lisp . t)
+         (verb . t)
+         (sql . t)
          )
+       )
 
-  (fset 'switch-to-agenda-named-buffer
-        (kmacro-lambda-form [?\C-x ?b ?* ?O ?r ?g ?  ?A ?g ?e ?n ?d ?a tab return] 0 "%d"))
+      ;; optional exporters
+      (with-eval-after-load 'ox
+        (require 'ox-latex)
+        (loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
+              do (unless (require pkg nil 'noerror)
+                   (message (format "You need to install package %s" pkg))))
+        )
 
+      (use-package ox-pandoc)
 
-  ;; (global-set-key (kbd "s-`") 'switch-to-agenda)
-  (global-set-key (kbd "C-z C-q") 'switch-to-agenda-named-buffer)
-
-
-  (setq org-completion-use-ido t)
-
-  (defun org-todo-keyword-faces-light()
-    (interactive)
-    (setq org-todo-keyword-faces
-          '(
-            ("WORKING" . (:background "green yellow"))
-            ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
-            ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
-            ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
-            ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
-            ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
-            ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
-            ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-            ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-            )
-          ))
-
-  (defun insert-time-with-seconds ()
-    (interactive)
-    (insert (format-time-string "%H:%M.%S")))
+      (require 'org-clock)
+      (setq org-replace-disputed-keys t)
+      (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
 
 
-  (global-set-key "\C-c0" 'insert-time-with-seconds)
+      (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+      (global-set-key "\C-cls" 'org-store-link)
+      (global-set-key "\C-ca" 'org-agenda)
 
-  (custom-set-faces
-   '(org-done ((t (:strike-through t)))))
-
-
-  (defun my-org-insert-current-item-time()
-    "Insert HH:MM into the buffer. Used during reporting of work done"
-    (interactive)
-    (let* (
-           (clocked-time (org-clock-get-clocked-time))
-           (h (/ clocked-time 60))
-           (m (- clocked-time (* 60 h)))
-           )
-      (insert (format "%.2d:%.2d" h m))
-      )
-    )
+      (fset 'goto-org-agenda
+            "\C-caa")
 
 
-  ;; (defun display-debug ()
-  ;;   (interactive)
-  ;;   (message (format "%.2f" org-clock-file-total-minutes))
-  ;;   )
-  (defun my-org-insert-item-report-line()
-    "Interactive reporting during work done"
-    (interactive)
-    (insert-time-with-seconds)
-    (insert " (")
-    (my-org-insert-current-item-time)
-    (insert ") ")
-    )
-
-  (global-set-key "\C-cit" 'my-org-insert-item-report-line)
-
-  (setq org-global-properties
-        '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
-
-  (setq org-columns-default-format
-        "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
-
-  (add-hook 'org-clock-out-hook
-            (lambda ()
-              (fix-frame-title)))
-
-                                          ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
-
-  (defun switch-to-orgfile(bufname)
-    (if (get-buffer bufname)
-        (switch-to-buffer bufname)
-      (pop-to-buffer (find-file (concat "~/org/" bufname))))
-    )
-
-  (defun switch-to-labster()
-    (interactive)
-    (switch-to-orgfile "labster.org"))
-
-  (defun switch-to-work()
-    (interactive)
-    (switch-to-orgfile "work.org"))
-
-  (global-set-key "\C-z\C-l" 'switch-to-labster)
-  (global-set-key "\C-z\C-w" 'switch-to-work)
+      (global-set-key [XF86HomePage] 'goto-org-agenda)
 
 
-  (global-set-key (kbd "C-z n") 'helm-org-agenda-files-headings)
-  (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
-  (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
-  (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
-  (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
+      (global-set-key [(shift f5)]  'org-clock-goto)
+      (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
+      (global-set-key "\C-z`" 'org-clock-in)
+      (global-set-key "\C-z~" 'org-clock-out)
+      (fset 'my-clock-in-current-task
+            (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
+      (global-set-key "\C-z1" 'my-clock-in-current-task)
 
-  (custom-set-variables
-   '(markdown-command "/usr/bin/pandoc"))
+      (global-set-key [(control f5)] 'org-clock-in)
+      (global-set-key [(control shift f5)] 'org-clock-out)
 
 
-  (defun sync-google-calendar ()
-    "Save google calender entries into dairy.
-  See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
-    (interactive)
-    ;; (call-process "~/org/get_ical.py" nil 0 nil)
-    (call-process "~/org/get_ical.py" nil nil)
-    (switch-to-buffer "diary")
-    (erase-buffer)
-    (save-buffer)
-    ;; (delete-file "~/.emacs.d/diary")
-    (mapcar (
-             lambda (icsfile)
-             (icalendar-import-file icsfile "~/.emacs.d/diary")
+      (global-font-lock-mode 1)
+
+      ;; temp disabled
+      ;; (defun my-org-mode-hook ()
+      ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
+      ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
+      ;;   (yas-minor-mode)
+      ;;   ;(org-bullets-mode 1)
+      ;;   )
+      ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
+
+      (setq org-src-fontify-natively t)
+      (setq org-capture-bookmark nil) ;; remove side effect  - bm face over the all new captured items!
+
+      (setq org-directory "~/org/")
+
+      (setq org-default-notes-file (concat org-directory "/notes.org"))
+      (define-key global-map "\C-cc" 'org-capture)
+
+      (defun org-todo-keyword-faces-dark()
+        (interactive)
+        (setq org-todo-keyword-faces
+              '(
+                ("IDEA" . (:foreground "chartreuse" :weight bold))
+                ("WORKING" . (:foreground "forest green" :weight bold))
+                ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
+                ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
+                ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
+                ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
+                ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
+                ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
+                ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+                ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+                )
+              )
+        )
+
+      (defun switch-to-agenda() ()
+             (interactive)
+             (if (get-buffer "*Org Agenda*")
+                 (switch-to-buffer "*Org Agenda*")
+               (org-agenda))
              )
-            (file-expand-wildcards "~/org/*.ics"))
-    )
 
-  ;;
+      (fset 'switch-to-agenda-named-buffer
+            (kmacro-lambda-form [?\C-x ?b ?* ?O ?r ?g ?  ?A ?g ?e ?n ?d ?a tab return] 0 "%d"))
 
-  (defun copy-password-to-buffer()
-    "Yank password property"
-    (interactive)
-    (let ((password (org-entry-get (point) "password")))
-      (kill-new password)
-      (gui-set-selection "PRIMARY" password)
+
+      ;; (global-set-key (kbd "s-`") 'switch-to-agenda)
+      (global-set-key (kbd "C-z C-q") 'switch-to-agenda-named-buffer)
+
+
+      (setq org-completion-use-ido t)
+
+      (defun org-todo-keyword-faces-light()
+        (interactive)
+        (setq org-todo-keyword-faces
+              '(
+                ("WORKING" . (:background "green yellow"))
+                ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
+                ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
+                ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
+                ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
+                ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
+                ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
+                ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+                ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+                )
+              ))
+
+      (defun insert-time-with-seconds ()
+        (interactive)
+        (insert (format-time-string "%H:%M.%S")))
+
+
+      (global-set-key "\C-c0" 'insert-time-with-seconds)
+
+      (custom-set-faces
+       '(org-done ((t (:strike-through t)))))
+
+
+      (defun my-org-insert-current-item-time()
+        "Insert HH:MM into the buffer. Used during reporting of work done"
+        (interactive)
+        (let* (
+               (clocked-time (org-clock-get-clocked-time))
+               (h (/ clocked-time 60))
+               (m (- clocked-time (* 60 h)))
+               )
+          (insert (format "%.2d:%.2d" h m))
+          )
+        )
+
+
+      ;; (defun display-debug ()
+      ;;   (interactive)
+      ;;   (message (format "%.2f" org-clock-file-total-minutes))
+      ;;   )
+      (defun my-org-insert-item-report-line()
+        "Interactive reporting during work done"
+        (interactive)
+        (insert-time-with-seconds)
+        (insert " (")
+        (my-org-insert-current-item-time)
+        (insert ") ")
+        )
+
+      (global-set-key "\C-cit" 'my-org-insert-item-report-line)
+
+      (setq org-global-properties
+            '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
+
+      (setq org-columns-default-format
+            "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
+
+      (add-hook 'org-clock-out-hook
+                (lambda ()
+                  (fix-frame-title)))
+
+                                              ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
+
+      (defun switch-to-orgfile(bufname)
+        (if (get-buffer bufname)
+            (switch-to-buffer bufname)
+          (pop-to-buffer (find-file (concat "~/org/" bufname))))
+        )
+
+      (defun switch-to-labster()
+        (interactive)
+        (switch-to-orgfile "labster.org"))
+
+      (defun switch-to-work()
+        (interactive)
+        (switch-to-orgfile "work.org"))
+
+      (global-set-key "\C-z\C-l" 'switch-to-labster)
+      (global-set-key "\C-z\C-w" 'switch-to-work)
+
+
+      (global-set-key (kbd "C-z n") 'helm-org-agenda-files-headings)
+      (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
+      (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
+      (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
+      (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
+
+      (custom-set-variables
+       '(markdown-command "/usr/bin/pandoc"))
+
+
+      (defun sync-google-calendar ()
+        "Save google calender entries into dairy.
+      See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
+        (interactive)
+        ;; (call-process "~/org/get_ical.py" nil 0 nil)
+        (call-process "~/org/get_ical.py" nil nil)
+        (switch-to-buffer "diary")
+        (erase-buffer)
+        (save-buffer)
+        ;; (delete-file "~/.emacs.d/diary")
+        (mapcar (
+                 lambda (icsfile)
+                 (icalendar-import-file icsfile "~/.emacs.d/diary")
+                 )
+                (file-expand-wildcards "~/org/*.ics"))
+        )
+
+      ;;
+
+      (defun copy-password-to-buffer()
+        "Yank password property"
+        (interactive)
+        (let ((password (org-entry-get (point) "password")))
+          (kill-new password)
+          (gui-set-selection "PRIMARY" password)
+          )
+        )
+
+      (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
+
+                                              ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
+
+                                              ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
+                                              ; (require 'async-org-babel)
+
+                                              ; redisplay inline images inline in realtime?
+      (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
+
+
+      (add-hook 'org-mode-hook #'yas-minor-mode)
+      (defun org-plus-yasnippet()
+        (setq-local yas-indent-line 'fixed))
+      (add-hook 'org-mode-hook #'org-plus-yasnippet)
+
+      (add-hook 'org-mode-hook (lambda ()
+                                 (visual-line-mode -1)))
+      ;;
+
+      (require 'ox-latex)
+      (add-to-list 'org-latex-classes
+                   '("beamer"
+                     "\\documentclass\[presentation\]\{beamer\}"
+                     ("\\section\{%s\}" . "\\section*\{%s\}")
+                     ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
+                     ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
+      (setq org-latex-listings t)
+
+
+      ;; https://github.com/unhammer/org-rich-yank
+      (require 'org-rich-yank)
+      (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
+
+
+    (defun my-switch-to-compilation()
+      (interactive)
+      (if (get-buffer "*compilation*")
+          (switch-to-buffer "*compilation*")
+        )
       )
-    )
-
-  (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
-
-                                          ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
-
-                                          ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
-                                          ; (require 'async-org-babel)
-
-                                          ; redisplay inline images inline in realtime?
-  (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
+    (define-key esc-map [f9] #'my-switch-to-compilation)
 
 
-  (add-hook 'org-mode-hook #'yas-minor-mode)
-  (defun org-plus-yasnippet()
-    (setq-local yas-indent-line 'fixed))
-  (add-hook 'org-mode-hook #'org-plus-yasnippet)
+      ;; org speed keys
+      ;; https://emacs.stackexchange.com/questions/33310/how-to-use-org-mode-speed-commands-speed-keys
+      ;; https://notesyoujustmightwanttosave.blogspot.com/2011/12/org-speed-keys.html?showComment=1535219875417
+      ;; (defun forward-and-preview ()
+      ;;   "Go to same level next heading and show preview in dedicated buffer"
+      ;;   (hide-subtree)
+      ;;   (org-speed-move-safe (quote outline-next-visible-heading))
+      ;;   (show-children)
+      ;;   (org-tree-to-indirect-buffer)
+      ;;   )
+      ;; (defun back-and-preview ()
+      ;;   "Go to same level previous heading and show preview in dedicated buffer"
+      ;;   (hide-subtree)
+      ;;   (org-speed-move-safe (quote outline-previous-visible-heading))
+      ;;   (show-children)
+      ;;   (org-tree-to-indirect-buffer)
+      ;;   )
+      ;; (defun up-back-and-preview ()
+      ;;   "Go to previous level heading and show preview in dedicated buffer"
+      ;;   (org-speed-move-safe (quote outline-up-heading))
+      ;;   (org-tree-to-indirect-buffer)
+      ;;   (hide-subtree)
+      ;;   )
+      ;; (defun up-forward-and-preview ()
+      ;;   "Go to previous level next heading and show preview in dedicated buffer"
+      ;;   (org-speed-move-safe (quote outline-up-heading))
+      ;;   (hide-subtree)
+      ;;   (org-speed-move-safe (quote outline-next-visible-heading))
+      ;;   (org-tree-to-indirect-buffer)
+      ;;   )
+      ;; (defun inside-and-preview ()
+      ;;   "Go to next level heading and show preview in dedicated buffer"
+      ;;   (org-speed-move-safe (quote outline-next-visible-heading))
+      ;;   (show-children)
+      ;;   (org-tree-to-indirect-buffer)
+      ;;   )
+      ;; (add-to-list 'org-speed-commands-user '("l" inside-and-preview))
+      ;; (add-to-list 'org-speed-commands-user '("j" forward-and-preview))
+      ;; (add-to-list 'org-speed-commands-user '("k" back-and-preview))
+      ;; (add-to-list 'org-speed-commands-user '("J" up-forward-and-preview))
+      ;; (add-to-list 'org-speed-commands-user '("K" up-back-and-preview))
 
-  (add-hook 'org-mode-hook (lambda ()
-                             (visual-line-mode -1)))
-  ;;
+      (setq org-use-speed-commands t)
 
-  (require 'ox-latex)
-  (add-to-list 'org-latex-classes
-               '("beamer"
-                 "\\documentclass\[presentation\]\{beamer\}"
-                 ("\\section\{%s\}" . "\\section*\{%s\}")
-                 ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
-                 ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
-  (setq org-latex-listings t)
+      ;; ;; (require 'org-sidebar)
+      ;; ;;
 
-
-  ;; https://github.com/unhammer/org-rich-yank
-  (require 'org-rich-yank)
-  (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
-
-
-  ;; org speed keys
-  ;; https://emacs.stackexchange.com/questions/33310/how-to-use-org-mode-speed-commands-speed-keys
-  ;; https://notesyoujustmightwanttosave.blogspot.com/2011/12/org-speed-keys.html?showComment=1535219875417
-  ;; (defun forward-and-preview ()
-  ;;   "Go to same level next heading and show preview in dedicated buffer"
-  ;;   (hide-subtree)
-  ;;   (org-speed-move-safe (quote outline-next-visible-heading))
-  ;;   (show-children)
-  ;;   (org-tree-to-indirect-buffer)
-  ;;   )
-  ;; (defun back-and-preview ()
-  ;;   "Go to same level previous heading and show preview in dedicated buffer"
-  ;;   (hide-subtree)
-  ;;   (org-speed-move-safe (quote outline-previous-visible-heading))
-  ;;   (show-children)
-  ;;   (org-tree-to-indirect-buffer)
-  ;;   )
-  ;; (defun up-back-and-preview ()
-  ;;   "Go to previous level heading and show preview in dedicated buffer"
-  ;;   (org-speed-move-safe (quote outline-up-heading))
-  ;;   (org-tree-to-indirect-buffer)
-  ;;   (hide-subtree)
-  ;;   )
-  ;; (defun up-forward-and-preview ()
-  ;;   "Go to previous level next heading and show preview in dedicated buffer"
-  ;;   (org-speed-move-safe (quote outline-up-heading))
-  ;;   (hide-subtree)
-  ;;   (org-speed-move-safe (quote outline-next-visible-heading))
-  ;;   (org-tree-to-indirect-buffer)
-  ;;   )
-  ;; (defun inside-and-preview ()
-  ;;   "Go to next level heading and show preview in dedicated buffer"
-  ;;   (org-speed-move-safe (quote outline-next-visible-heading))
-  ;;   (show-children)
-  ;;   (org-tree-to-indirect-buffer)
-  ;;   )
-  ;; (add-to-list 'org-speed-commands-user '("l" inside-and-preview))
-  ;; (add-to-list 'org-speed-commands-user '("j" forward-and-preview))
-  ;; (add-to-list 'org-speed-commands-user '("k" back-and-preview))
-  ;; (add-to-list 'org-speed-commands-user '("J" up-forward-and-preview))
-  ;; (add-to-list 'org-speed-commands-user '("K" up-back-and-preview))
-
-  (setq org-use-speed-commands t)
-
-  ;; ;; (require 'org-sidebar)
-  ;; ;;
-
-  ;; ;; https:
-  ;; //emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
-  (defvar org-blocks-hidden nil)
-  (defun org-toggle-blocks ()
-    (interactive)
-    (if org-blocks-hidden
-        (org-show-block-all)
-      (org-hide-block-all))
-    (setq-local org-blocks-hidden (not org-blocks-hidden)))
-  (add-hook 'org-mode-hook 'org-toggle-blocks)
-  (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
-  (global-set-key "\C-z'" 'poporg-dwim)
-  (global-set-key (kbd "C-z <f5>") 'org-clock-goto)
+      ;; ;; https:
+      ;; //emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
+      (defvar org-blocks-hidden nil)
+      (defun org-toggle-blocks ()
+        (interactive)
+        (if org-blocks-hidden
+            (org-show-block-all)
+          (org-hide-block-all))
+        (setq-local org-blocks-hidden (not org-blocks-hidden)))
+      (add-hook 'org-mode-hook 'org-toggle-blocks)
+      (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
+      (global-set-key "\C-z'" 'poporg-dwim)
+      (global-set-key (kbd "C-z <f5>") 'org-clock-goto)
   #+end_src
 
 ** switch to org-agenda file
@@ -1131,7 +1146,7 @@ https://github.com/jeremy-compostella/org-msg
    (org-msg-mode)
    #+END_SRC
 
-** org-gtasks
+** COMMENT org-gtasks
 
    #+begin_src emacs-lisp :results output none
    (add-to-list 'load-path "~/.emacs.d/lisp/org-gtasks/")
@@ -1142,7 +1157,7 @@ https://github.com/jeremy-compostella/org-msg
     #+RESULTS:
     : org-gtasks
 
-(org-gtasks-get-refresh-token (org-gtasks-find-account-by-name "avkoval"))
+;; (org-gtasks-get-refresh-token (org-gtasks-find-account-by-name "avkoval"))
 
 ** folding?
 
@@ -1217,6 +1232,35 @@ Publish clickable org mode checklists
     (define-key org-trello-mode-map (kbd "C-c o u") 'org-trello-update-board-metadata)
     (define-key org-trello-mode-map (kbd "C-c o h") 'org-trello-help-describing-bindings)))
 #+END_EXAMPLE
+
+** learning agenda
+
+
+#+begin_src emacs-lisp :results output none
+(defalias 'my-org-agenda-learn
+   (kmacro "C-c a 1 / l e a r n <return>"))
+#+end_src
+
+
+** org-tree-slide show starts here
+
+Thanks to: [[https://www.youtube.com/watch?v=xsvk-BtPZso][Org-mode - Start slide from current subtree]]
+
+#+begin_src emacs-lisp :results output none
+(defun my-org-tree-slide-show-starts-here ()
+  (interactive)
+  (setq org-tree-slide-cursor-init nil)
+)
+#+end_src
+
+* lsp-mode
+
+  #+begin_src emacs-lisp
+  (use-package lsp-mode
+    :ensure t
+    :custom
+    (lsp-diagnostics-provider :none))
+  #+end_src
 
 * Language: go
 
@@ -1322,7 +1366,7 @@ https://github.com/minad/vertico
   (setq enable-recursive-minibuffers t))
 
 ;; https://github.com/minad/vertico
-;; Similar to org-refile, the commands org-agenda-filter and org-tags-view do not make use of completion boundaries. 
+;; Similar to org-refile, the commands org-agenda-filter and org-tags-view do not make use of completion boundaries.
 (defun org-enforce-basic-completion (&rest args)
   (minibuffer-with-setup-hook
       (:append
@@ -1597,7 +1641,7 @@ https://github.com/minad/vertico
 
 *** magit-todos
 
-*** code-review
+*** COMMENT code-review
 
     #+begin_src emacs-lisp :results output none
         ;;    (use-package code-review
@@ -1933,76 +1977,102 @@ https://github.com/minad/vertico
 * python (new)
 
   #+begin_src emacs-lisp :results output none
-    (defun python-create-empty-init-py()
-      (interactive)
-      (shell-command "touch __init__.py")
-      )
-    (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
-    ;; (add-hook 'python-mode-hook
-    ;; 	  (setq indent-tabs-mode nil)
-    ;; 	  (setq tab-width 4)
-    ;; 	  (flycheck-mode)
-    ;; 	  )
+     (defun python-create-empty-init-py()
+       (interactive)
+       (shell-command "touch __init__.py")
+       )
+     (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
+     ;; (add-hook 'python-mode-hook
+     ;; 	  (setq indent-tabs-mode nil)
+     ;; 	  (setq tab-width 4)
+     ;; 	  (flycheck-mode)
+     ;; 	  )
 
-    ;; (setq pym
-    ;;       acs-python-command "/usr/bin/python3")
-    (defun pycodestyle-current-buffer()
-      (interactive)
-      (compile (concat "pycodestyle " (buffer-file-name)) nil)
-      )
-    (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
+     ;; (setq pym
+     ;;       acs-python-command "/usr/bin/python3")
+     (defun pycodestyle-current-buffer()
+       (interactive)
+       (compile (concat "pycodestyle " (buffer-file-name)) nil)
+       )
+     (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
 
-    (use-package pylint
-      :bind (("C-c p l" . pylint))
-      )
+     (use-package pylint
+       :bind (("C-c p l" . pylint))
+       )
 
-    (defun my-flake8-current-dir()
-      (interactive)
-      (compile "flake8" nil)
-      )
+     (defun my-flake8-current-dir()
+       (interactive)
+       (compile "flake8" nil)
+       )
 
-    (global-set-key (kbd "C-z 8") 'my-flake8-current-dir)
-
-
-    ;; (defun flake8-current-buffer()
-    ;;   (interactive)
-    ;;   (compile (concat "flake8 " (buffer-file-name)) nil)
-    ;;   (switch-to-buffer "*compilation*")
-    ;;   (rename-buffer "*flake8*")
-    ;;   )
-
-    (defun flake8-current-buffer()
-      (interactive)
-      (compile (concat "flake8 " (buffer-file-name)) nil)
-      )
-
-   ;; (add-hook 'compilation-finish-functions 'switch-to-buffer-other-window 'compilation)
-
-    (global-set-key (kbd "C-c p f") 'flake8-current-buffer)
+     (global-set-key (kbd "C-z 8") 'my-flake8-current-dir)
 
 
-    (use-package highlight-indentation
-      :bind (("C-z <f12>" . highlight-indentation-mode))
-      :defer t)
-    ;;(global-set-key (kbd "C-z 9") 'compile)
+     (defun my-isort-current-dir()
+       (interactive)
+       (compile (concat "isort " (buffer-file-name)) nil)
+       )
 
-    (add-hook 'python-mode-hook
-              '(lambda ()
-                 (global-set-key [(control shift menu)] 'pylookup-lookup)
-                 ;;	       (highlight-indentation-mode t)
-                 (display-line-numbers-mode nil)
-                 (define-key python-mode-map "\r" 'newline-and-indent)
-                 (if (buffer-file-name)
-                     (if (file-remote-p (buffer-file-name))
-                         (flymake-mode)
-                       (flycheck-mode t))
-                   )
-                 )
-              )
+     (global-set-key (kbd "C-c p i") 'my-isort-current-dir)
 
-    (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
-    (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
 
+
+     ;; (defun flake8-current-buffer()
+     ;;   (interactive)
+     ;;   (compile (concat "flake8 " (buffer-file-name)) nil)
+     ;;   (switch-to-buffer "*compilation*")
+     ;;   (rename-buffer "*flake8*")
+     ;;   )
+
+     (defun flake8-current-buffer()
+       (interactive)
+       (compile (concat "flake8 " (buffer-file-name)) nil)
+       )
+
+    ;; (add-hook 'compilation-finish-functions 'switch-to-buffer-other-window 'compilation)
+
+     (global-set-key (kbd "C-c p f") 'flake8-current-buffer)
+
+
+     (use-package highlight-indentation
+       :bind (("C-z <f12>" . highlight-indentation-mode))
+       :defer t)
+     ;;(global-set-key (kbd "C-z 9") 'compile)
+
+     (add-hook 'python-mode-hook
+               '(lambda ()
+                  (global-set-key [(control shift menu)] 'pylookup-lookup)
+                  ;;	       (highlight-indentation-mode t)
+                  (display-line-numbers-mode nil)
+                  (define-key python-mode-map "\C-m" 'newline-and-indent)
+                  (if (buffer-file-name)
+                      (if (file-remote-p (buffer-file-name))
+                          (flymake-mode)
+                        (flycheck-mode t))
+                    )
+                  (lsp-mode)
+                  (apheleia-mode +1)
+                  (setq-local flycheck-checker 'python-pycheckers)
+                  )
+               )
+
+     (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
+     (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
+
+
+
+     (add-hook 'python-ts-mode-hook
+               '(lambda ()
+                  (define-key python-ts-mode-map "\C-m" 'newline-and-indent)
+                  (if (buffer-file-name)
+                      (if (file-remote-p (buffer-file-name))
+                          (flymake-mode)
+                        (flycheck-mode t))
+                    )
+                  (apheleia-mode +1)
+                  (setq-local flycheck-checker 'python-pycheckers)
+                  )
+               )
 
 
   #+end_src
@@ -2289,8 +2359,18 @@ https://github.com/minad/vertico
 
   Quick workaround:
 
-  #+BEGIN_SRC emacs-lisp
-    (load "~/.emacs-recentf" t)
+  #+BEGIN_SRC emacs-lisp :results output none
+  (use-package recentf
+    :init
+    (setq
+      recentf-save-file "~/.cache/emacs-recentf"
+      recentf-max-saved-items 10000
+      recentf-max-menu-items 5000
+      )
+    (recentf-mode 1)
+    (run-at-time nil (* 5 60) 'recentf-save-list)
+    )
+  (load "~/.cache/emacs-recentf" t)
   #+END_SRC
 
 * realgud
@@ -2317,6 +2397,7 @@ https://github.com/minad/vertico
   ;;   (add-hook 'vue-mode-hook #'lsp))
 
   (add-to-list 'auto-mode-alist '("\\.vue" . web-mode))
+  ;; (add-to-list 'auto-mode-alist '("\\.vue" . tide-mode))
   ;; (apheleia-global-mode +1)
 
 
@@ -2344,7 +2425,9 @@ https://github.com/minad/vertico
   (me-setup-molds))
 #+END_SRC
 
-* Hydra + smerge
+* COMMENT Hydra + smerge
+
+/I found it less useful and it often prevents me from doing right thing. I prefer ediff/
 
 This configuration automatically activates a helpful ~smerge-mode~ hydra when a file containing merge conflicts is visited from a Magit diff section.  You can manually activate the hydra with the command ~unpackaged/smerge-hydra/body~.  (Inspired by [[https://github.com/kaushalmodi/.emacs.d/blob/master/setup-files/setup-diff.el][Kaushal Modi's Emacs config]].)
 
@@ -2627,7 +2710,7 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
   (global-set-key (kbd "C-z 7") 'rgrep)
 
   ;; alternative ways to open file
-  (global-set-key [M-f3] 'find-file) ;; this is using IDO mode/std
+  (global-set-key [M-f3] 'helm-find-files) ;; this is using IDO mode/std
   (global-set-key [(shift f3)] 'find-file-at-point) ;; this is std. emacs open
 
 
@@ -2765,6 +2848,7 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
 
                                           ;(global-set-key [(control tab)] 'previous-buffer)
   (global-set-key (kbd "C-z g") 'magit-status)
+  (global-set-key [S-f4] 'magit-status)
 
   (define-key global-map (kbd "C-z c t") 'customize-themes)
   (define-key global-map (kbd "C-z r r") 'revert-buffer)
@@ -3210,28 +3294,29 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
 
 
 
-  (use-package clj-refactor)
-  (use-package cider
-    :ensure t
-    :defer t
-    :init (add-hook 'cider-mode-hook #'clj-refactor-mode)
-    :diminish subword-mode
-    :config
-    (setq nrepl-log-messages t
-          cider-repl-display-in-current-window t
-          cider-repl-use-clojure-font-lock t
-          cider-prompt-save-file-on-load 'always-save
-          cider-font-lock-dynamically '(macro core function var)
-          nrepl-hide-special-buffers t
-          cider-overlays-use-font-lock t)
-    (cider-repl-toggle-pretty-printing))
+  ;; (use-package clj-refactor)
+  ;; (use-package cider
+  ;;   :ensure t
+  ;;   :defer t
+  ;;   ;; :init (add-hook 'cider-mode-hook #'clj-refactor-mode)
+  ;;   :diminish subword-mode
+  ;;   :config
+  ;;   (setq nrepl-log-messages t
+  ;;         cider-repl-display-in-current-window t
+  ;;         cider-repl-use-clojure-font-lock t
+  ;;         cider-prompt-save-file-on-load 'always-save
+  ;;         cider-font-lock-dynamically '(macro core function var)
+  ;;         nrepl-hide-special-buffers t
+  ;;         cider-overlays-use-font-lock t)
+  ;;   (cider-repl-toggle-pretty-printing))
 
-  ;; LSP for clojure from https://clojure-lsp.io/clients/
-  (dolist (m '(clojure-mode
-               clojurec-mode
-               clojurescript-mode
-               clojurex-mode))
-    (add-to-list 'lsp-language-id-configuration `(,m . "clojure")))
+  ;; ;; LSP for clojure from htt
+  ;; ps://clojure-lsp.io/clients/
+  ;; (dolist (m '(clojure-mode
+  ;;              clojurec-mode
+  ;;              clojurescript-mode
+  ;;              clojurex-mode))
+  ;;   (add-to-list 'lsp-language-id-configuration `(,m . "clojure")))
   #+end_src
 
 ** clj-kondo
@@ -3290,23 +3375,26 @@ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
 Easy way to select file in your project.
 
  #+BEGIN_SRC emacs-lisp :results output none
- (use-package projectile)
- (use-package helm-projectile
-   :init
-   :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
-          ([(C-tab)] . helm-projectile-switch-to-buffer)
-          ("C-z C-z" . helm-projectile-switch-to-buffer)
-          ("C-x C-<tab>" . helm-projectile-switch-to-buffer)
-          ("C-c h p p" . helm-projectile)
-          ("<f5>" . helm-projectile-find-file)
-          ("C-c h p f" . helm-projectile-find-file)
-          ("C-c h p s" . helm-projectile-switch-project)
-          ("C-c h p r" . helm-projectile-recentf)
-          ("C-c h p g" . helm-projectile-grep)
-          ("C-c h p d" . helm-projectile-rg)
-          ("M-<f5>" . projectile-find-file)
-          )
-   )
+  (use-package projectile)
+  (use-package helm-projectile
+    :init
+    (projectile-global-mode)
+    (setq projectile-enable-caching t)
+    :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
+           ([(C-tab)] . helm-buffers-list)
+           ("C-z C-z" . helm-projectile-switch-to-buffer)
+           ("C-x C-<tab>" . helm-projectile-switch-to-buffer)
+           ("C-c h p p" . helm-projectile)
+           ("<f5>" . helm-projectile-find-file)
+           ("C-c h p f" . helm-projectile-find-file)
+           ("C-c h p s" . helm-projectile-switch-project)
+           ("C-c p s" . projectile-switch-open-project)
+           ("C-c h p r" . helm-projectile-recentf)
+           ("C-c h p g" . helm-projectile-grep)
+           ("C-c h p d" . helm-projectile-rg)
+           ("M-<f5>" . projectile-find-file)
+           )
+    )
  #+END_SRC
 * easy-kill
 
@@ -3330,8 +3418,8 @@ Easy way to select file in your project.
   ("C-z / 1" . my-bm-save-first-as-org-link)
   ("C-z / /" . my-bm-save-next-as-org-link)
   ("C-z / `" . my-bm-restore-bm)
-  ([s-f1] . bm-show-all)
-  ;; ("C-z <SPC>" . bm-show-all)
+  ([M-f1] . bm-show-all)
+  ("C-z <SPC>" . bm-show-all)
   )
   ;; :config
   ;; (setq-default bm-buffer-persistence t)
@@ -3397,16 +3485,20 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 
 * vterm
 
-
 #+BEGIN_SRC emacs-lisp :results output none
 (use-package vterm
   :bind
   ("C-z k" . vterm)
-  ([f2] . vterm)
+  ; ([f2] . vterm)
+  :config
+  (define-key vterm-mode-map (kbd "<Scroll_Lock>")
+  'vterm-copy-mode)
   )
+
+ 
 #+END_SRC
 
-* lsp-bridge
+* COMMENT lsp-bridge
 
   Fast & more automated LSP support
 
@@ -3474,11 +3566,11 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 
   (my-enable-lsp-bridge-for-js2)
   ;; (my-enable-lsp-bridge-for-typescript)
-  (my-enable-lsp-bridge-for-clojure)
+  ;; (my-enable-lsp-bridge-for-clojure)
   (my-enable-lsp-bridge-for-python)
 
   ;; https://github.com/manateelazycat/lsp-bridge/issues/636
-  (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer) 
+  (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer)
   #+end_src
 
 * web-mode
@@ -3493,12 +3585,29 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
 (setq web-mode-engines-alist '(("django" . "\\.html\\'") ) )
 
+
+
+(defun is_buffer_of (ext)
+  (if (bufferp (current-buffer))
+      (progn (setq buffer_name (buffer-file-name (current-buffer)))
+             (if (stringp buffer_name)
+                 (if (string-match ext buffer_name) t nil)
+               nil))
+      nil))
+
+
+
 (add-hook 'web-mode-hook
           '(lambda ()
              (yas-minor-mode)
              (yas-activate-extra-mode 'web-mode)
              (display-line-numbers-mode)
              ;; (highlight-indentation-mode t)
+             (when (is_buffer_of ".*\.vue$")
+                 (tide-mode)
+                 (company-mode)
+                 (apheleia-mode +1)
+                 )
              )
           )
 
@@ -3649,7 +3758,13 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   ;;(flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
   #+end_src
 
-* python-ts-mode
+* COMMENT python-mode
+
+  #+begin_src emacs-lisp :results output none
+  (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+  #+end_src
+
+* COMMENT python-ts-mode
 
   #+begin_src emacs-lisp :results output none
   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
@@ -3664,7 +3779,7 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   (global-flycheck-mode t)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode)
   ;; note that these bindings are optional
-  :bind 
+  :bind
   ([C-f8] . flycheck-list-errors)
   )
 (use-package flycheck-pycheckers
@@ -3710,6 +3825,11 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   #+begin_src emacs-lisp :results output none
   (use-package apheleia
     :bind (("\C-cmA" . apheleia-mode)))
+  (require 'apheleia-formatters)
+  (setf (alist-get 'isort apheleia-formatters)
+        '("isort" "--stdout" "-"))
+  (setf (alist-get 'python-mode apheleia-mode-alist)
+        '(isort))
   #+end_src
 * ox-gfm
   #+begin_src emacs-lisp :results output none
@@ -3726,10 +3846,10 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 
   #+begin_src emacs-lisp :results output none
   (add-to-list 'auto-mode-alist '("\\.mjml" . sgml-mode))
-  #+end_src  
-  
+  #+end_src
+
 * marginalia
-  
+
   #+begin_src emacs-lisp :results output none
   (use-package marginalia
     ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
@@ -3745,8 +3865,8 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
     ;; the mode gets enabled right away. Note that this forces loading the
     ;; package.
     (marginalia-mode))
-  #+end_src  
-* python auto virtualenv
+  #+end_src
+* python auto virtualenv for python-ts-mode
 
   #+begin_src emacs-lisp :results output none
   (use-package auto-virtualenv
@@ -3756,9 +3876,11 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
       :ensure t)
     :config
     (add-hook 'python-ts-mode-hook 'auto-virtualenv-set-virtualenv)
+    (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
+    (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
     )
-  #+end_src  
-* org postgres / sql
+  #+end_src
+* COMMENT org postgres / sql
 
   #+begin_src emacs-lisp :results output none
   (org-babel-do-load-languages
@@ -3774,7 +3896,7 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   (use-package helm-systemd)
   #+end_src
 
-* COMMENT straignt
+* straight
 
   #+begin_src emacs-lisp
   (defvar bootstrap-version)
@@ -3886,37 +4008,49 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
 * tab-line
   see also https://github.com/thread314/intuitive-tab-line-mode
   #+begin_src emacs-lisp :results output none
-  (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
-  (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
-  (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
+  (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
+  (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
+  (use-package tab-line
+    :init
+    (defvar-keymap tab-line-mode-map
+      :doc "Keymap for keys of `tab-line-mode'."
+      "C-x C-<left>"  #'tab-line-switch-to-prev-tab
+      "C-x C-<right>" #'tab-line-switch-to-next-tab)
+    )
 
+  ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
+  ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
 
-  (use-package intuitive-tab-line
-    :load-path "lisp/intuitive-tab-line-mode"
-    :custom
-    (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
-    (tab-line-switch-cycling t)
-    :config
-    (global-tab-line-mode 1)
-    (recentf-mode 1)
-    (setq
-     tab-line-new-button-show nil  ;; do not show add-new button
-     tab-line-close-button-show nil  ;; do not show close button
-     tab-line-separator " "  ;; delimitation between tabs
-     ))
+  ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
+  ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
+  ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
 
-                                          (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
-                                          ;(global-set-key (kbd "C-<iso-lefttab>") 'tab-line-switch-to-prev-tab)
-                                          (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
-                                          ;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
-  (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
-  (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
-                                          ;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
+  ;; (use-package intuitive-tab-line
+  ;;   :load-path "lisp/intuitive-tab-line-mode"
+  ;;   :custom
+  ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
+  ;;   (tab-line-switch-cycling t)
+  ;;   :config
+  ;;   (global-tab-line-mode 1)
+  ;;   (recentf-mode 1)
+  ;;   (setq
+  ;;    tab-line-new-button-show nil  ;; do not show add-new button
+  ;;    tab-line-close-button-show nil  ;; do not show close button
+  ;;    tab-line-separator " "  ;; delimitation between tabs
+  ;;    ))
 
+  ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
+  ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
+  ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
+  ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
   #+end_src
 
+* next/prev buffer
 
-
+  #+begin_src emacs-lisp :results output none
+  (global-set-key (kbd "C-z <right>") 'next-buffer)
+  (global-set-key (kbd "C-z <left>") 'previous-buffer)
+  #+end_src
 
 * window management
 
@@ -3926,3 +4060,340 @@ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-e
   ;; (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
   ;; (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
   #+end_src
+
+* emacs calc
+
+  #+begin_src emacs-lisp :results output none
+  (use-package casual
+    :ensure t
+    :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+  #+end_src
+
+* consult imenu
+
+  #+begin_src emacs-lisp :results output none
+  (global-set-key [S-f2]  'consult-imenu)
+  (add-to-list 'consult-imenu-config
+               '(python-mode
+                 :toplevel "Function"
+                 :types
+                 ((?f "Function" font-lock-function-name-face)
+                  (?m "Method" font-lock-function-name-face)
+                  (?c "Class" font-lock-property-use-face)
+                  (?M "Module" font-lock-builtin-face)
+                  (?F "Field" font-lock-regexp-face)
+                  (?v "Variable" font-lock-constant-face))))
+
+  (global-set-key [M-f7] 'consult-ripgrep)
+  #+end_src
+
+* counsel-ag
+
+  #+begin_src emacs-lisp :results output none
+  (use-package counsel-ag-popup
+    :ensure t
+    :bind ("C-c M-c" . 'counsel-ag))
+  #+end_src
+
+* minimap
+
+  Lets try it (again), but I found that it does not work well in org-mode for example.
+
+  #+begin_src emacs-lisp :results output none
+  (use-package minimap
+    :ensure t)
+  (define-key esc-map [f12] #'minimap-mode)
+  #+end_src
+* dired-casual
+
+  #+begin_src emacs-lisp :results output none
+  (use-package casual-dired
+  :ensure t
+  :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
+  #+end_src
+
+* dslide
+
+  #+begin_src emacs-lisp :results output none
+    ;; package-vc
+    ;; (package-vc-install
+    ;;  '(dslide
+    ;;    :url "https://github.com/positron-solutions/dslide.git"))
+  #+end_src
+
+* jtsx
+
+  #+begin_src emacs-lisp :results output none
+    (use-package jtsx
+      :ensure t
+      :mode (("\\.jsx?\\'" . jtsx-jsx-mode)
+             ("\\.tsx\\'" . jtsx-tsx-mode)
+             ;; ("\\.ts\\'" . jtsx-typescript-mode)
+             )
+      :commands jtsx-install-treesit-language
+      :hook ((jtsx-jsx-mode . hs-minor-mode)
+             (jtsx-tsx-mode . hs-minor-mode)
+             (jtsx-typescript-mode . hs-minor-mode))
+      :custom
+      ;; Optional customizations
+      (js-indent-level 2)
+      ;; (typescript-ts-mode-indent-offset 2)
+      ;; (jtsx-switch-indent-offset 0)
+      ;; (jtsx-indent-statement-block-regarding-standalone-parent nil)
+      ;; (jtsx-jsx-element-move-allow-step-out t)
+      ;; (jtsx-enable-jsx-electric-closing-element t)
+      ;; (jtsx-enable-electric-open-newline-between-jsx-element-tags t)
+      ;; (jtsx-enable-jsx-element-tags-auto-sync nil)
+      ;; (jtsx-enable-all-syntax-highlighting-features t)
+      :config
+      (defun jtsx-bind-keys-to-mode-map (mode-map)
+        "Bind keys to MODE-MAP."
+        (define-key mode-map (kbd "C-c C-j") 'jtsx-jump-jsx-element-tag-dwim)
+        (define-key mode-map (kbd "C-c j o") 'jtsx-jump-jsx-opening-tag)
+        (define-key mode-map (kbd "C-c j c") 'jtsx-jump-jsx-closing-tag)
+        (define-key mode-map (kbd "C-c j r") 'jtsx-rename-jsx-element)
+        (define-key mode-map (kbd "C-c <down>") 'jtsx-move-jsx-element-tag-forward)
+        (define-key mode-map (kbd "C-c <up>") 'jtsx-move-jsx-element-tag-backward)
+        (define-key mode-map (kbd "C-c C-<down>") 'jtsx-move-jsx-element-forward)
+        (define-key mode-map (kbd "C-c C-<up>") 'jtsx-move-jsx-element-backward)
+        (define-key mode-map (kbd "C-c C-S-<down>") 'jtsx-move-jsx-element-step-in-forward)
+        (define-key mode-map (kbd "C-c C-S-<up>") 'jtsx-move-jsx-element-step-in-backward)
+        (define-key mode-map (kbd "C-c j w") 'jtsx-wrap-in-jsx-element)
+        (define-key mode-map (kbd "C-c j u") 'jtsx-unwrap-jsx)
+        (define-key mode-map (kbd "C-c j d") 'jtsx-delete-jsx-node)
+        (define-key mode-map (kbd "C-c j t") 'jtsx-toggle-jsx-attributes-orientation)
+        (define-key mode-map (kbd "C-c j h") 'jtsx-rearrange-jsx-attributes-horizontally)
+        (define-key mode-map (kbd "C-c j v") 'jtsx-rearrange-jsx-attributes-vertically))
+
+      (defun jtsx-bind-keys-to-jtsx-jsx-mode-map ()
+        (jtsx-bind-keys-to-mode-map jtsx-jsx-mode-map))
+
+      (defun jtsx-bind-keys-to-jtsx-tsx-mode-map ()
+        (jtsx-bind-keys-to-mode-map jtsx-tsx-mode-map))
+
+      (add-hook 'jtsx-jsx-mode-hook 'jtsx-bind-keys-to-jtsx-jsx-mode-map)
+      (add-hook 'jtsx-tsx-mode-hook 'jtsx-bind-keys-to-jtsx-tsx-mode-map))
+
+  #+end_src
+
+* move-text
+
+  #+begin_src emacs-lisp :results output none
+      (use-package move-text
+        :ensure t
+        :bind (
+               ("M-<up>" . move-text-up)
+               ("M-<down>" . move-text-down)
+               )
+        )
+
+  #+end_src
+* verb
+
+  #+begin_src emacs-lisp :results output none
+    (use-package verb)
+    (with-eval-after-load 'org
+      (define-key org-mode-map (kbd "C-c C-r") verb-command-map))
+  ;; (org-babel-do-load-languages
+  ;;  'org-babel-load-languages
+  ;;  '((verb . t)))
+  #+end_src
+* COMMENT combobulate
+
+  #+begin_src emacs-lisp :results output none
+  (use-package combobulate
+      :preface
+      ;; You can customize Combobulate's key prefix here.
+      ;; Note that you may have to restart Emacs for this to take effect!
+      (setq combobulate-key-prefix "C-z .")
+
+      ;; Optional, but recommended.
+      ;;
+      ;; You can manually enable Combobulate with `M-x
+      ;; combobulate-mode'.
+      :hook
+        ((python-ts-mode . combobulate-mode)
+         (js-ts-mode . combobulate-mode)
+         (html-ts-mode . combobulate-mode)
+         (css-ts-mode . combobulate-mode)
+         (yaml-ts-mode . combobulate-mode)
+         (typescript-ts-mode . combobulate-mode)
+         (json-ts-mode . combobulate-mode)
+         (tsx-ts-mode . combobulate-mode))
+      ;; Amend this to the directory where you keep Combobulate's source
+      ;; code.
+      :load-path "~/.emacs.d/lisp/combobulate/"
+      )
+  #+end_src
+* COMMENT org-mode session reset
+  from: https://emacs.stackexchange.com/questions/5293/how-to-force-an-org-babel-session-to-reset-or-initialize
+
+  #+begin_src emacs-lisp :results output none
+  (add-hook 'org-babel-after-execute-hook 'semacs/ob-args-ext-session-reset)
+
+  (defun semacs/ob-args-ext-session-reset()
+    (let* ((src-block-info (org-babel-get-src-block-info 'light))
+           (language (nth 0 src-block-info))
+           (arguments (nth 2 src-block-info))
+           (should-reset (member '(:session-reset . "yes") arguments))
+           (session (cdr (assoc :session arguments)))
+           (session-process
+            (cond ((equal language "elixir") (format "*elixir-%s*" session))
+                  (t nil))))
+      (if (and should-reset (get-process session-process))
+          (kill-process session-process))))
+  #+end_src
+* org-babel sql
+
+  #+begin_src emacs-lisp :results output none
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((sql . t)))
+  #+end_src
+* consult-omni
+
+  #+begin_src emacs-lisp :results output none
+  (global-unset-key (kbd "C-x /"))
+  (use-package consult-omni
+    :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
+    :after consult
+    :bind (
+           ("C-x / p f f" . consult-omni-fieldhub)
+           ("C-x / p f j" . consult-omni-fieldhub-jira-task)
+           ("C-x / p f b" . consult-omni-fieldhub-bitbucket-prs))
+    ;;:custom
+    ;; General settings that apply to all sources
+    ;;(consult-omni-show-preview t) ;;; show previews
+    ;;(consult-omni-preview-key "C-o") ;;; set the preview key to C-o
+    ;; :config
+    )
+  ;; Load Sources Core code
+  (require 'consult-omni-sources)
+  (require 'consult-omni-apps)
+  (require 'consult-omni-browser-history)
+  (require 'consult-omni-buffer)
+  (require 'consult-omni-calc)
+  (require 'consult-omni-grep)
+  (require 'consult-omni-gptel)
+  (require 'consult-omni-elfeed)
+  (require 'consult-omni-ripgrep)
+  (require 'consult-omni-notmuch)
+  (require 'consult-omni-org-agenda)
+
+  (consult-omni-define-source "FieldHub Jira task"
+                              :type 'sync
+                              :request
+                              #'my-fh-jira-task-results)
+
+  (defun my-fh-jira-task-results (input &rest args)
+    "return jira task link"
+    (let ((jira_url (concat "https://fieldhub.atlassian.net/browse/" input))
+          (bitbucket_search_url (concat "https://bitbucket.org/fieldhub/fh-urbase/pull-requests/?state=OPEN&query=" input))
+          )
+      (list 
+       (propertize (format "Bitbucket search %s" bitbucket_search_url) :url bitbucket_search_url)
+       (propertize (format "Jira %s" jira_url) :url jira_url)  ;; first result - link to Jira task itself
+       )
+      )
+    )
+
+   (consult-omni-define-source "FieldHub Bitbucket PRs"
+                               :type 'sync
+                               :request
+                               #'my-fh-open-bitbucket-prs)
+
+   (defun my-fh-open-bitbucket-prs (input &rest args)
+     "bitbucket PR"
+         (let ((url-request-method "GET")
+             (url-request-extra-headers (list (cons "Authorization" fieldhub-basic-auth)))
+             (url "https://api.bitbucket.org/2.0/repositories/fieldhub/fh-urbase/pullrequests"))
+         (with-current-buffer (url-retrieve-synchronously url)
+           (goto-char (point-min))
+           (re-search-forward "\n\n" nil 'noerror)
+           (delete-region (point-min) (point))
+           (let* ((json-result (lsp-json-read-buffer))
+                  (values (gethash "values" json-result))
+                  (titles (delq nil (mapcar (lambda (val) (let* ((title (gethash "title" val))
+                                                                 (links (gethash "links" val))
+                                                                 (html_link (gethash "href" (gethash "html" links)))
+                                                                 ) (if (string-match (concat ".*" input ".*") title) (propertize title :url html_link) nil))) values)))
+                  )
+             titles
+             )))
+         )
+
+  (defun consult-omni-fieldhub (&optional initial
+                                          al no-callback &rest args)
+    "My omni"
+    (interactive "P")
+    (let ((consult-async-split-style 'comma))
+      (consult-omni-multi initial "🌍 :" '("ripgrep" "notmuch") no-callback args)))
+  #+end_src
+* COMMENT outline-ident
+
+  #+begin_src emacs-lisp
+  (use-package outline-indent
+    :ensure t
+    :straight (outline-indent
+               :type git
+               :host github
+               :repo "jamescherti/outline-indent.el")
+    :custom
+    (outline-indent-ellipsis " ▼ "))
+  #+end_src
+  
+* some mouse bindings
+
+  #+begin_src emacs-lisp :results output none
+  (global-set-key (kbd "s-<mouse-1>")  'split-window-below)
+  (global-set-key (kbd "s-<mouse-3>")  'split-window-right)
+  (global-set-key (kbd "s-<drag-mouse-3>")  'delete-window)
+  (global-set-key (kbd "s-<drag-mouse-1>")  'geosoft-kill-buffer)
+  #+end_src
+* pgmacs
+  https://github.com/emarsden/pgmacs.git
+
+  #+begin_src emacs-lisp
+  (use-package pgmacs
+    :load-path "~/.emacs.d/lisp/pgmacs/"
+    :init 
+    (unless (package-installed-p 'pg)
+      (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
+    (unless (package-installed-p 'pgmacs)
+      (package-vc-install "https://github.com/emarsden/pgmacs"))
+    (require 'pgmacs))
+  #+end_src
+* large files
+  Do not ask for confirmation for opening large file, because Helm will freeze with follow mode enabled (TBD report a bug?)
+  #+begin_src emacs-lisp
+  (defun files--ask-user-about-large-file (size op-type filename offer-raw)
+    "Query the user about what to do with large files.
+  Files are \"large\" if file SIZE is larger than `large-file-warning-threshold'.
+
+  OP-TYPE specifies the file operation being performed on FILENAME.
+
+  If OFFER-RAW is true, give user the additional option to open the
+  file literally."
+    'raw)
+  #+end_src
+* camel case
+
+  #+begin_src emacs-lisp
+  (use-package string-inflection)
+  (global-set-key (kbd "C-c _") 'string-inflection-cycle)
+  ;; (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
+  ;; (global-set-key (kbd "C-c L") 'string-inflection-lower-camelcase)  ;; Force to lowerCamelCase
+  ;; (global-set-key (kbd "C-c J") 'string-inflection-java-style-cycle) ;; Cycl
+  #+end_src
+
+  #+RESULTS:
+  : string-inflection-cycle
+
+* org-pdftools
+
+I often want to link to my own comment in a PDF file. Here is the approach to do this
+
+  #+begin_src emacs-lisp :results output none
+  (use-package org-pdftools)
+  #+end_src
+
