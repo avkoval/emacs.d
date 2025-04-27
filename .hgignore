@@ -24,6 +24,7 @@ eshell/*
 anaconda-mode/*
 places
 plantuml.jar
+plantuml-*.jar
 reveal.js*
 recentf
 network-security.data
@@ -45,12 +46,20 @@ lisp/org-gantt
 code-review*
 persist/*
 lisp/moldable-emacs*
+lisp/el-easydraw
 .dap-breakpoints
 lisp/lsp-bridge
 org-gtasks
 lisp/org-cv/
 quelpa
 straight/*
+lisp/pgmacs/*
+# from org-mail
+files/*
+.stfolder*
+.stignore
+.aider*
+newsticker/
 
 syntax: regexp
 .*\#.*\#$

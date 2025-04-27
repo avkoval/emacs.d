@@ -1,0 +1,12 @@
+#+BEGIN_SRC python :session fh-urbase2 :results output replace
+import os
+import sys
+sys.stderr = sys.stdout
+SITE_ROOT = os.path.expanduser("~/fieldhub/fh-urbase2/")
+sys.path.insert(0, SITE_ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "configs.settings")
+import django
+django.setup()
+from django.utils import timezone
+print("SUCCESS at", timezone.now())
+#+END_SRC
