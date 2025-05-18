@@ -58,6 +58,9 @@
    (global-set-key [C-f6] 'bookmark-jump)
    (global-set-key [(shift f8)] 'flymake-goto-previous-error)
    (global-set-key [f11] 'display-line-numbers-mode)
+   (global-set-key (kbd "C-x <f11> r") (lambda () (interactive) (setq display-line-numbers-type 'relative)))
+   (global-set-key (kbd "C-x <f11> a") (lambda () (interactive) (setq display-line-numbers-type 'absolute)))
+
    ;; f10 - std emacs key binding (menu-bar)
    (global-set-key [C-f10] 'menu-bar-mode)
    (global-set-key [f12] 'toggle-truncate-lines)
@@ -888,6 +891,23 @@
         (if (and should-reset (get-process session-process))
             (kill-process session-process))))
     #+end_src
+*** Paste HTML
+
+https://stackoverflow.com/questions/20336581/paste-html-into-org-mode-as-org-mode-markup
+https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-directly-when-pasting
+
+#+begin_src emacs-lisp
+(defun my/html2org-clipboard ()
+  "Convert clipboard contents from HTML to Org and then paste (yank)."
+  (interactive)
+  (setq cmd "xclip -o -t text/html  | pandoc -f html -t json | pandoc -wrap=none -f json -t org")
+  (kill-new (shell-command-to-string cmd))
+  (yank))
+#+end_src
+
+#+RESULTS:
+: my/html2org-clipboard
+
 *** org-mind-map
 
     #+begin_src emacs-lisp :results output none
@@ -1432,7 +1452,7 @@
     #+END_SRC
 
 *** COMMENT ox-jira
-   
+
     #+BEGIN_SRC emacs-lisp
     (use-package ox-jira)
     #+END_SRC
@@ -3716,7 +3736,12 @@
 ** gptel
 
    #+begin_src emacs-lisp :results output none
-   (use-package gptel)
+      (use-package gptel
+          :bind (
+                 ("C-z <f4>" . gptel)
+                 ("C-z <f5>" . gptel-menu)
+                 )
+        )
    #+end_src
 
 ** consult
@@ -4211,23 +4236,252 @@
 ** Ruff
 
    #+begin_src emacs-lisp
-   (use-package lazy-ruff
-     :ensure t
-     :bind (("C-<f4>" . lazy-ruff-lint-format-dwim)) ;; keybinding
-     :config
-     (lazy-ruff-mode-global-toggle t)) ;; Enable the lazy-ruff minor mode globally
+      (use-package lazy-ruff
+        :ensure t
+        :bind (("C-<f4>" . lazy-ruff-lint-format-dwim)) ;; keybinding
+        :config
+        ;; (lazy-ruff-mode-global-toggle t)
+        )
    #+end_src
 
+   #+RESULTS:
+   : lazy-ruff-lint-format-dwim
+
    https://github.com/flycheck/flycheck/issues/1974
-  
+
    #+begin_src emacs-lisp
    ;; (require 'flycheck-ruff)
- 
+
    #+end_src
 
    #+RESULTS:
    : flycheck-ruff
+** Hubstaff
+
+ #+begin_src emacs-lisp
+  (setq hubstaff-cli "~/Hubstaff/HubstaffCLI.bin.x86_64")
+  (setq hubstaff-project "218656")
+  (setq hubstaff-jira-task-regexps '("\\(FH-[[:digit:]]+\\)" "\\(MD-[[:digit:]]+\\)"))
+
+  (defun my/hubstaff-get-tasks-list (project-id)
+    (let* ((cmd (concat hubstaff-cli " tasks "  project-id)))
+      (message "%s" cmd)
+      (json-parse-string (shell-command-to-string cmd))
+      ))
+  ;; (my-hubstaff-get-tasks-list hubstaff-project)
+
+  (defun my/org-clock-current-jira-task-id ()
+    (let* ((my-org-clock-subject (prin1-to-string (org-clock-get-clock-string))))
+      (seq-some (lambda (jira-task-regex)
+                    (when (string-match jira-task-regex my-org-clock-subject)
+                      (substring my-org-clock-subject (match-beginning 1) (match-end 1))))
+                  hubstaff-jira-task-regexps)
+    ))
+  ;; (my/org-clock-current-jira-task-id)
+
+  (defun my/strip-text-properties(txt)
+    (set-text-properties 0 (length txt) nil txt)
+    txt)
+
+  (defun my/org-clock-current-jira-task-title ()
+    (my/strip-text-properties (org-clock-get-clock-string))
+    )
+  ;; (my/org-clock-current-jira-task-title)
+
+  (defun my/find-hubstaff-task-id-by-org-task-title (current-org-task-title)
+    (seq-some (lambda (hubstaff-task)
+                  (when (cl-search (gethash "summary" hubstaff-task) current-org-task-title)
+                    (gethash "id" hubstaff-task)))
+                (gethash "tasks" (my/hubstaff-get-tasks-list hubstaff-project)))
+    )
+  ;; (my/find-hubstaff-task-id-by-org-task-title (my/org-clock-current-jira-task-title))
+
+  (defun my/hubstaff-start-work-on (hubstaff-task-id)
+    (let* ((cmd (concat hubstaff-cli " start_task "  hubstaff-task-id)))
+      (message "%s" cmd)
+      (message "%s" (shell-command-to-string cmd))
+      ))
+
+  (defun my/org-get-current-property (property &optional inherit)
+    "Return the value of PROPERTY on the current Org heading.
+  PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
+  If INHERIT is non-nil, look up the property in parent headings."
+    (let* ((prop (if (symbolp property)
+                     (symbol-name property)
+                   property))
+           ;; passing nil for POM means “use (point)”
+           (value (org-entry-get nil prop inherit)))
+      ;; trim surrounding whitespace if you like
+      (and value (string-trim value))))
+
+  (defun my/get-current-hubstaff-task-id ()
+    (let* ((hubstaff-task-id (my/org-get-current-property 'HUBSTAFF_TASK_ID t)))
+      (if hubstaff-task-id
+          (string-to-number hubstaff-task-id)
+        nil
+        )
+    ))
+
+ (defmacro when-not (condition &rest body)
+   "Execute BODY forms when CONDITION is nil."
+   `(when (not ,condition)
+      ,@body))
+
+  (defun my/maybe-start-hubstaff ()
+    "Start hubstaff if task title matches any of hubstaff"
+    (let* ((my-current-org-task-title (my/org-clock-current-jira-task-title))
+           (hubstaff-task-id-from-property (my/get-current-hubstaff-task-id))
+           (hubstaff-task-id (or hubstaff-task-id-from-property (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title))))
+      (if hubstaff-task-id
+          (progn
+            (when-not hubstaff-task-id-from-property (org-set-property "HUBSTAFF_TASK_ID" (number-to-string hubstaff-task-id)))
+            (my/hubstaff-start-work-on (number-to-string hubstaff-task-id)))
+        (message "Hubstaff task not found"))
+      )
+    )
+  ;; (my/maybe-start-hubstaff)
+
+  (defun my/hubstaff-stop ()
+    "Stop HubStaff timer"
+    (let* ((cmd (concat hubstaff-cli " stop")))
+        (message "%s" cmd)
+        (message "%s" (shell-command-to-string cmd))
+      ))
+  ;; (my/hubstaff-stop)
+ #+end_src
+
+ #+RESULTS:
+ : my/hubstaff-stop
+
+ #+end_src
+
+ #+RESULTS:
+
+*** DONE COMMENT WIP on properties task id
+    CLOSED: [2025-05-03 Sat 15:30]
+     :PROPERTIES:
+     :HUBSTAFF_TASK_ID: 148067676
+     :END:
+     :LOGBOOK:
+     - State "DONE"       from              [2025-05-03 Sat 15:30]
+     CLOCK: [2025-05-03 Sat 15:02]--[2025-05-03 Sat 15:13] =>  0:11
+     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
+     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
+     :END:
+
+     #+begin_src emacs-lisp
+     (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title)
+     #+end_src
+
+**** DONE Idea (partly finished, enough for my work for next month)
+     CLOSED: [2025-05-03 Sat 15:30]
+     :LOGBOOK:
+     - State "DONE"       from              [2025-05-03 Sat 15:30]
+     CLOCK: [2025-05-03 Sat 14:38]--[2025-05-03 Sat 15:00] =>  0:22
+     :END:
+
+ - [ ] +Get Jira tasks list from Hubstaff, show list choiice: add via helm or omni+
+   - [ ] +function to run hubstaff client and get tasks list+
+   - [ ] +function to show as a choice+
+ - [ ] Find corresponding task from Jira and may be add feature/task id into title
+   - [ ] query jira fn
+ - [X] Add hubstaff task id, jira task id as properties
+ - [ ] Make functions to fetch property of current task to use with git/
+ - [X] Use property when
+
+**** Helpers
+ #+begin_src elisp
+ (defun my/org-get-current-property (property &optional inherit)
+   "Return the value of PROPERTY on the current Org heading.
+ PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
+ If INHERIT is non-nil, look up the property in parent headings."
+   (let* ((prop (if (symbolp property)
+                    (symbol-name property)
+                  property))
+          ;; passing nil for POM means “use (point)”
+          (value (org-entry-get nil prop inherit)))
+     ;; trim surrounding whitespace if you like
+     (and value (string-trim value))))
+ #+end_src
+
+ #+RESULTS:
+ : my/org-get-current-property
+
+ Usage examples:
+
+ - To get a non-inherited value of “STATUS” on the current headline:
+ #+begin_src elisp
+ (my/org-get-current-property "STATUS")
+ #+end_src
+
+ - To fall back to an inherited value if it’s not set locally:
+ #+begin_src elisp
+ (my/org-get-current-property 'HUBSTAFF_TASK_ID t)
+ #+end_src
+
+ #+RESULTS:
+ : 148067676
+
+ If you need /all/ properties as an alist, you can use =org-entry-properties=:
+
+ #+begin_src elisp
+ (defun my/org-get-all-current-properties (&optional inherit)
+   "Return an alist of all properties on the current heading.
+ If INHERIT is non-nil, include inherited properties too."
+   (org-entry-properties nil inherit))
+ #+end_src
+
+ Then look up your key:
+
+ #+begin_src elisp
+ ;; returns the value of \"FOO\" or nil
+ (cdr (assoc "FOO" (my/org-get-all-current-properties)))
+ #+end_src
+
+*** ~defadvice~ to start timer
+
+  #+begin_src emacs-lisp
+     (defun my-custom-clock-in-advice (orig-fun &rest args)
+       "Custom advice for `org-clock-in."
+       ;; You can add custom code here before or after calling the original function
+       (message "Custom behavior before clocking out")
+
+       ;; Call the original function
+       (apply orig-fun args)
+
+       ;; Additional behavior after calling the original function
+       (message "Custom behavior after clocking in")
+       (my/maybe-start-hubstaff)
+       )
+     (advice-add 'org-clock-in :around #'my-custom-clock-in-advice)
+  #+end_src
+
+  #+RESULTS:
+
+*** ~defadvice~ to stop timer
+
+  #+begin_src emacs-lisp
+  (defun my-custom-clock-out-advice (orig-fun &rest args)
+    "Custom advice for `org-clock-out'."
+    ;; You can add custom code here before or after calling the original function
+    (message "Custom behavior before clocking out")
+
+    ;; Call the original function
+    (apply orig-fun args)
+
+    ;; Additional behavior after calling the original function
+    (message "Custom behavior after clocking out")
+    (my/hubstaff-stop)
+    )
+  (advice-add 'org-clock-out :around #'my-custom-clock-out-advice)
+  #+end_src
+
+  #+RESULTS:
+
 * Emacs file editing modes (major modes)
+  :LOGBOOK:
+  CLOCK: [2025-05-03 Sat 15:14]--[2025-05-03 Sat 15:14] =>  0:00
+  :END:
 ** Ahg (mercurial support)
 
    I love Mercurial (over git) and I will never understand and agree that ~git~ is won the version control competition game.
@@ -4918,3 +5172,4 @@
    #+end_src
 
    #+RESULTS:
+* Unsorted (WIP)
