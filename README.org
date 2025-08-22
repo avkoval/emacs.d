@@ -58,6 +58,7 @@
    (global-set-key [C-f6] 'bookmark-jump)
    (global-set-key [(shift f8)] 'flymake-goto-previous-error)
    (global-set-key [f11] 'display-line-numbers-mode)
+   (setq display-line-numbers-type 'relative) ;; default
    (global-set-key (kbd "C-x <f11> r") (lambda () (interactive) (setq display-line-numbers-type 'relative)))
    (global-set-key (kbd "C-x <f11> a") (lambda () (interactive) (setq display-line-numbers-type 'absolute)))
 
@@ -754,18 +755,23 @@
  Searching using [[https://github.com/ggreer/the_silver_searcher]["The silver searcher"]] with Helm.
 
   #+BEGIN_SRC emacs-lisp :results output none
-          (use-package helm-ag
-            :init
-            :config
-          (progn
-               (setq helm-ag-base-command "ag --nocolor --nogroup")
-              )
-          (setq org-log-done 'time)
-            :bind (
-                   ("C-c h s g" . helm-ag)
-                   ("C-c s" . helm-projectile-ag)
-                   ([f7] . helm-projectile-ag)
-                   ))
+  (use-package helm-ag
+    :init
+    :config
+  (progn
+       (setq helm-ag-base-command "ag --nocolor --nogroup")
+      )
+  (setq org-log-done 'time)
+    :bind (
+           ("C-c h s g" . helm-ag)
+           ("C-c s" . helm-projectile-ag)
+           ;; ([f7] . helm-projectile-ag)
+           ))
+
+  (with-eval-after-load 'helm-grep
+    (setq helm-grep-ag-command
+          "ag --nocolor --nogroup --line-number --smart-case %s -- %s %s"))
+
   #+END_SRC
 
 *** helm-pass
@@ -803,6 +809,18 @@
 	     ("C-c h s R" . helm-projectile-rg)
 	     ))
     #+end_src
+
+*** helm-wgrep
+
+    #+begin_src emacs-lisp
+    (use-package wgrep) 
+    (require 'wgrep)
+    (use-package wgrep-ag) 
+    (setq helm-ag-use-edit t)
+    #+end_src
+
+    #+RESULTS:
+    : t
 
 *** COMMENT helm-org-roam
 
@@ -1112,11 +1130,16 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 *** ob-clojure
 
    #+begin_src emacs-lisp :results output none
-   (use-package cider)
-   (require 'ob-clojure)
-   (setq org-babel-clojure-backend 'cider)
-   ;; (require 'cider)
+    (use-package cider)
+    (require 'ob-clojure)
+    (setq org-babel-clojure-backend 'cider)
+    ;; (require 'cider)
+    (add-hook 'clojure-mode-hook 
+              (lambda () 
+     (local-set-key (kbd "s-z") 'cider-inspect-last-result)))
    #+end_src
+
+
 
 *** main org mode settings
    https://orgmode.org/manual/Structure-Templates.html
@@ -1214,7 +1237,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
        (setq org-directory "~/org/")
 
        (setq org-default-notes-file (concat org-directory "/notes.org"))
-       (define-key global-map "\C-cc" 'org-capture)
+       (define-key global-map "\C-z\C-c" 'org-capture)
 
        (defun org-todo-keyword-faces-dark()
          (interactive)
@@ -2436,7 +2459,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 *** notmuch
     Email setup
-
+    
     #+BEGIN_SRC emacs-lisp  :results output replace
       (use-package notmuch
         :init
@@ -2474,8 +2497,35 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
         (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
         (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
         (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
+        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
 
         )
+
+      (defun mg-notmuch-display-email-in-xwidget ()
+        "Display the HTML email content in xwidget-webkit.
+      This function requires the current MIME part to be of type
+      text/html. If the content is not HTML, it falls back to calling
+      `notmuch-show-view-part'.  Similarly, if xwidget support is
+      unavailable in the current Emacs build, it fallbacks to
+      `notmuch-show-view-part'."
+          (interactive)
+          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
+                    (is-html-mime (equal (caadr mime-part) "text/html"))
+                    (has-xwidget (featurep 'xwidget-internal)))
+                  (notmuch-show-apply-to-current-part-handle
+                   (lambda (handle)
+                       (let ((tempf (make-temp-file "notmuch"
+                                                    nil
+                                                    ".html"
+                                                    (with-current-buffer (car handle)
+                                                        (buffer-string)))))
+                           (xwidget-webkit-browse-url (concat "file://" tempf))
+                           (run-with-idle-timer 3 nil #'delete-file tempf))))
+              (notmuch-show-view-part)))
+
+
+
+
 
       (defun notmuch-show-tag-spam ()
         "mark message as spam"
@@ -2522,6 +2572,9 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
     (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
 
         )
+
+
+    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
     #+END_SRC
 
     #+RESULTS:
@@ -2536,6 +2589,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 	   ad-do-it))
        (ad-activate 'notmuch-mua-reply)
      #+END_SRC
+
+***** xwidget
+      :LOGBOOK:
+      - State "TODO"       from              [2025-08-18 Mon 11:35]
+      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
+      :END:
+
+      #+begin_src emacs-lisp
+
+      #+end_src
+
+      #+RESULTS:
+      : mg-notmuch-display-email-in-xwidget
 
 **** settings for notmuch-show
 
@@ -2931,46 +2997,9 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 
                                            ; ansi-term
-   (defun switch-to-ansi-term(n) ()
-          (interactive)
-          (setq ansi-term-color-vector
-                [term term-color-black term-color-red term-color-green term-color-yellow
-                      term-color-blue term-color-magenta term-color-cyan term-color-white])
-          (if (get-buffer (concat "**ansi-term<" n ">**"))
-              (switch-to-buffer (concat "**ansi-term<" n ">**"))
-            (ansi-term "/bin/zsh" (concat "*ansi-term<" n ">*")))
-          )
-
-   (global-set-key [(control meta menu)] 'pylookup-lookup)
-   (global-set-key (kbd "C-x a 1") (lambda () (interactive) (switch-to-ansi-term "1")))
-   (global-set-key (kbd "C-x a 2") (lambda () (interactive) (switch-to-ansi-term "2")))
-   (global-set-key (kbd "C-x a 3") (lambda () (interactive) (switch-to-ansi-term "3")))
-   (global-set-key (kbd "C-x a 4") (lambda () (interactive) (switch-to-ansi-term "4")))
-   (global-set-key (kbd "C-x a 5") (lambda () (interactive) (switch-to-ansi-term "5")))
-   (global-set-key (kbd "C-x a 6") (lambda () (interactive) (switch-to-ansi-term "6")))
-   (global-set-key (kbd "C-x a 7") (lambda () (interactive) (switch-to-ansi-term "7")))
-   (global-set-key (kbd "C-x a 8") (lambda () (interactive) (switch-to-ansi-term "8")))
-   (global-set-key (kbd "C-x a 9") (lambda () (interactive) (switch-to-ansi-term "9")))
-   (global-set-key (kbd "C-x a 0") 'ansi-term)
-
-   ;; http://emacs.stackexchange.com/questions/5585/how-to-copy-command-output-in-ansi-term-mode
-   (require 'term)
-   (defun jnm/term-toggle-mode ()
-     "Toggles term between line mode and char mode"
-     (interactive)
-     (if (term-in-line-mode)
-         (term-char-mode)
-       (term-line-mode)))
-
-   (define-key term-mode-map (kbd "C-c C-j") 'jnm/term-toggle-mode)
-   (define-key term-mode-map (kbd "C-c C-k") 'jnm/term-toggle-mode)
-
-   (define-key term-raw-map (kbd "C-c C-j") 'jnm/term-toggle-mode)
-   (define-key term-raw-map (kbd "C-c C-k") 'jnm/term-toggle-mode)
-
    (global-set-key (kbd "s-s t") '(lambda ()
                                     (interactive)
-                                    (call-process "i3-sensible-terminal" nil 0 nil)))
+                                    (call-process "kitty" nil 0 nil)))
 
    (fset 'myshells
          [?\M-x ?i ?b ?u ?f ?f ?e ?r return ?/ ?/ ?/ ?m ?s ?h ?e ?l ?l ?- ?m ?o ?d ?e return ?s ?f])
@@ -3255,7 +3284,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
  #+END_SRC
 
-** COMMENT lsp-bridge
+** lsp-bridge
 
    Fast & more automated LSP support
 
@@ -3486,23 +3515,24 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 ** python auto virtualenv for python-ts-mode
 
    #+begin_src emacs-lisp :results output none
-     (use-package auto-virtualenv
-       :load-path "path/to/auto-virtualenv"
-       :config
-       (setq auto-virtualenv-verbose t)
-       (auto-virtualenv-setup))
-     ;; my custom version of PR
-     ;; (defun auto-virtualenv-find-local-venv (project-root)
-     ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
-     ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
-     ;;   (catch 'found-virtualenv
-     ;;     (dolist (dir auto-virtualenv-local-env-dirs)
-     ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
-     ;;         (when (file-directory-p maybe-virtualenv-in)
-     ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
-     ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
-     (defun auto-virtualenv-update-mode-line ()
-       )
+        (use-package auto-virtualenv
+          :load-path "path/to/auto-virtualenv"
+          :config
+          (setq auto-virtualenv-verbose t)
+          (auto-virtualenv-setup))
+        ;; my custom version of PR
+        ;; (defun auto-virtualenv-find-local-venv (project-root)
+        ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
+        ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
+        ;;   (catch 'found-virtualenv
+        ;;     (dolist (dir auto-virtualenv-local-env-dirs)
+        ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
+        ;;         (when (file-directory-p maybe-virtualenv-in)
+        ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
+        ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
+        (defun auto-virtualenv-update-mode-line ()
+          )
+   
    #+end_src
 
 ** helm-systemd
@@ -3989,6 +4019,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
                     ("integration" "integration/*")
                     (:exclude ".dir-locals.el" "*-tests.el"))))
    (global-set-key (kbd "C-x <f2>") 'eat)
+   (global-set-key (kbd "<f6>") 'eat)
    #+end_src
 
    #+RESULTS:
@@ -4478,6 +4509,95 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
   #+RESULTS:
 
+** uniline (draw unicode)
+
+   https://github.com/tbanel/uniline/blob/main/README.org
+   #+begin_src emacs-lisp
+   (use-package uniline)
+   #+end_src
+
+   #+RESULTS:
+
+** greger
+
+   #+begin_src emacs-lisp
+   (use-package greger
+     :ensure t
+     :bind ("C-M-;" . greger))
+   (require 'greger)
+   #+end_src
+
+** COMMENT flyover
+
+   https://github.com/konrad1977/flyover
+   #+begin_src emacs-lisp
+   (require 'flyover)
+   ;; Enable flyover-mode globally
+   (add-hook 'flycheck-mode-hook #'flyover-mode)
+
+   ;; Configure which error levels to display
+   ;; Possible values: error, warning, info
+   (setq flyover-levels '(error warning info))  ; Show all levels
+   ;; (setq flyover-levels '(error warning))    ; Show only errors and warnings
+   ;; (setq flyover-levels '(error))            ; Show only errors
+
+
+   ;; Use theme colors for error/warning/info faces
+   (setq flyover-use-theme-colors t)
+
+   ;; Adjust background lightness (lower values = darker)
+   ;;(setq flyover-background-lightness 45)
+
+   ;; Make icon background darker than foreground
+   ;;(setq flyover-percent-darker 40)
+
+   ;;(setq flyover-text-tint 'lighter) ;; or 'darker or nil
+
+   ;; "Percentage to lighten or darken the text when tinting is enabled."
+   ;;(setq flyover-text-tint-percent 50)
+
+   ;; Choose which checkers to use (flycheck, flymake, or both)
+   (setq flyover-checkers '(flycheck flymake))
+
+   #+end_src
+
+   #+RESULTS:
+   | flycheck | flymake |
+
+** claude-code-ide
+
+   #+begin_src emacs-lisp
+   (use-package claude-code-ide
+     :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+     :bind ("C-c C-'" . claude-code-ide-menu)
+     :config
+     (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
+   #+end_src
+
+   #+RESULTS:
+   : claude-code-command-map
+
+** claude-code.el
+
+   #+begin_src emacs-lisp
+   (use-package claude-code :ensure t
+     :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+     :config 
+     ;; optional IDE integration with Monet
+     ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+     ;; (monet-mode 1)
+     
+     (claude-code-mode)
+     :bind-keymap ("C-c c" . claude-code-command-map)
+     
+     ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+     :bind
+     (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+   #+end_src
+
+   #+RESULTS:
+   : claude-code-cycle-mode
+
 * Emacs file editing modes (major modes)
   :LOGBOOK:
   CLOCK: [2025-05-03 Sat 15:14]--[2025-05-03 Sat 15:14] =>  0:00
@@ -4928,7 +5048,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
      (use-package flymake-kondor
        :ensure t
        :hook (clojure-mode . flymake-kondor-setup)
-       :bind (([f6] . flymake-goto-next-error)
+       :bind (([M-f6] . flymake-goto-next-error)
               ([S-f6] . flymake-goto-prev-error))
        :init
        (add-hook 'clojure-mode-hook #'flymake-mode)
@@ -4953,7 +5073,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
  (use-package vterm
    :bind
    ("C-z k" . vterm)
-   ; ([f2] . vterm)
+   ([f7] . vterm)
    :config
    (define-key vterm-mode-map (kbd "<Scroll_Lock>")
    'vterm-copy-mode)
@@ -5172,4 +5292,25 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+end_src
 
    #+RESULTS:
+* Small emacs functions of mine
+** calculate via bc
+
+#+begin_src emacs-lisp
+(defun bc-on-region (beg end)
+  "Clean region, run `bc -l`, and insert result."
+  (interactive "r")
+  (let* ((raw-text (buffer-substring-no-properties beg end))
+         ;; Clean the text for bc: trim whitespace and remove trailing '='
+         (expr (let ((trimmed (string-trim raw-text)))
+                 (if (string-suffix-p "=" trimmed)
+                     (substring trimmed 0 -1)
+                   trimmed)))
+         (result (shell-command-to-string
+                  (format "echo %s | bc -l" (shell-quote-argument expr)))))
+    (goto-char end)
+    (insert (string-trim-right result))))
+#+end_src
+
 * Unsorted (WIP)
+
+
