@@ -196,7 +196,7 @@
    (global-set-key [ (control shift insert) ] 'just-insert-line-above)
    (global-set-key [ (control +) ] 'just-insert-line-above)
 
-   (define-key global-map  "\C-zd"         'delete-whitespace-rectangle)
+   ;;(define-key global-map  "\C-zd"         'delete-whitespace-rectangle)
 
    (define-key global-map  "\C-c'"         'electric-pair-mode)
 
@@ -729,7 +729,9 @@
  #+END_SRC
 
 
-*** COMMENT helm-bm /Stopped working, commented!/
+*** helm-bm
+
+ - (fixed by: Bm Cycle All Buffers: Boolean: Toggle  on (non-nil))
 
  Bookmarks management. Usually bookmarks are managed by:
 
@@ -741,12 +743,13 @@
  And this helm function makes it easy to choose bookmarks using Helm
 
   #+BEGIN_SRC emacs-lisp :results output none
-    (use-package helm-bm
-      :init
-      :bind (
-             ("C-c h b" . helm-bookmarks)
-             ("C-z <SPC>" . helm-bm)
-             ))
+  (use-package helm-bm
+    :init
+    :bind (
+           ;; ("C-c h b" . helm-bookmarks)
+           ([M-f1] . helm-bm)
+           ("C-z <SPC>" . helm-bm)
+           ))
   #+END_SRC
 
 
@@ -755,18 +758,21 @@
  Searching using [[https://github.com/ggreer/the_silver_searcher]["The silver searcher"]] with Helm.
 
   #+BEGIN_SRC emacs-lisp :results output none
-  (use-package helm-ag
-    :init
-    :config
-  (progn
-       (setq helm-ag-base-command "ag --nocolor --nogroup")
-      )
-  (setq org-log-done 'time)
-    :bind (
-           ("C-c h s g" . helm-ag)
-           ("C-c s" . helm-projectile-ag)
-           ;; ([f7] . helm-projectile-ag)
-           ))
+
+  ;; (use-package helm-ag
+  ;;   :init
+  ;;   :config
+  ;; (progn
+  ;;      (setq helm-ag-base-command "ag --nocolor --nogroup")
+  ;;     )
+  ;; (setq org-log-done 'time)
+  ;;   :bind (
+  ;;          ("C-c h s g" . helm-ag)
+  ;;          ("C-c s" . helm-projectile-ag)
+  ;;          ;; ([f7] . helm-projectile-ag)
+  ;;          ))
+  (require 'helm-ag)
+
 
   (with-eval-after-load 'helm-grep
     (setq helm-grep-ag-command
@@ -3194,6 +3200,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
            ("C-c h p g" . helm-projectile-grep)
            ("C-c h p d" . helm-projectile-rg)
            ("M-<f5>" . projectile-find-file)
+           ("C-c s" . helm-projectile-ag)
            )
     )
   #+END_SRC
@@ -3219,7 +3226,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    ("C-z / 1" . my-bm-save-first-as-org-link)
    ("C-z / /" . my-bm-save-next-as-org-link)
    ("C-z / `" . my-bm-restore-bm)
-   ([M-f1] . bm-show-all)
+   ;; ([M-f1] . bm-show-all)
    ("C-z <SPC>" . bm-show-all)
    )
    ;; :config
@@ -3494,23 +3501,65 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+begin_src emacs-lisp :results output none
    (setq-default indent-tabs-mode nil)
    #+end_src
-** COMMENT marginalia
+** marginalia & embark
 
    #+begin_src emacs-lisp :results output none
-   (use-package marginalia
-     ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
-     ;; available in the *Completions* buffer, add it to the
-     ;; `completion-list-mode-map'.
-     :bind (:map minibuffer-local-map
-            ("M-A" . marginalia-cycle))
+      (use-package marginalia
+        ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
+        ;; available in the *Completions* buffer, add it to the
+        ;; `completion-list-mode-map'.
+        :bind (:map minibuffer-local-map
+               ("M-A" . marginalia-cycle))
 
-     ;; The :init section is always executed.
+        ;; The :init section is always executed.
+        :init
+
+        ;; Marginalia must be activated in the :init section of use-package such that
+        ;; the mode gets enabled right away. Note that this forces loading the
+        ;; package.
+        (marginalia-mode))
+
+
+   (use-package embark
+     :ensure t
+
+     :bind
+     (("C-." . embark-act)         ;; pick some comfortable binding
+      ("C-;" . embark-dwim)        ;; good alternative: M-.
+      ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
      :init
 
-     ;; Marginalia must be activated in the :init section of use-package such that
-     ;; the mode gets enabled right away. Note that this forces loading the
-     ;; package.
-     (marginalia-mode))
+     ;; Optionally replace the key help with a completing-read interface
+     (setq prefix-help-command #'embark-prefix-help-command)
+
+     ;; Show the Embark target at point via Eldoc. You may adjust the
+     ;; Eldoc strategy, if you want to see the documentation from
+     ;; multiple providers. Beware that using this can be a little
+     ;; jarring since the message shown in the minibuffer can be more
+     ;; than one line, causing the modeline to move up and down:
+
+     ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+     ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+     ;; Add Embark to the mouse context menu. Also enable `context-menu-mode'.
+     ;; (context-menu-mode 1)
+     ;; (add-hook 'context-menu-functions #'embark-context-menu 100)
+
+     :config
+
+     ;; Hide the mode line of the Embark live/completions buffers
+     (add-to-list 'display-buffer-alist
+                  '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                    nil
+                    (window-parameters (mode-line-format . none)))))
+
+   ;; Consult users will also want the embark-consult package.
+   (use-package embark-consult
+     :ensure t ; only need to install it, embark loads it after consult if found
+     :hook
+     (embark-collect-mode . consult-preview-at-point-mode))
+
    #+end_src
 ** python auto virtualenv for python-ts-mode
 
@@ -4062,10 +4111,12 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    (use-package consult-denote)
    (global-set-key (kbd "C-C f r") 'consult-denote-find)
    (global-set-key (kbd "C-C f g") 'consult-denote-grep)
+   (define-key global-map  "\C-zd"         'denote)
+
    #+end_src
 
    #+RESULTS:
-   : consult-denote-grep
+   : denote
 ** yank with indent
 
    Often needed, especially in org mode.
@@ -4577,7 +4628,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+RESULTS:
    : claude-code-command-map
 
-** claude-code.el
+** COMMENT claude-code.el
 
    #+begin_src emacs-lisp
    (use-package claude-code :ensure t
@@ -4916,7 +4967,6 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 	       '(lambda ()
 		  (highlight-indentation-mode t)
 		  (display-line-numbers-mode t)
-		  (highlight-changes-mode nil)
 		  (if (buffer-file-name)
 		      (if (file-remote-p (buffer-file-name))
 			  (flymake-mode)
