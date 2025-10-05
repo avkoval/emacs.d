@@ -58,7 +58,8 @@
    (global-set-key [C-f6] 'bookmark-jump)
    (global-set-key [(shift f8)] 'flymake-goto-previous-error)
    (global-set-key [f11] 'display-line-numbers-mode)
-   (setq display-line-numbers-type 'relative) ;; default
+   ;; (setq display-line-numbers-type 'relative) ;; default
+   ;; (setq display-line-numbers-type 'absolute) ;; default
    (global-set-key (kbd "C-x <f11> r") (lambda () (interactive) (setq display-line-numbers-type 'relative)))
    (global-set-key (kbd "C-x <f11> a") (lambda () (interactive) (setq display-line-numbers-type 'absolute)))
 
@@ -595,6 +596,11 @@
    #+end_src
 
 * Internal dependencies
+** cond-let
+
+#+begin_src emacs-lisp
+(require 'cond-let)
+#+end_src
 ** Dash
 
    A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
@@ -1364,8 +1370,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
        (global-set-key "\C-z\C-l" 'switch-to-labster)
        (global-set-key "\C-z\C-w" 'switch-to-work)
 
-
-       (global-set-key (kbd "C-z n") 'helm-org-agenda-files-headings)
+       ; (global-set-key (kbd "C-z ") 'helm-org-agenda-files-headings)
        (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
        (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
        (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
@@ -1752,7 +1757,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    #+begin_src emacs-lisp
    (use-package indent-bars
-      :bind (("C-z <f11>" . indent-bars-mode))
+      :bind (("C-z <f1('1>" . indent-bars-mode))
       )
    #+end_src
 
@@ -2260,11 +2265,13 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 ** docker support
 
    #+BEGIN_SRC emacs-lisp :results output none
-     (use-package docker)
-     (use-package dockerfile-mode)
-     (add-to-list 'auto-mode-alist '("Dockerfile\\.*" . dockerfile-mode))
-     (add-to-list 'auto-mode-alist '("\.*\.docker" . dockerfile-mode))
+   (use-package docker)
+   (use-package dockerfile-mode)
+   (add-to-list 'auto-mode-alist '("Dockerfile\\.*" . dockerfile-mode))
+   (add-to-list 'auto-mode-alist '("\.*\.docker" . dockerfile-mode))
+   (define-key global-map  "\C-zd"         'docker)
    #+END_SRC
+
 ** COMMENT poetry
    I don't plan to use Poetry anymore - replaced with ~uv~
 
@@ -2333,21 +2340,22 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 **** COMMENT code-review
 
-     #+begin_src emacs-lisp :results output none
-         ;;    (use-package code-review
-         ;;      :init
-         ;;      (add-hook 'code-review-mode-hook #'emojify-mode)
-         ;;      (setq code-review-auth-login-marker 'forge)
-         ;;      :bind
-         ;;      (("C-z c r" . code-review-start))
-         ;;      )
+     https://github.com/wandersoncferreira/code-review
 
-         ;; https://github.com/wandersoncferreira/code-review/pull/246#issuecomment-1867538123
+     #+begin_src emacs-lisp :results output none
      (use-package uuidgen)
+
+
      (use-package code-review
-       :load-path "~/.emacs.d/lisp/code-review"
+       ;; :load-path "~/.emacs.d/lisp/code-review"
        ;;       :after magit forge emojify
        :after magit forge
+       :after forge
+       :straight (code-review
+                  :type git
+                  :host github
+                  :repo "phelrine/code-review"
+                  :branch "fix/closql-update")
        :demand t
        :config
        (setq code-review-auth-login-marker 'forge)
@@ -2362,18 +2370,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 ** multiple-cursors
    #+BEGIN_SRC emacs-lisp :results output none
-     (use-package multiple-cursors
-       ;; :bind (
-       ;; ("C-z c e" . mc/edit-lines)
-       ;; ("C-z c *" . mc/mark-all-like-this)
-       ;; ("s-." . mc/mark-next-like-this)
-       ;; ("s-," . mc/mark-previous-like-this)
-       ;; )
-       )
-     (global-set-key (kbd "C-z c e") 'mc/edit-lines)
-     (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
-     (global-set-key (kbd "C-s-.") 'mc/mark-next-like-this)
-     (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
+   
+   (use-package multiple-cursors
+     ;; :bind (
+     ;; ("C-z c e" . mc/edit-lines)
+     ;; ("C-z c *" . mc/mark-all-like-this)
+     ;; ("s-." . mc/mark-next-like-this)
+     ;; ("s-," . mc/mark-previous-like-this)
+     ;; )
+     )
+   (global-set-key (kbd "C-z c e") 'mc/edit-lines)
+   (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
+   (global-set-key (kbd "C-s-.") 'mc/mark-next-like-this)
+   (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
    #+END_SRC
 
 ** Phi-search
@@ -3291,7 +3300,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
  #+END_SRC
 
-** lsp-bridge
+** COMMENT lsp-bridge
 
    Fast & more automated LSP support
 
@@ -3501,7 +3510,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+begin_src emacs-lisp :results output none
    (setq-default indent-tabs-mode nil)
    #+end_src
-** marginalia & embark
+** COMMENT marginalia & embark
 
    #+begin_src emacs-lisp :results output none
       (use-package marginalia
@@ -3561,7 +3570,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
      (embark-collect-mode . consult-preview-at-point-mode))
 
    #+end_src
-** python auto virtualenv for python-ts-mode
+** COMMENT python auto virtualenv for python-ts-mode
 
    #+begin_src emacs-lisp :results output none
         (use-package auto-virtualenv
@@ -3583,6 +3592,16 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
           )
    
    #+end_src
+
+** auto-virtualenvwrapper
+
+   #+begin_src emacs-lisp
+   (use-package auto-virtualenvwrapper)
+   (add-hook 'python-mode-hook #'auto-virtualenvwrapper-activate)
+   #+end_src
+
+   #+RESULTS:
+   | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map  'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
 
 ** helm-systemd
 
@@ -3840,9 +3859,13 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
        :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
        :after consult
        :bind (
-              ("C-x / p f f" . consult-omni-fieldhub)
-              ("C-x / p f j" . consult-omni-fieldhub-jira-task)
-              ("C-x / p f b" . consult-omni-fieldhub-bitbucket-prs)
+              ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p d y" . consult-omni-rg-dpa-yourtrack-task)
+              ("C-x / p d t" . consult-omni-rg-dpa-yourtrack-task)
+              ;;("C-x / p f f" . consult-omni-fieldhub)
+              ;;("C-x / p f j" . consult-omni-fieldhub-jira-task)
+              ;;("C-x / p f b" . consult-omni-fieldhub-bitbucket-prs)
               ("C-x / p u t" . consult-omni-ua2web-redmine-task)
               ("C-x / s g" . consult-omni-my-global-search)
               )
@@ -3958,6 +3981,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
                                   :request
                                   #'my-ua2web-redmine-task)
 
+
      (defun my-ua2web-redmine-task (input &rest args)
        "return UA2WEB task link"
        (let ((ua2web_redmine_url (concat "https://tasks.ua2web.com/" input))
@@ -3984,6 +4008,17 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
           )
          )
        )
+
+   ;; RG
+   (consult-omni-define-source "RG DPA Merge Request"
+                               :type 'sync
+                               :request
+                               #'consult-omni-dpa-merge-request-url)
+
+   (consult-omni-define-source "RG DPA YourTrack Task"
+                               :type 'sync
+                               :request
+                               #'rg-dpa-yourtrack-url)
 
 
    #+end_src
@@ -4111,8 +4146,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    (use-package consult-denote)
    (global-set-key (kbd "C-C f r") 'consult-denote-find)
    (global-set-key (kbd "C-C f g") 'consult-denote-grep)
-   (define-key global-map  "\C-zd"         'denote)
-
+   (define-key global-map  "\C-zn"         'denote)
    #+end_src
 
    #+RESULTS:
@@ -4338,7 +4372,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    #+RESULTS:
    : flycheck-ruff
-** Hubstaff
+** COMMENT Hubstaff
 
  #+begin_src emacs-lisp
   (setq hubstaff-cli "~/Hubstaff/HubstaffCLI.bin.x86_64")
@@ -4627,6 +4661,28 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    #+RESULTS:
    : claude-code-command-map
+
+** gemini
+
+   #+begin_src emacs-lisp
+   ;; for vterm terminal backend:
+      (use-package vterm :ensure t)
+
+      (use-package popup)
+
+      ;; install gemini-cli.el
+      (use-package gemini-cli :ensure t
+        :vc (:url "https://github.com/linchen2chris/gemini-cli.el" :rev :newest)
+        :config (gemini-cli-mode)
+        :bind-keymap ("C-c c" . gemini-cli-command-map)) ;; or your preferred key
+
+   (add-to-list 'display-buffer-alist
+                    '("^\\*gemini"
+                      (display-buffer-in-side-window)
+                      (side . bottom)
+                      (window-width . 90)))
+   #+end_src
+
 
 ** COMMENT claude-code.el
 
@@ -4952,6 +5008,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    ;;   (add-hook 'vue-mode-hook #'lsp))
 
    (add-to-list 'auto-mode-alist '("\\.vue" . web-mode))
+   (add-to-list 'auto-mode-alist '("\\.jinja" . web-mode))
    ;; (add-to-list 'auto-mode-alist '("\\.vue" . tide-mode))
    ;; (apheleia-global-mode +1)
 
@@ -5280,6 +5337,27 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    #+RESULTS:
 
+** tree-sitter
+
+   #+begin_src emacs-lisp
+   (setq treesit-language-source-alist
+      '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+        (cmake "https://github.com/uyha/tree-sitter-cmake")
+        (css "https://github.com/tree-sitter/tree-sitter-css")
+        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
+        (go "https://github.com/tree-sitter/tree-sitter-go")
+        (html "https://github.com/tree-sitter/tree-sitter-html")
+        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+        (json "https://github.com/tree-sitter/tree-sitter-json")
+        (make "https://github.com/alemuller/tree-sitter-make")
+        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
+        (python "https://github.com/tree-sitter/tree-sitter-python")
+        (toml "https://github.com/tree-sitter/tree-sitter-toml")
+        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+   #+end_src
+
 ** jtsx
 
    #+begin_src emacs-lisp :results output none
@@ -5342,6 +5420,22 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+end_src
 
    #+RESULTS:
+** auto revert
+
+   #+begin_src emacs-lisp
+      ;; Silently auto-reload unmodified buffers when files change on disk
+   (global-auto-revert-mode 1)
+   (setq auto-revert-verbose nil)            ; suppress "Reverting..." messages
+   (setq global-auto-revert-non-file-buffers t) ; refresh Dired, etc. (optional)
+
+   ;; Efficiency (usually defaults are fine)
+   (setq auto-revert-use-notify t)  ; use file notifications when available
+   (setq auto-revert-interval 1)    ; poll fallback interval (seconds)
+   #+end_src
+
+   #+RESULTS:
+   : 1
+
 * Small emacs functions of mine
 ** calculate via bc
 
