@@ -95,7 +95,8 @@
     (global-set-key "\C-z-" 'previous-window-any-frame)
     (global-set-key "\C-z+" 'next-window-any-frame)
 
-    (global-set-key [(s q)] 'delete-other-windows)
+    ;; (global-set-key [(s q)] 'delete-other-windows)
+    ;; (global-set-key ["s-\\"] 'delete-other-windows)
 
 
     (global-set-key [mouse-2] 'yank) ;; paste on middle mouse key
@@ -146,7 +147,6 @@
     (global-set-key (kbd "C-z a") 'align-regexp)
 
     (global-set-key [s-f1] 'call-last-kbd-macro)
-    (global-set-key ["M-`"] 'delete-other-windows)
     (global-set-key (kbd "C-z !") 'call-last-kbd-macro)
 
     (define-key global-map  "\C-zws"         'show-trailing-whitespace)
@@ -686,14 +686,13 @@
 
        :bind (("C-z C-r" . helm-recentf)
               ([M-f3] . helm-find-files)
-              (["s-`"] . helm-buffers-list)
+              (["s-\\"] . helm-buffers-list)
               ("C-z C-f" . helm-find-files)
               ([M-f9] . helm-mark-ring)
               ("s-x" . helm-M-x)
               ("<mouse-9>" . helm-imenu)
               ("\C-c v" . helm-imenu)
               ;;           ("C-x /" . helm-surfraw)
-              (["s-\\"] . helm-buffers-list)
               ("C-z C-b" . helm-buffers-list)
               ("C-z C-a" . helm-mini)
               ("C-z C-r" . helm-recentf)
