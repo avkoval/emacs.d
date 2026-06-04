@@ -37,7 +37,7 @@
 
     ;; (global-set-key [f7]  'man)
     (global-set-key [(shift f1)] 'helm-man-woman)
-    ;; (global-set-key [f2]  'save-buffer)
+    (global-set-key [f2]  'save-buffer)
     (global-set-key [f3]  'find-file)
     ;; (global-set-key [f6]  'next-multiframe-window)
     ;; (global-set-key [f7]  'query-replace) # Use M-% or C-M-% instead
@@ -95,7 +95,8 @@
     (global-set-key "\C-z-" 'previous-window-any-frame)
     (global-set-key "\C-z+" 'next-window-any-frame)
 
-    ;; (global-set-key [(s q)] 'delete-other-windows)
+    (global-set-key ["s-`"] 'delete-other-windows)
+    (global-set-key ["s-ё"] 'delete-other-windows)
     ;; (global-set-key ["s-\\"] 'delete-other-windows)
 
 
@@ -146,7 +147,7 @@
 
     (global-set-key (kbd "C-z a") 'align-regexp)
 
-    (global-set-key [s-f1] 'call-last-kbd-macro)
+    (global-set-key [C-f1] 'call-last-kbd-macro)
     (global-set-key (kbd "C-z !") 'call-last-kbd-macro)
 
     (define-key global-map  "\C-zws"         'show-trailing-whitespace)
@@ -429,16 +430,7 @@
     (fset 'find-password
           [?\C-c ?a ?s ?\C-y return ?\C-s ?p ?a ?s ?s ?w ?d return return ?\C-z ?p ?p])
 
-    (defun copy-file-name-to-clipboard ()
-      "Copy the current buffer file name to the clipboard."
-      (interactive)
-      (let ((filename (if (equal major-mode 'dired-mode)
-                          default-directory
-                        (buffer-file-name))))
-        (when filename
-          (kill-new filename)
-          (message "Copied buffer file name '%s' to the clipboard." filename))))
-    (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
+
 
     (defun xml-pretty-print (beg end &optional arg)
       "Reformat the region between BEG and END.
@@ -700,6 +692,7 @@
               ("C-z C-f" . helm-find-files)
               ("C-z f f" . helm-etags-select)
               ("C-c h m" . helm-mark-ring)
+              ([M-f12] . helm-resume)
               ("C-c h r" . helm-resume)
               ("C-c h t" . helm-top)
               ("M-<insert>" . helm-resume)
@@ -708,7 +701,7 @@
               ([C-f2] . helm-bookmarks)
               )
        )
-     (global-set-key (kbd "<f2>")  'helm-imenu)
+     ;; (global-set-key (kbd "<f2>")  'helm-imenu)
 
      (ido-mode -1) ;; Turn off ido mode in case I enabled it accidentally
      ;; (require 'helm-mode)
@@ -826,9 +819,9 @@
 *** helm-wgrep
 
     #+begin_src emacs-lisp
-    (use-package wgrep) 
+    (use-package wgrep)
     (require 'wgrep)
-    (use-package wgrep-ag) 
+    (use-package wgrep-ag)
     (setq helm-ag-use-edit t)
     #+end_src
 
@@ -938,6 +931,42 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 #+RESULTS:
 : my/html2org-clipboard
+
+*** Copy org table as TSV to clipboard
+
+Copy the org table at point as TSV (tab-separated) to the X clipboard.
+Pasting into LibreOffice Calc or Google Sheets splits cells automatically
+because both apps treat tabs as a column separator on paste.
+
+Skips ~hline~ separator rows. Cell contents are trimmed but otherwise
+preserved verbatim (org markup like ~*bold*~ is kept — clean up after paste
+if needed).
+
+#+begin_src emacs-lisp
+(defun my/org-table-copy-as-tsv ()
+  "Copy current org table as TSV to the X clipboard via xclip.
+Pastes cleanly into LibreOffice Calc / Google Sheets."
+  (interactive)
+  (unless (org-at-table-p)
+    (user-error "Not on an org table"))
+  (let* ((table (org-table-to-lisp))
+         (rows  (seq-remove (lambda (r) (eq r 'hline)) table))
+         (tsv   (mapconcat
+                 (lambda (row)
+                   (mapconcat (lambda (cell)
+                                (string-trim (or cell "")))
+                              row "\t"))
+                 rows "\n")))
+    (with-temp-buffer
+      (insert tsv)
+      (call-process-region (point-min) (point-max)
+                           "xclip" nil nil nil
+                           "-selection" "clipboard"))
+    (message "Copied %d rows as TSV to clipboard" (length rows))))
+#+end_src
+
+#+RESULTS:
+: my/org-table-copy-as-tsv
 
 *** org-mind-map
 
@@ -1147,8 +1176,8 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
     (require 'ob-clojure)
     (setq org-babel-clojure-backend 'cider)
     ;; (require 'cider)
-    (add-hook 'clojure-mode-hook 
-              (lambda () 
+    (add-hook 'clojure-mode-hook
+              (lambda ()
      (local-set-key (kbd "s-z") 'cider-inspect-last-result)))
    #+end_src
 
@@ -1213,6 +1242,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
        (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
        (global-set-key "\C-cls" 'org-store-link)
        (global-set-key "\C-ca" 'org-agenda)
+       (load "~/.emacs.d/org-agenda-custom-commands.el")
 
        (fset 'goto-org-agenda
              "\C-caa")
@@ -1381,22 +1411,45 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
         '(markdown-command "/usr/bin/pandoc"))
 
 
-       (defun sync-google-calendar ()
+       (defun my-sync-google-calendar ()
          "Save google calender entries into dairy.
        See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
          (interactive)
          ;; (call-process "~/org/get_ical.py" nil 0 nil)
          (call-process "~/org/get_ical.py" nil nil)
-         (switch-to-buffer "diary")
-         (erase-buffer)
-         (save-buffer)
-         ;; (delete-file "~/.emacs.d/diary")
+         ;; Clear the diary file on disk
+         (with-temp-file "~/.emacs.d/diary" (erase-buffer))
+         ;; Import all .ics files
          (mapcar (
                   lambda (icsfile)
                   (icalendar-import-file icsfile "~/.emacs.d/diary")
                   )
                  (file-expand-wildcards "~/org/*.ics"))
+         ;; Revert the diary buffer from disk so it picks up fresh content
+         (let ((diary-buf (find-buffer-visiting "~/.emacs.d/diary")))
+           (when diary-buf
+             (with-current-buffer diary-buf
+               (revert-buffer t t t))))
+         ;; Kill cached fancy diary buffer to avoid stale entries
+         (let ((fancy-buf (get-buffer "*Fancy Diary Entries*")))
+           (when fancy-buf (kill-buffer fancy-buf)))
          )
+
+       ;; icalendar-import-file generates both recurring rules (diary-cyclic/diary-block)
+       ;; and individual date entries for modified instances. When both match the same day,
+       ;; the event appears twice. Deduplicate by (date, string) after entries are collected.
+       (defun my-diary-deduplicate-entries ()
+         "Remove duplicate entries from diary-entries-list."
+         (when (boundp 'diary-entries-list)
+           (let ((seen (make-hash-table :test 'equal))
+                 (deduped nil))
+             (dolist (entry diary-entries-list)
+               (let ((key (list (nth 0 entry) (nth 1 entry))))
+                 (unless (gethash key seen)
+                   (puthash key t seen)
+                   (push entry deduped))))
+             (setq diary-entries-list (nreverse deduped)))))
+       (add-hook 'diary-list-entries-hook #'my-diary-deduplicate-entries t)
 
        ;;
 
@@ -1613,6 +1666,49 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
     (org-msg-mode)
     #+END_SRC
 
+*** COMMENT gtasks, gtasks-org-tools.el
+    SCHEDULED: <2026-03-15 Sun>
+https://github.com/thndrbrrr/gtasks
+https://github.com/thndrbrrr/gtasks-org-tools
+
+#+begin_src emacs-lisp
+(use-package gtasks
+  :ensure t)
+(use-package gtasks-org-tools
+  :load-path "~/.emacs.d/lisp/gtasks-org-tools")
+
+(defun my/gtasks-import ()
+  (interactive)
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "Default List")
+                         "~/org/gtasks/Default List.org")
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "дом")
+                         "~/org/gtasks/дом.org")
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "купити")
+                         "~/org/gtasks/купити.org")
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "в дорогу")
+                         "~/org/gtasks/в дорогу.org")
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "Rg")
+                         "~/org/gtasks/Rg.org")
+  (gtasks-org-tools-pull (gtasks-list-id-by-title "To org")
+                         "~/org/gtasks/to org.org"
+                         'complete)
+)
+
+
+(defun my/gtasks-export ()
+  "Export tagged Org entries to Google Tasks."
+  (interactive)
+  (gtasks-org-tools-push-tags '("export" "now")))
+#+end_src
+
+#+RESULTS:
+: my/gtasks-export
+
+
+#+end_src
+
+#+RESULTS:
+
 *** COMMENT org-gtasks
 
     #+begin_src emacs-lisp :results output none
@@ -1625,6 +1721,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
      : org-gtasks
 
  ;; (org-gtasks-get-refresh-token (org-gtasks-find-account-by-name "avkoval"))
+
+*** ok-gtasks
+    #+begin_src emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/ok-gtasks/")
+    (require 'ok-gtasks)
+
+    (global-set-key (kbd "C-c s-f") 'ok-gtasks-pull)
+    (global-set-key (kbd "C-c s-p") 'ok-gtasks-push)
+    #+end_src
+
+
+    #+RESULTS:
+    : ok-gtasks-push
 
 *** folding?
 
@@ -1752,6 +1861,13 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
     ;; FIXME
     ;; (add-hook 'org-export-before-processing-hook 'my/org-inline-css-hook)
+    #+end_src
+
+*** checkboxes
+
+    #+begin_src emacs-lisp
+    (defalias 'my-org-untick-checkboxes
+      (kmacro "C-c C-j <up> <return> s M-% [ X ] <return> [ SPC ] <return> ! C-<home> <down-mouse-1> <mouse-1> <down-mouse-1> <mouse-1> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up>"))
     #+end_src
 
 ** indent-bars mode
@@ -2371,7 +2487,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 ** multiple-cursors
    #+BEGIN_SRC emacs-lisp :results output none
-   
+
    (use-package multiple-cursors
      ;; :bind (
      ;; ("C-z c e" . mc/edit-lines)
@@ -2475,7 +2591,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 *** notmuch
     Email setup
-    
+
     #+BEGIN_SRC emacs-lisp  :results output replace
       (use-package notmuch
         :init
@@ -2652,103 +2768,125 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 ** tramp
 
    #+BEGIN_SRC emacs-lisp :results output none
-     ;; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
-     (require 'tramp)
-     (require 'password-cache)
-     (setq password-cache-expiry nil)
+      ;; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
+      (require 'tramp)
+      (require 'password-cache)
+      (setq password-cache-expiry nil)
 
-     ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
-     ;; (push
-     ;;  (cons
-     ;;   "docker"
-     ;;   '((tramp-login-program "docker")
-     ;;     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
-     ;;     (tramp-remote-shell "/bin/sh")
-     ;;     (tramp-remote-shell-args ("-i") ("-c"))))
-     ;;  tramp-methods)
+      ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
+      ;; (push
+      ;;  (cons
+      ;;   "docker"
+      ;;   '((tramp-login-program "docker")
+      ;;     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
+      ;;     (tramp-remote-shell "/bin/sh")
+      ;;     (tramp-remote-shell-args ("-i") ("-c"))))
+      ;;  tramp-methods)
 
-     (defadvice tramp-completion-handle-file-name-all-completions
-	 (around dotemacs-completion-docker activate)
-       "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
-	 a list of active Docker container names, followed by colons."
-       (if (equal (ad-get-arg 1) "/docker:")
-	   (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
-		  (dockernames (cl-remove-if-not
-			        #'(lambda (dockerline) (string-match ":$" dockerline))
-			        (split-string dockernames-raw "\n"))))
-	     (setq ad-return-value dockernames)
-	     (message dockernames)
-	     )
-	 ad-do-it))
+      (defadvice tramp-completion-handle-file-name-all-completions
+          (around dotemacs-completion-docker activate)
+        "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
+          a list of active Docker container names, followed by colons."
+        (if (equal (ad-get-arg 1) "/docker:")
+            (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
+         	  (dockernames (cl-remove-if-not
+         		        #'(lambda (dockerline) (string-match ":$" dockerline))
+         		        (split-string dockernames-raw "\n"))))
+              (setq ad-return-value dockernames)
+              (message dockernames)
+              )
+          ad-do-it))
 
-     ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
-     ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
-     ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
-     (push
-      (cons
-       "sush"
-       '((tramp-login-program "su")
-	 (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
-	 (tramp-remote-shell "/bin/sh")
-	 (tramp-remote-shell-login
-	  ("-l"))
-	 (tramp-remote-shell-args
-	  ("-c"))
-	 (tramp-connection-timeout 10)))
-      tramp-methods)
-     ;;
+      ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
+      ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
+      ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
+      (push
+       (cons
+        "sush"
+        '((tramp-login-program "su")
+          (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
+          (tramp-remote-shell "/bin/sh")
+          (tramp-remote-shell-login
+           ("-l"))
+          (tramp-remote-shell-args
+           ("-c"))
+          (tramp-connection-timeout 10)))
+       tramp-methods)
+      ;;
 
-     ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
-     (setq remote-file-name-inhibit-cache nil)
-     (setq vc-ignore-dir-regexp
-	   (format "%s\\|%s"
-		   vc-ignore-dir-regexp
-		   tramp-file-name-regexp))
-     (setq tramp-verbose 1)
-
-
-     (push
-      (cons
-       "ocrsh"
-       '((tramp-login-program "oc")
-	 (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
-	 (tramp-remote-shell "/bin/sh")
-	 (tramp-remote-shell-args ("-i"))))
-      tramp-methods)
-
-     (push
-      (cons
-       "kube"
-       '((tramp-login-program "kubectl")
-	 (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
-	 (tramp-remote-shell "/bin/sh")
-	 (tramp-remote-shell-args ("-i"))))
-      tramp-methods)
-
-     (defun tramp-refresh ()
-       (interactive)
-       ;; (recentf-cleanup)
-       (tramp-cleanup-all-buffers)
-       (tramp-cleanup-all-connections))
-
-     ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
-     (add-to-list 'backup-directory-alist
-		  (cons tramp-file-name-regexp nil))
+      ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
+      (setq remote-file-name-inhibit-cache nil)
+      (setq vc-ignore-dir-regexp
+            (format "%s\\|%s"
+         	   vc-ignore-dir-regexp
+         	   tramp-file-name-regexp))
+      (setq tramp-verbose 1)
 
 
-     (add-to-list 'tramp-connection-properties
-		  (list (regexp-quote "/sudo:")
-		        "session-timeout" nil)
-		  )
+      (push
+       (cons
+        "ocrsh"
+        '((tramp-login-program "oc")
+          (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
+          (tramp-remote-shell "/bin/sh")
+          (tramp-remote-shell-args ("-i"))))
+       tramp-methods)
 
-     (add-to-list 'tramp-connection-properties
-		  (list (regexp-quote "/ssh:")
-		        "session-timeout" nil)
-		  )
+      ;; (push
+      ;;  (cons
+      ;;   "kube"
+      ;;   '((tramp-login-program "kubectl")
+      ;;     (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
+      ;;     (tramp-remote-shell "/bin/sh")
+      ;;     (tramp-remote-shell-args ("-i"))))
+      ;;  tramp-methods)
 
 
-     (use-package friendly-tramp-path
-       :after tramp)
+
+
+      (defun tramp-refresh ()
+        (interactive)
+        ;; (recentf-cleanup)
+        (tramp-cleanup-all-buffers)
+        (tramp-cleanup-all-connections))
+
+      ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
+      (add-to-list 'backup-directory-alist
+         	  (cons tramp-file-name-regexp nil))
+
+
+      (add-to-list 'tramp-connection-properties
+         	  (list (regexp-quote "/sudo:")
+         	        "session-timeout" nil)
+         	  )
+
+      (add-to-list 'tramp-connection-properties
+         	  (list (regexp-quote "/ssh:")
+         	        "session-timeout" nil)
+         	  )
+
+
+      (use-package friendly-tramp-path
+        :after tramp)
+
+
+    ;; Default (local) shell = zsh
+    (setq shell-file-name "/usr/bin/zsh"
+          explicit-shell-file-name "/usr/bin/zsh")
+
+    (with-eval-after-load 'tramp
+      ;; For any TRAMP connection, override to bash
+      (connection-local-set-profile-variables
+       'remote-bash
+       '((shell-file-name . "/bin/bash")
+         (explicit-shell-file-name . "/bin/bash")
+         ;; optional: args for interactive shells
+         (explicit-bash-args . ("-i"))
+         ;; optional: make TRAMP itself talk bash
+         (tramp-remote-shell . "/bin/bash")))
+      (connection-local-set-profiles '(:application tramp) 'remote-bash))
+
+
    #+END_SRC
 
 ** yasnippet
@@ -3158,6 +3296,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    (use-package humanoid-themes :defer t)
    (use-package standard-themes :defer t)
    (use-package color-theme-modern :defer t)
+   (use-package gruber-darker-theme :defer t)
+   (use-package sexy-theme :defer t)
+   ;; (use-package lambda-themes
+   ;;   :straight (:type git :host github :repo "lambda-emacs/lambda-themes")
+   ;;   :custom
+   ;;   (lambda-themes-set-italic-comments t)
+   ;;   (lambda-themes-set-italic-keywords t)
+   ;;   (lambda-themes-set-variable-pitch t)
+   ;;   :config
+   ;;   ;; load preferred theme
+   ;;   )
+   (use-package yotsuba-theme :load-path "lisp/yotsuba-emacs-theme" :defer nil)
+
    #+END_SRC
 
 ** dap mode
@@ -3210,6 +3361,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
            ("C-c h p g" . helm-projectile-grep)
            ("C-c h p d" . helm-projectile-rg)
            ("M-<f5>" . projectile-find-file)
+           ("s-<f5>" . projectile-switch-project)
            ("C-c s" . helm-projectile-ag)
            )
     )
@@ -3391,11 +3543,13 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    While its in conflict with lsp-bridge, this mode is still very useful in some cases, e.g. shell etc
 
-   #+begin_src emacs-lisp :results output none
-   (use-package company
-     :bind
-     ("s-/" . company-complete))
-   #+end_src
+#+begin_src emacs-lisp :results output none
+(use-package company
+  :bind
+  ("s-/" . company-complete)
+  :config
+  (setq company-minimum-prefix-length 1))
+#+end_src
 
 ** publish file
 
@@ -3464,6 +3618,8 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    :config
    (global-flycheck-mode t)
    (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+   ;; Disable mypy globally; re-enable per project via .dir-locals.el
+   ;; (setq-default flycheck-disabled-checkers '(python-mypy))
    ;; note that these bindings are optional
    :bind
    ([C-f8] . flycheck-list-errors)
@@ -3493,13 +3649,25 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
  #+END_SRC
 
+To re-enable mypy in a specific project, add a .dir-locals.el in that project's root:                                                           
+   
+  ((python-ts-mode                                                                                                                                
+    . ((flycheck-disabled-checkers . nil))))                
+                                                                                                                                                  
+  Or if you want to keep other checkers disabled but just re-enable mypy:                                                                         
+                                                                                                                                                  
+  ((python-ts-mode                                                                                                                                
+    . ((eval . (setq-local flycheck-disabled-checkers       
+                           (remove 'python-mypy flycheck-disabled-checkers))))))                                                                  
+ 
+
 ** Aphelia
 
    #+begin_src emacs-lisp :results output none
    (use-package apheleia
      :bind (("\C-cmA" . apheleia-mode)))
    (require 'apheleia-formatters)
-   
+
    ;; (setf (alist-get 'isort apheleia-formatters)
    ;;       '("isort" "--stdout" "-"))
    ;; (setf (alist-get 'python-mode apheleia-mode-alist)
@@ -3599,7 +3767,7 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
         ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
         (defun auto-virtualenv-update-mode-line ()
           )
-   
+
    #+end_src
 
 ** auto-virtualenvwrapper
@@ -3842,15 +4010,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 ** gptel
 
-   #+begin_src emacs-lisp :results output none
-      (use-package gptel
-          :bind (
-                 ("C-z <f4>" . gptel)
-                 ("C-z <f5>" . gptel-menu)
-                 )
-        )
-   #+end_src
-
+#+begin_src emacs-lisp :results output none
+(use-package gptel
+  :bind (("C-z <f4>" . gptel)
+         ("C-z <f5>" . gptel-menu))
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-model 'gpt-4o) ;; Note: Ensure your OpenAI account has access to the model you specify here (gpt-4o, gpt-4-turbo, gpt-5, etc.)
+  :config
+  ;; Explicitly construct the backend and tell it to use auth-source
+  (setq gptel-backend (gptel-make-openai "OpenAI"
+                        :stream t
+                        :key 'gptel-api-key-from-auth-source)))
+#+end_src
 ** consult
 
    #+begin_src emacs-lisp :results output none
@@ -3870,8 +4042,8 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
        :bind (
               ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
               ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
-              ("C-x / p d y" . consult-omni-rg-dpa-yourtrack-task)
-              ("C-x / p d t" . consult-omni-rg-dpa-yourtrack-task)
+              ("C-x / p r y" . consult-omni-rg-yourtrack-task)
+              ("C-x / p r t" . consult-omni-rg-yourtrack-task)
               ;;("C-x / p f f" . consult-omni-fieldhub)
               ;;("C-x / p f j" . consult-omni-fieldhub-jira-task)
               ;;("C-x / p f b" . consult-omni-fieldhub-bitbucket-prs)
@@ -4031,6 +4203,21 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
 
    #+end_src
+
+** YouTrack
+
+   Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
+   submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
+
+   #+begin_src emacs-lisp :results output none
+   (setq auth-sources '("~/.authinfo.gpg"))
+   (setq youtrack-host "youtrack.raccoongang.com")
+   (load "~/.emacs.d/youtrack/youtrack.el")
+   (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
+   (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
+   (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
+   #+end_src
+
 ** COMMENT outline-ident
 
    #+begin_src emacs-lisp :results output none
@@ -4111,12 +4298,25 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
                     ("terminfo/65" "terminfo/65/*")
                     ("integration" "integration/*")
                     (:exclude ".dir-locals.el" "*-tests.el"))))
-   (global-set-key (kbd "C-x <f2>") 'eat)
    (global-set-key (kbd "<f6>") 'eat)
+
+
+(with-eval-after-load 'eat
+  (defun my-eat-C-z-dispatch ()
+    "Leave eat's terminal input mode and replay C-z so the command loop
+dispatches it through the normal (global) keymap. Use `C-c j' (or
+`eat-semi-char-mode' / `eat-char-mode') to return to terminal input."
+    (interactive)
+    (eat-emacs-mode)
+    (push ?\C-z unread-command-events))
+
+  (dolist (map '(eat-semi-char-mode-map eat-char-mode-map eat-line-mode-map))
+    (when (boundp map)
+      (define-key (symbol-value map) (kbd "C-z") #'my-eat-C-z-dispatch))))
+
    #+end_src
 
    #+RESULTS:
-   : eat
 
 ** ident-tools
 
@@ -4253,26 +4453,50 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
           "Marking window '%s' as dedicated"
         "Un-dedicating window '%s'") (current-buffer)))
    #+end_src
-** link to current filename in projectile
+** Copy file name to clipboard
 
    #+begin_src emacs-lisp
+   (defun copy-file-name-to-clipboard ()
+     "Copy the current buffer file name to the clipboard."
+     (interactive)
+     (let ((filename (if (equal major-mode 'dired-mode)
+                         default-directory
+                       (buffer-file-name))))
+       (when filename
+         (kill-new filename)
+         (message "Copied buffer file name '%s' to the clipboard." filename))))
+
    (defun my-insert-projectile-hyperbole-link ()
-       (interactive)
-       (let* ((project-root (expand-file-name (projectile-project-root)))
-             (current-realpath (shell-command-to-string (concat "realpath " (expand-file-name (buffer-file-name (window-buffer (minibuffer-selected-window)))))))
-             (project-relative-filename (string-trim-right (string-replace project-root "" current-realpath)))
-             (current-line-number (format-mode-line "%l"))
-             (result (concat "\"" project-relative-filename ":L" current-line-number "\""))
-             )
+     "Copy project-relative file name with line number to the clipboard.
+Format: \"relative/path/file.el:L42\"."
+     (interactive)
+     (let* ((project-root (expand-file-name (projectile-project-root)))
+            (current-realpath (shell-command-to-string (concat "realpath " (expand-file-name (buffer-file-name (window-buffer (minibuffer-selected-window)))))))
+            (project-relative-filename (string-trim-right (string-replace project-root "" current-realpath)))
+            (current-line-number (format-mode-line "%l"))
+            (result (concat "\"" project-relative-filename ":L" current-line-number "\"")))
        (message (concat "Project file name: " result))
-       (kill-new result)
-       )
-     )
-   (global-set-key (kbd "C-z <f2>")  'my-insert-projectile-hyperbole-link)
+       (kill-new result)))
+
+   (defun copy-file-name-with-line-to-clipboard ()
+     "Copy absolute file name with line number to the clipboard.
+Format: \"/full/path/file.el:L42\"."
+     (interactive)
+     (let ((filename (if (equal major-mode 'dired-mode)
+                         default-directory
+                       (buffer-file-name))))
+       (when filename
+         (let ((result (format "\"%s:L%d\"" filename (line-number-at-pos))))
+           (kill-new result)
+           (message "Copied '%s' to the clipboard." result)))))
+
+   (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
+   (global-set-key (kbd "C-x <f2>")  'my-insert-projectile-hyperbole-link)
+   (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
    #+end_src
 
    #+RESULTS:
-   : my-insert-projectile-hyperbole-link
+   : copy-file-name-with-line-to-clipboard
 
 *** Hyperbole support
 
@@ -4326,6 +4550,21 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
      #+RESULTS:
      : ibtypes::my-projectile-file-locator
+
+**** Absolute file link with "/path/to/file.ext:LXX"
+     #+begin_src emacs-lisp
+     (defun my-open-absolute-file-on-line-n (locator)
+       (let* ((filename (car (split-string locator ":L")))
+              (line-no (car (cdr (split-string locator ":L")))))
+         (find-file filename)
+         (goto-char (point-min))
+         (forward-line (- (string-to-number line-no) 1))))
+
+     (defil my-absolute-file-locator "\"" "\"" "/.*?:L[:digit:]*" 'my-open-absolute-file-on-line-n)
+     #+end_src
+
+     #+RESULTS:
+     : ibtypes::my-absolute-file-locator
 
 **** TODO Support for [XX-NNNNN] Jira
      :LOGBOOK:
@@ -4661,15 +4900,20 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 ** claude-code-ide
 
    #+begin_src emacs-lisp
+
    (use-package claude-code-ide
      :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
-     :bind ("C-c C-'" . claude-code-ide-menu)
+     :bind (
+            ("C-c C-'" . claude-code-ide-menu)
+            ("C-x <f1>" . claude-code-ide-list-sessions)
+            )
      :config
      (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
+
    #+end_src
 
    #+RESULTS:
-   : claude-code-command-map
+   : claude-code-ide-list-sessions
 
 ** gemini
 
@@ -4698,14 +4942,14 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    #+begin_src emacs-lisp
    (use-package claude-code :ensure t
      :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
-     :config 
+     :config
      ;; optional IDE integration with Monet
      ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
      ;; (monet-mode 1)
-     
+
      (claude-code-mode)
      :bind-keymap ("C-c c" . claude-code-command-map)
-     
+
      ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
      :bind
      (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
@@ -4728,15 +4972,19 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
     #+RESULTS:
     : t
 
-** COMMENT po-mode
+** po-mode
 
    Problem: it prevents conflict resolution as it turns ON po mode with ReadOnly flag set on a buffer.
 
    #+begin_src emacs-lisp
-   (use-package po-mode)
+   (use-package po-mode
+     :bind (:map po-subedit-mode-map
+                 ("C-c C-c" . po-subedit-exit)
+                 ("C-c C-k" . po-subedit-abort)))
    #+end_src
 
    #+RESULTS:
+   : po-subedit-abort
 
 ** imenu
 
@@ -4759,6 +5007,104 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
 
    #+RESULTS:
    : imenu-list
+
+** review & annotate videos in emacs org-mode
+
+
+   #+begin_src emacs-lisp
+   (use-package mpvi :ensure t)
+
+   (use-package mpvi
+     :ensure t
+     :config
+     ;; M-x customize-group mpvi
+     (setq mpvi-mpv-ontop-p t)
+     (setq mpvi-mpv-border-p t)
+     (setq mpvi-cmds-on-init
+           '(((set_property autofit "40%x85%"))
+             ((set_property geometry "-3%+8%"))))
+
+     ;; Upstream bug: `mpvi-org-link-push' passes (beg end) into
+     ;; `mpvi-start's (type beg) slots, so the start time is never honored
+     ;; and mpv always opens at 0.  Patch the org follow-handler to call
+     ;; mpvi-start with the right positional args.
+     (defun mpvi-org-link-push (link)
+       "Play the mpv LINK."
+       (pcase-let ((`(,path ,beg ,end) (mpvi-parse-link link)))
+         (mpvi-start path nil beg end)))
+
+     :bind (
+            ("\C-clv" . mpvi-insert)
+            )
+
+     )
+
+   (setenv "TESSDATA_PREFIX" "/usr/share/tessdata/")
+   (setq mpv-ocr-language "eng")
+   #+end_src
+
+   #+RESULTS:
+   : eng
+
+
+** TODO theme looper & custom looper
+   :LOGBOOK:
+   - State "TODO"       from              [2025-12-03 Wed 11:55]
+   :END:
+
+   #+begin_src emacs-lisp
+   (use-package theme-looper)
+
+   (defvar my-favorite-themes
+     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid)
+     "Themes shared by `theme-looper' and `my-theme-looper-pick'.")
+
+   (theme-looper-set-favorite-themes my-favorite-themes)
+
+   (defun my-theme-looper-pick ()
+     "Pick a theme from `my-favorite-themes' via completion.
+Unlike `theme-looper-enable-next-theme', no theme is loaded while
+moving through the list — the chosen theme is applied only on RET."
+     (interactive)
+     (let* ((themes (mapcar #'symbol-name my-favorite-themes))
+            (choice (completing-read "Theme: " themes nil t)))
+       (mapc #'disable-theme custom-enabled-themes)
+       (load-theme (intern choice) t)))
+   #+end_src
+
+   #+RESULTS:
+   : my-theme-looper-pick
+
+
+** org-crypt
+
+   #+begin_src emacs-lisp
+   (require 'org-crypt)
+   (setq org-crypt-key "841079E7A0CD6951A54C73EB00AA19ED7AD0481A")
+   #+end_src
+
+   #+RESULTS:
+   : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
+
+** kubernetes
+
+   #+begin_src emacs-lisp
+   (use-package kubernetes-tramp)
+
+   (push
+    (cons
+     "kubectl"
+     '((tramp-login-program "kubectl")
+       (tramp-login-args (("exec" "-it") ("-u" "%u") ("%h") ("--") ("sh")))
+       (tramp-remote-shell "/bin/sh")
+       (tramp-remote-shell-args ("-i" "-c"))))
+    tramp-methods)
+
+   (message "loaded")
+   #+end_src
+
+   #+RESULTS:
+   : loaded
 
 * Emacs file editing modes (major modes)
   :LOGBOOK:
@@ -5492,6 +5838,20 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
    : 1
 
 * Small emacs functions of mine
+** execute thunar here
+
+   #+begin_src emacs-lisp
+   (defun exec-thunar ()
+     (interactive)
+     "Execute thunar here"
+     (shell-command "thunar")
+     )
+   (global-set-key (kbd "C-x !") 'exec-thunar)
+   #+end_src
+
+   #+RESULTS:
+   : exec-thunar
+
 ** calculate via bc
 
 #+begin_src emacs-lisp
@@ -5506,10 +5866,12 @@ https://emacs.stackexchange.com/questions/12121/org-mode-parsing-rich-html-direc
                    trimmed)))
          (result (shell-command-to-string
                   (format "echo %s | bc -l" (shell-quote-argument expr)))))
-    (goto-char end)
+    ;; (goto-char end)
+    (end-of-line)
     (insert (string-trim-right result))))
 #+end_src
 
+#+RESULTS:
+: bc-on-region
+
 * Unsorted (WIP)
-
-

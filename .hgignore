@@ -60,6 +60,7 @@ files/*
 .stignore
 .aider*
 newsticker/
+youtrack
 
 syntax: regexp
 .*\#.*\#$
@@ -92,6 +93,7 @@ elpa.26
 .mypy_cache
 .lsp-session-v1
 forge-database*
+.claude/settings.local.json
 
 el-get/.loaddefs.el
 el-get/.status.el
@@ -99,6 +101,7 @@ README.el
 README.tex
 README.txt
 settings.el
+ok-gtasks
 
 # added by aHg on Mon Dec 31 11:12:04 2018
 syntax: glob
@@ -131,3 +134,7 @@ projects
 # added by aHg on Wed Jul  2 22:45:10 2025
 syntax: glob
 tree-sitter/libtree-sitter-greger.so
+
+# added by aHg on Sat Apr 11 06:35:15 2026
+syntax: glob
+.gtasks/token.json
