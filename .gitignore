@@ -80,3 +80,6 @@ forge-database*
 /basic.ics
 /plantuml-1.2025.2.jar
 /tree-sitter/
+emms/history
+org-agenda-custom-commands.el
+.gtasks/
