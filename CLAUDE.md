@@ -17,7 +17,9 @@ Exceptions where tangling *is* appropriate:
   batch-byte-compile file.el`). Clean up the resulting `.elc` when done.
 - The user explicitly asks you to tangle.
 
-When you edit a literate source, also mirror the same edit into the
-already-tangled file (keeps both files in sync until the user tangles
-next). Do **not** rely on the user to re-tangle before testing — apply
-the change to both.
+**Do not edit the tangled `.el` files by hand.** They are produced by
+tangling the `.org` source — any manual edit will be overwritten the
+next time the user tangles. Edit only the literate source (the `.org`
+file) and let the user tangle when they're ready. This applies to
+`youtrack/youtrack.el` (tangled from `youtrack/youtrack.org`) and any
+other `.el` files produced from `README.org` blocks.

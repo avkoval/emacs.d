@@ -83,3 +83,6 @@ forge-database*
 emms/history
 org-agenda-custom-commands.el
 .gtasks/
+lisp/yotsuba-emacs-theme/
+ok-gtasks/
+youtrack/
