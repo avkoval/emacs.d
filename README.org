@@ -296,7 +296,7 @@
       (interactive)
       (kill-buffer (buffer-name))
       )
-    (global-set-key [M-delete] 'geosoft-kill-buffer)
+    ;; (global-set-key [M-delete] 'geosoft-kill-buffer)
 
                                             ; (global-set-key (kbd "C-z C-z") 'suspend-frame)
 
@@ -1187,341 +1187,341 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
    https://orgmode.org/manual/Structure-Templates.html
 
    #+begin_src emacs-lisp :results output none
-       ;; Org-mode settings
-       (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
-                                               ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
-       ;;(require 'org-checklist)
-       (require 'org-tempo)
+     ;; Org-mode settings
+     (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
+                                             ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+     ;;(require 'org-checklist)
+     (require 'org-tempo)
 
-       (when (featurep 'notmuch)
-         (require 'org-notmuch)
-         )
+     (when (featurep 'notmuch)
+       (require 'org-notmuch)
+       )
 
-       ;; to store links from eww
-                                               ; (require 'org-eww)
-       (use-package ob-http)
-                                               ;(require 'org-bullets) - they slow down emacs org mode
-       (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
-       (use-package ob-async)
-       (use-package restclient)
-       (use-package ob-restclient)
-       (use-package org-rich-yank)
-       (require 'ox-beamer)
+     ;; to store links from eww
+                                             ; (require 'org-eww)
+     (use-package ob-http)
+                                             ;(require 'org-bullets) - they slow down emacs org mode
+     (add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
+     (use-package ob-async)
+     (use-package restclient)
+     (use-package ob-restclient)
+     (use-package org-rich-yank)
+     (require 'ox-beamer)
 
-       (org-babel-do-load-languages
-        'org-babel-load-languages
-        '((shell . t)
-          ;;      (plantuml . t)
-          (lisp . t)
-          (clojure . t)
-          (python . t)
-          (dot . t)
-          (awk . t)
-          (emacs-lisp . t)
-          (verb . t)
-          (sql . t)
-          (calc . t)
-          )
+     (org-babel-do-load-languages
+      'org-babel-load-languages
+      '((shell . t)
+        ;;      (plantuml . t)
+        (lisp . t)
+        (clojure . t)
+        (python . t)
+        (dot . t)
+        (awk . t)
+        (emacs-lisp . t)
+        (verb . t)
+        (sql . t)
+        (calc . t)
         )
+      )
 
-       ;; optional exporters
-       (with-eval-after-load 'ox
-         (require 'ox-latex)
-         (cl-loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
-               do (unless (require pkg nil 'noerror)
-                    (message (format "You need to install package %s" pkg))))
-         )
-
-       (use-package ox-pandoc)
-
-       (require 'org-clock)
-       (setq org-replace-disputed-keys t)
-       (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
-
-
-       (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-       (global-set-key "\C-cls" 'org-store-link)
-       (global-set-key "\C-ca" 'org-agenda)
-       (load "~/.emacs.d/org-agenda-custom-commands.el")
-
-       (fset 'goto-org-agenda
-             "\C-caa")
-
-
-       (global-set-key [XF86HomePage] 'goto-org-agenda)
-
-
-       (global-set-key [(shift f5)]  'org-clock-goto)
-       (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
-       (global-set-key "\C-z`" 'org-clock-in)
-       (global-set-key "\C-z~" 'org-clock-out)
-       (fset 'my-clock-in-current-task
-             (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
-       (global-set-key "\C-z1" 'my-clock-in-current-task)
-
-       (global-set-key [(control f5)] 'org-clock-in)
-       (global-set-key [(control shift f5)] 'org-clock-out)
-
-
-       (global-font-lock-mode 1)
-
-       ;; temp disabled
-       ;; (defun my-org-mode-hook ()
-       ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
-       ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
-       ;;   (yas-minor-mode)
-       ;;   ;(org-bullets-mode 1)
-       ;;   )
-       ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
-
-       (setq org-src-fontify-natively t)
-       (setq org-capture-bookmark nil) ;; remove side effect  - bm face over the all new captured items!
-
-       (setq org-directory "~/org/")
-
-       (setq org-default-notes-file (concat org-directory "/notes.org"))
-       (define-key global-map "\C-z\C-c" 'org-capture)
-
-       (defun org-todo-keyword-faces-dark()
-         (interactive)
-         (setq org-todo-keyword-faces
-               '(
-                 ("IDEA" . (:foreground "chartreuse" :weight bold))
-                 ("WORKING" . (:foreground "forest green" :weight bold))
-                 ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
-                 ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
-                 ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
-                 ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
-                 ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
-                 ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
-                 ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-                 ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
-                 )
-               )
-         )
-
-       (defun switch-to-agenda() ()
-              (interactive)
-              (if (get-buffer "*Org Agenda*")
-                  (switch-to-buffer "*Org Agenda*")
-                (org-agenda))
-              )
-
-       (fset 'switch-to-agenda-named-buffer
-             (kmacro-lambda-form [?\C-x ?b ?* ?O ?r ?g ?  ?A ?g ?e ?n ?d ?a tab return] 0 "%d"))
-
-
-       ;; (global-set-key (kbd "s-`") 'switch-to-agenda)
-       (global-set-key (kbd "C-z C-q") 'switch-to-agenda-named-buffer)
-
-
-       (setq org-completion-use-ido t)
-
-       (defun org-todo-keyword-faces-light()
-         (interactive)
-         (setq org-todo-keyword-faces
-               '(
-                 ("WORKING" . (:background "green yellow"))
-                 ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
-                 ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
-                 ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
-                 ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
-                 ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
-                 ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
-                 ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-                 ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
-                 )
-               ))
-
-       (defun insert-time-with-seconds ()
-         (interactive)
-         (insert (format-time-string "%H:%M.%S")))
-
-
-       (global-set-key "\C-c0" 'insert-time-with-seconds)
-
-       (custom-set-faces
-        '(org-done ((t (:strike-through t)))))
-
-
-       (defun my-org-insert-current-item-time()
-         "Insert HH:MM into the buffer. Used during reporting of work done"
-         (interactive)
-         (let* (
-                (clocked-time (org-clock-get-clocked-time))
-                (h (/ clocked-time 60))
-                (m (- clocked-time (* 60 h)))
-                )
-           (insert (format "%.2d:%.2d" h m))
-           )
-         )
-
-
-       ;; (defun display-debug ()
-       ;;   (interactive)
-       ;;   (message (format "%.2f" org-clock-file-total-minutes))
-       ;;   )
-       (defun my-org-insert-item-report-line()
-         "Interactive reporting during work done"
-         (interactive)
-         (insert-time-with-seconds)
-         (insert " (")
-         (my-org-insert-current-item-time)
-         (insert ") ")
-         )
-
-       (global-set-key "\C-cit" 'my-org-insert-item-report-line)
-
-       (setq org-global-properties
-             '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
-
-       (setq org-columns-default-format
-             "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
-
-       (add-hook 'org-clock-out-hook
-                 (lambda ()
-                   (fix-frame-title)))
-
-                                               ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
-
-       (defun switch-to-orgfile(bufname)
-         (if (get-buffer bufname)
-             (switch-to-buffer bufname)
-           (pop-to-buffer (find-file (concat "~/org/" bufname))))
-         )
-
-       (defun switch-to-labster()
-         (interactive)
-         (switch-to-orgfile "labster.org"))
-
-       (defun switch-to-work()
-         (interactive)
-         (switch-to-orgfile "work.org"))
-
-       (global-set-key "\C-z\C-l" 'switch-to-labster)
-       (global-set-key "\C-z\C-w" 'switch-to-work)
-
-       ; (global-set-key (kbd "C-z ") 'helm-org-agenda-files-headings)
-       (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
-       (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
-       (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
-       (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
-
-       (custom-set-variables
-        '(markdown-command "/usr/bin/pandoc"))
-
-
-       (defun my-sync-google-calendar ()
-         "Save google calender entries into dairy.
-       See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
-         (interactive)
-         ;; (call-process "~/org/get_ical.py" nil 0 nil)
-         (call-process "~/org/get_ical.py" nil nil)
-         ;; Clear the diary file on disk
-         (with-temp-file "~/.emacs.d/diary" (erase-buffer))
-         ;; Import all .ics files
-         (mapcar (
-                  lambda (icsfile)
-                  (icalendar-import-file icsfile "~/.emacs.d/diary")
-                  )
-                 (file-expand-wildcards "~/org/*.ics"))
-         ;; Revert the diary buffer from disk so it picks up fresh content
-         (let ((diary-buf (find-buffer-visiting "~/.emacs.d/diary")))
-           (when diary-buf
-             (with-current-buffer diary-buf
-               (revert-buffer t t t))))
-         ;; Kill cached fancy diary buffer to avoid stale entries
-         (let ((fancy-buf (get-buffer "*Fancy Diary Entries*")))
-           (when fancy-buf (kill-buffer fancy-buf)))
-         )
-
-       ;; icalendar-import-file generates both recurring rules (diary-cyclic/diary-block)
-       ;; and individual date entries for modified instances. When both match the same day,
-       ;; the event appears twice. Deduplicate by (date, string) after entries are collected.
-       (defun my-diary-deduplicate-entries ()
-         "Remove duplicate entries from diary-entries-list."
-         (when (boundp 'diary-entries-list)
-           (let ((seen (make-hash-table :test 'equal))
-                 (deduped nil))
-             (dolist (entry diary-entries-list)
-               (let ((key (list (nth 0 entry) (nth 1 entry))))
-                 (unless (gethash key seen)
-                   (puthash key t seen)
-                   (push entry deduped))))
-             (setq diary-entries-list (nreverse deduped)))))
-       (add-hook 'diary-list-entries-hook #'my-diary-deduplicate-entries t)
-
-       ;;
-
-       (defun copy-password-to-buffer()
-         "Yank password property"
-         (interactive)
-         (let ((password (org-entry-get (point) "password")))
-           (kill-new password)
-           (gui-set-selection "PRIMARY" password)
-           )
-         )
-
-       (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
-
-                                               ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
-
-                                               ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
-                                               ; (require 'async-org-babel)
-
-                                               ; redisplay inline images inline in realtime?
-       (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
-
-
-       (add-hook 'org-mode-hook #'yas-minor-mode)
-       (defun org-plus-yasnippet()
-         (setq-local yas-indent-line 'fixed))
-       (add-hook 'org-mode-hook #'org-plus-yasnippet)
-
-       (add-hook 'org-mode-hook (lambda ()
-                                  (visual-line-mode -1)))
-       ;;
-
+     ;; optional exporters
+     (with-eval-after-load 'ox
        (require 'ox-latex)
-       (add-to-list 'org-latex-classes
-                    '("beamer"
-                      "\\documentclass\[presentation\]\{beamer\}"
-                      ("\\section\{%s\}" . "\\section*\{%s\}")
-                      ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
-                      ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
-       (setq org-latex-listings t)
+       (cl-loop for pkg in '(ox-gfm ox-pandoc ox-reveal ox-confluence ox-md ox-jira ox-textile ox-html5slide ox-ioslide)
+             do (unless (require pkg nil 'noerror)
+                  (message (format "You need to install package %s" pkg))))
+       )
+
+     (use-package ox-pandoc)
+
+     (require 'org-clock)
+     (setq org-replace-disputed-keys t)
+     (setq org-disputed-keys (quote (([(shift up)] . [(control c)(up)]) ([(shift down)] . [(control c)(down)]) ([(shift left)] . [(control c)(left)]) ([(shift right)] . [(control c)(right)]) ([(control shift right)] . [(meta shift +)]) ([(control shift left)] . [(meta shift _)]))))
 
 
-       ;; https://github.com/unhammer/org-rich-yank
-       (require 'org-rich-yank)
-       (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
+     (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+     (global-set-key "\C-cls" 'org-store-link)
+     (global-set-key "\C-ca" 'org-agenda)
+     (load "~/.emacs.d/org-agenda-custom-commands.el")
+
+     (fset 'goto-org-agenda
+           "\C-caa")
 
 
-     (defun my-switch-to-compilation()
+     (global-set-key [XF86HomePage] 'goto-org-agenda)
+
+
+     (global-set-key [(shift f5)]  'org-clock-goto)
+     (global-set-key "\C-c\C-x\C-j"  'org-clock-goto)
+     (global-set-key "\C-z`" 'org-clock-in)
+     (global-set-key "\C-z~" 'org-clock-out)
+     (fset 'my-clock-in-current-task
+           (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '("`1" 0 "%d") arg)))
+     (global-set-key "\C-z1" 'my-clock-in-current-task)
+
+     (global-set-key [(control f5)] 'org-clock-in)
+     (global-set-key [(control shift f5)] 'org-clock-out)
+
+
+     (global-font-lock-mode 1)
+
+     ;; temp disabled
+     ;; (defun my-org-mode-hook ()
+     ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
+     ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
+     ;;   (yas-minor-mode)
+     ;;   ;(org-bullets-mode 1)
+     ;;   )
+     ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
+
+     (setq org-src-fontify-natively t)
+     (setq org-capture-bookmark nil) ;; remove side effect  - bm face over the all new captured items!
+
+     (setq org-directory "~/org/")
+
+     (setq org-default-notes-file (concat org-directory "/notes.org"))
+     (define-key global-map "\C-z\C-c" 'org-capture)
+
+     (defun org-todo-keyword-faces-dark()
        (interactive)
-       (if (get-buffer "*compilation*")
-           (switch-to-buffer "*compilation*")
+       (setq org-todo-keyword-faces
+             '(
+               ("IDEA" . (:foreground "chartreuse" :weight bold))
+               ("WORKING" . (:foreground "forest green" :weight bold))
+               ("DELEGATE" . (:foreground "deep sky blue" :background "#032251" :weight normal))
+               ("DELEGATED" . (:foreground "LightSteelBlue" :background "#032251" :weight normal))
+               ("REVIEW" . (:foreground "light coral" :background "#032251" :weight normal))
+               ("FEEDBACK" . (:foreground "light coral" :background "#032251" :weight normal))
+               ("TOPAIR" . (:foreground "wheat" :background "#1c4b78" :weight normal))
+               ("ASSIGNED" . (:foreground "green yellow" :background "#032251" :weight normal))
+               ("CANCELLED" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+               ("WORKSFORME" . (:foreground "dark green" :background "gray17" :weight bold :strike-through "coral"))
+               )
+             )
+       )
+
+     (defun switch-to-agenda() ()
+            (interactive)
+            (if (get-buffer "*Org Agenda*")
+                (switch-to-buffer "*Org Agenda*")
+              (org-agenda))
+            )
+
+     (fset 'switch-to-agenda-named-buffer
+           (kmacro-lambda-form [?\C-x ?b ?* ?O ?r ?g ?  ?A ?g ?e ?n ?d ?a tab return] 0 "%d"))
+
+
+     ;; (global-set-key (kbd "s-`") 'switch-to-agenda)
+     (global-set-key (kbd "C-z C-q") 'switch-to-agenda-named-buffer)
+
+
+     (setq org-completion-use-ido t)
+
+     (defun org-todo-keyword-faces-light()
+       (interactive)
+       (setq org-todo-keyword-faces
+             '(
+               ("WORKING" . (:background "green yellow"))
+               ("TODO" . (:foreground "DarkSlateBlue" :weight bold))
+               ("DELEGATE" . (:foreground "black" :background "LightSeaGreen" :weight normal :slant italic))
+               ("DELEGATED" . (:foreground "DarkSlateBlue" :weight bold :slant italic))
+               ("REVIEW" . (:foreground "black" :background "LightGoldenrod" :weight normal :slant italic))
+               ("TOPAIR" . (:foreground "black" :background "PaleTurquoise" :weight normal :slant italic))
+               ("ASSIGNED" . (:foreground "black" :background "Yellow" :weight normal :slant italic))
+               ("CANCELLED" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+               ("WORKSFORME" . (:foreground "white" :background "dark red" :weight bold :strike-through "coral"))
+               )
+             ))
+
+     (defun insert-time-with-seconds ()
+       (interactive)
+       (insert (format-time-string "%H:%M.%S")))
+
+
+     (global-set-key "\C-c0" 'insert-time-with-seconds)
+
+     (custom-set-faces
+      '(org-done ((t (:strike-through t)))))
+
+
+     (defun my-org-insert-current-item-time()
+       "Insert HH:MM into the buffer. Used during reporting of work done"
+       (interactive)
+       (let* (
+              (clocked-time (org-clock-get-clocked-time))
+              (h (/ clocked-time 60))
+              (m (- clocked-time (* 60 h)))
+              )
+         (insert (format "%.2d:%.2d" h m))
          )
        )
-     (define-key esc-map [f9] #'my-switch-to-compilation)
 
-       (setq org-use-speed-commands t)
 
-       ;; ;; (require 'org-sidebar)
+     ;; (defun display-debug ()
+     ;;   (interactive)
+     ;;   (message (format "%.2f" org-clock-file-total-minutes))
+     ;;   )
+     (defun my-org-insert-item-report-line()
+       "Interactive reporting during work done"
+       (interactive)
+       (insert-time-with-seconds)
+       (insert " (")
+       (my-org-insert-current-item-time)
+       (insert ") ")
+       )
 
-       ;; ;; https:
-       ;; //emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
-       (defvar org-blocks-hidden nil)
-       (defun org-toggle-blocks ()
-         (interactive)
-         (if org-blocks-hidden
-             (org-show-block-all)
-           (org-hide-block-all))
-         (setq-local org-blocks-hidden (not org-blocks-hidden)))
-       (add-hook 'org-mode-hook 'org-toggle-blocks)
-       (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
-       (global-set-key "\C-z'" 'poporg-dwim)
-       (global-set-key (kbd "C-z <f5>") 'org-clock-goto)
+     (global-set-key "\C-cit" 'my-org-insert-item-report-line)
+
+     (setq org-global-properties
+           '(("Effort_ALL". "1:00 2:00 3:00 5:00 8:00 16:00 0:10 0:15 0:30 0")))
+
+     (setq org-columns-default-format
+           "%40ITEM %5Effort(Estimated Effort){:} %8CLOCKSUM_T %TODO %3PRIORITY %TAGS")
+
+     (add-hook 'org-clock-out-hook
+               (lambda ()
+                 (fix-frame-title)))
+
+                                             ; http://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html#sec-2
+
+     (defun switch-to-orgfile(bufname)
+       (if (get-buffer bufname)
+           (switch-to-buffer bufname)
+         (pop-to-buffer (find-file (concat "~/org/" bufname))))
+       )
+
+     (defun switch-to-labster()
+       (interactive)
+       (switch-to-orgfile "labster.org"))
+
+     (defun switch-to-work()
+       (interactive)
+       (switch-to-orgfile "work.org"))
+
+     (global-set-key "\C-z\C-l" 'switch-to-labster)
+     (global-set-key "\C-z\C-w" 'switch-to-work)
+
+     ; (global-set-key (kbd "C-z ") 'helm-org-agenda-files-headings)
+     (define-key org-mode-map (kbd "C-z !") 'org-time-stamp-inactive)
+     (define-key org-mode-map (kbd "C-C C-r") 'org-reveal)
+     (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
+     (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
+
+     (custom-set-variables
+      '(markdown-command "/usr/bin/pandoc"))
+
+
+     (defun my-sync-google-calendar ()
+       "Save google calender entries into dairy.
+     See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
+       (interactive)
+       ;; (call-process "~/org/get_ical.py" nil 0 nil)
+       (call-process "~/org/get_ical.py" nil nil)
+       ;; Clear the diary file on disk
+       (with-temp-file "~/.emacs.d/diary" (erase-buffer))
+       ;; Import all .ics files
+       (mapcar (
+                lambda (icsfile)
+                (icalendar-import-file icsfile "~/.emacs.d/diary")
+                )
+               (file-expand-wildcards "~/org/*.ics"))
+       ;; Revert the diary buffer from disk so it picks up fresh content
+       (let ((diary-buf (find-buffer-visiting "~/.emacs.d/diary")))
+         (when diary-buf
+           (with-current-buffer diary-buf
+             (revert-buffer t t t))))
+       ;; Kill cached fancy diary buffer to avoid stale entries
+       (let ((fancy-buf (get-buffer "*Fancy Diary Entries*")))
+         (when fancy-buf (kill-buffer fancy-buf)))
+       )
+
+     ;; icalendar-import-file generates both recurring rules (diary-cyclic/diary-block)
+     ;; and individual date entries for modified instances. When both match the same day,
+     ;; the event appears twice. Deduplicate by (date, string) after entries are collected.
+     (defun my-diary-deduplicate-entries ()
+       "Remove duplicate entries from diary-entries-list."
+       (when (boundp 'diary-entries-list)
+         (let ((seen (make-hash-table :test 'equal))
+               (deduped nil))
+           (dolist (entry diary-entries-list)
+             (let ((key (list (nth 0 entry) (nth 1 entry))))
+               (unless (gethash key seen)
+                 (puthash key t seen)
+                 (push entry deduped))))
+           (setq diary-entries-list (nreverse deduped)))))
+     (add-hook 'diary-list-entries-hook #'my-diary-deduplicate-entries t)
+
+     ;;
+
+     (defun copy-password-to-buffer()
+       "Yank password property"
+       (interactive)
+       (let ((password (org-entry-get (point) "password")))
+         (kill-new password)
+         (gui-set-selection "PRIMARY" password)
+         )
+       )
+
+     (define-key global-map (kbd "C-z p p") 'copy-password-to-buffer)
+
+                                             ; https://emacs.stackexchange.com/questions/2952/display-errors-and-warnings-in-an-org-mode-code-block
+
+                                             ; http://kitchingroup.cheme.cmu.edu/blog/2015/01/04/Redirecting-stderr-in-org-mode-shell-blocks/                                       ;
+                                             ; (require 'async-org-babel)
+
+                                             ; redisplay inline images inline in realtime?
+     (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
+
+
+     (add-hook 'org-mode-hook #'yas-minor-mode)
+     (defun org-plus-yasnippet()
+       (setq-local yas-indent-line 'fixed))
+     (add-hook 'org-mode-hook #'org-plus-yasnippet)
+
+     (add-hook 'org-mode-hook (lambda ()
+                                (visual-line-mode -1)))
+     ;;
+
+     (require 'ox-latex)
+     (add-to-list 'org-latex-classes
+                  '("beamer"
+                    "\\documentclass\[presentation\]\{beamer\}"
+                    ("\\section\{%s\}" . "\\section*\{%s\}")
+                    ("\\subsection\{%s\}" . "\\subsection*\{%s\}")
+                    ("\\subsubsection\{%s\}" . "\\subsubsection*\{%s\}")))
+     (setq org-latex-listings t)
+
+
+     ;; https://github.com/unhammer/org-rich-yank
+     (require 'org-rich-yank)
+     (define-key org-mode-map (kbd "C-M-y") #'org-rich-yank)
+
+
+   (defun my-switch-to-compilation()
+     (interactive)
+     (if (get-buffer "*compilation*")
+         (switch-to-buffer "*compilation*")
+       )
+     )
+   (define-key esc-map [f9] #'my-switch-to-compilation)
+
+     (setq org-use-speed-commands t)
+
+     ;; ;; (require 'org-sidebar)
+
+     ;; ;; https:
+     ;; //emacs.stackexchange.com/questions/7211/collapse-src-blocks-in-org-mode-by-default
+     ;; (defvar org-blocks-hidden nil)
+     ;; (defun org-toggle-blocks ()
+     ;;   (interactive)
+     ;;   (if org-blocks-hidden
+     ;;       (org-show-block-all)
+     ;;     (org-hide-block-all))
+     ;;   (setq-local org-blocks-hidden (not org-blocks-hidden)))
+     ;; (add-hook 'org-mode-hook 'org-toggle-blocks)
+     ;; (define-key org-mode-map (kbd "C-c t") 'org-toggle-blocks)
+     (global-set-key "\C-z'" 'poporg-dwim)
+     (global-set-key (kbd "C-z <f5>") 'org-clock-goto)
    #+end_src
 
 *** syntax highlight in code blocks
@@ -3365,6 +3365,49 @@ https://github.com/thndrbrrr/gtasks-org-tools
            ("C-c s" . helm-projectile-ag)
            )
     )
+
+  ;; --- TRAMP slowdown fix --------------------------------------------------
+  ;; Projectile probes the filesystem (looking for .git, .projectile, etc.)
+  ;; on every find-file and on every mode-line update.  Over TRAMP those
+  ;; probes turn into round-trips to the remote host and a single keystroke
+  ;; can stall Emacs for many seconds.  We go nuclear: globally disable
+  ;; `projectile-mode' the instant we open ANY TRAMP path.  Re-enable later
+  ;; with `M-x my/projectile-toggle-global' (or just `M-x projectile-mode').
+  ;;
+  ;; NOTE: this MUST live outside `helm-projectile' :config — that package
+  ;; is autoloaded via :bind and its :config is deferred until you press one
+  ;; of the bound keys, which is too late for the first TRAMP open.  Putting
+  ;; the hook inside `with-eval-after-load 'projectile' guarantees it is
+  ;; registered at startup, because :init force-loads projectile via
+  ;; `projectile-global-mode'.
+  (with-eval-after-load 'projectile
+    (defun my/projectile-off-on-tramp-find-file (filename &rest _)
+      "Disable `projectile-mode' BEFORE opening any TRAMP file."
+      (when (and (stringp filename)
+                 (file-remote-p filename)
+                 (bound-and-true-p projectile-mode))
+        (projectile-mode -1)
+        (message "projectile-mode auto-disabled (TRAMP)")))
+    (advice-add 'find-file :before #'my/projectile-off-on-tramp-find-file)
+
+    (defun my/projectile-off-on-tramp-buffer ()
+      "Belt-and-braces: also disable on any TRAMP buffer (dired etc.)."
+      (when (and (file-remote-p default-directory)
+                 (bound-and-true-p projectile-mode))
+        (projectile-mode -1)
+        (message "projectile-mode auto-disabled (TRAMP buffer)")))
+    (add-hook 'find-file-hook  #'my/projectile-off-on-tramp-buffer)
+    (add-hook 'dired-mode-hook #'my/projectile-off-on-tramp-buffer)
+
+    (defun my/projectile-toggle-global ()
+      "Toggle `projectile-mode' globally — workaround for TRAMP freezes."
+      (interactive)
+      (if (bound-and-true-p projectile-mode)
+          (progn (projectile-mode -1)
+                 (message "projectile-mode OFF (TRAMP-safe)"))
+        (projectile-mode +1)
+        (message "projectile-mode ON"))))
+  ;; ------------------------------------------------------------------------
   #+END_SRC
 ** easy-kill
 
@@ -4214,6 +4257,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (setq youtrack-host "youtrack.raccoongang.com")
    (load "~/.emacs.d/youtrack/youtrack.el")
    (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
+   (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
    (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
    (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
    #+end_src
@@ -4490,13 +4534,23 @@ Format: \"/full/path/file.el:L42\"."
            (kill-new result)
            (message "Copied '%s' to the clipboard." result)))))
 
+   (defun my-dired-copy-file-path ()
+     "Copy the absolute path of the file at point in dired to the clipboard."
+     (interactive)
+     (let ((filename (dired-get-filename nil t)))
+       (when filename
+         (kill-new filename)
+         (message "Copied '%s' to the clipboard." filename))))
+
    (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
    (global-set-key (kbd "C-x <f2>")  'my-insert-projectile-hyperbole-link)
    (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
+   (with-eval-after-load 'dired
+     (define-key dired-mode-map (kbd "W") 'my-dired-copy-file-path))
    #+end_src
 
    #+RESULTS:
-   : copy-file-name-with-line-to-clipboard
+   : my-dired-copy-file-path
 
 *** Hyperbole support
 
@@ -4901,14 +4955,123 @@ Format: \"/full/path/file.el:L42\"."
 
    #+begin_src emacs-lisp
 
+   ;; Scrolling the transcript: Claude's CLI draws in the terminal's
+   ;; ALTERNATIVE display (a clean full-screen canvas with no terminal
+   ;; scrollback — same mechanism vim/less/htop use). It provides its OWN
+   ;; keyboard scrollback, used from the normal terminal mode (NOT C-c C-e):
+   ;;   C-o k / C-o j  — scroll the transcript up / down
+   ;;   C-o /          — search the transcript
+   ;; eat forwards C-o to Claude (it is not in `eat-semi-char-non-bound-keys').
+   ;; So there is nothing to configure here for scrollback — do not disable
+   ;; `eat-enable-alternative-display', as that would break Claude's C-o
+   ;; scrolling and leave a redraw-littered buffer instead.
    (use-package claude-code-ide
      :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+     :demand t                            ; load at init so :config (MCP tool
+                                          ; registration) runs before any Claude
+                                          ; session connects — avoids the stale-
+                                          ; session case where project-info et al.
+                                          ; are missing until setup is run by hand
      :bind (
             ("C-c C-'" . claude-code-ide-menu)
             ("C-x <f1>" . claude-code-ide-list-sessions)
             )
      :config
      (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
+
+   ;; Copy several screens of conversation at once. The Claude eat buffer only
+   ;; holds the current alt-display screen, so an Emacs region can't span the
+   ;; scrolled-back transcript. The full conversation lives on disk as JSONL
+   ;; under ~/.claude/projects/<encoded-project>/<session>.jsonl. This opens
+   ;; the NEWEST session for the current project and extracts just the
+   ;; readable text (user prompts + assistant `text' blocks — skips thinking,
+   ;; tool calls, and bookkeeping lines) into a selectable buffer.
+   (defun my-claude-open-transcript ()
+     "Open the newest Claude Code transcript for this project as readable text."
+     (interactive)
+     (let* ((root (directory-file-name
+                   (or (ignore-errors (project-root (project-current)))
+                       default-directory)))
+            (dir (expand-file-name (replace-regexp-in-string "[/.]" "-" root)
+                                   "~/.claude/projects/"))
+            (files (and (file-directory-p dir)
+                        (directory-files dir t "\\.jsonl\\'")))
+            (file (and files
+                       (car (sort files
+                                  (lambda (a b)
+                                    (time-less-p (nth 5 (file-attributes b))
+                                                 (nth 5 (file-attributes a))))))))
+            (out (get-buffer-create "*claude-transcript*")))
+       (unless file (user-error "No Claude transcript found in %s" dir))
+       (with-temp-buffer
+         (insert-file-contents file)
+         (let ((lines (split-string (buffer-string) "\n" t)))
+           (with-current-buffer out
+             (let ((inhibit-read-only t))
+               (erase-buffer)
+               (insert "#+TITLE: " (file-name-nondirectory file) "\n"
+                       "#+STARTUP: overview\n")
+               (dolist (line lines)
+                 (condition-case nil
+                     (let* ((obj (json-parse-string line :object-type 'alist
+                                                    :array-type 'list))
+                            (type (alist-get 'type obj))
+                            (msg (alist-get 'message obj))
+                            (content (and (listp msg) (alist-get 'content msg))))
+                       (when (member type '("user" "assistant"))
+                         (let ((text (cond
+                                      ((stringp content) content)
+                                      ((listp content)
+                                       (mapconcat
+                                        (lambda (b)
+                                          (if (and (listp b)
+                                                   (equal (alist-get 'type b) "text"))
+                                              (or (alist-get 'text b) "") ""))
+                                        content ""))
+                                      (t ""))))
+                           (when (> (length (string-trim text)) 0)
+                             ;; org headings per turn; neutralise beginning-of-
+                             ;; line * / #+ in the body so message text doesn't
+                             ;; get parsed as org headings/keywords.
+                             (insert (format "\n* %s\n\n%s\n"
+                                             (if (equal type "user")
+                                                 "🧑 User" "🤖 Assistant")
+                                             (replace-regexp-in-string
+                                              "^\\(\\*\\|#\\+\\)" " \\1"
+                                              (string-trim text))))))))
+                   (error nil)))
+               (goto-char (point-min))))))
+       (with-current-buffer out
+         (org-mode)
+         (org-set-startup-visibility)      ; fold to #+STARTUP: overview
+         (read-only-mode 1))               ; C-x C-q to edit, M-w to copy
+       (pop-to-buffer out)))
+
+   ;; C-x <f2> and <f3> are taken (hyperbole link / ztree); f4,f6-f9 are free.
+   (global-set-key (kbd "C-x <f4>") #'my-claude-open-transcript)
+
+   ;; Bulk archiver: regenerate the org copy of ALL sessions (bin/claude-
+   ;; transcripts.bb) and open the master index. Complements the single-session
+   ;; viewer above.
+   (defun my-claude-export-all-transcripts ()
+     "Regenerate the org archive of all Claude Code sessions, then open the index."
+     (interactive)
+     (let ((default-directory (expand-file-name "~/")))
+       (message "Exporting Claude transcripts…")
+       (call-process "bb" nil "*claude-export*" nil
+                     (expand-file-name "~/.emacs.d/bin/claude-transcripts.bb"))
+       (find-file "~/claude-transcripts/index.org")))
+
+   (global-set-key (kbd "C-x <f6>") #'my-claude-export-all-transcripts)
+
+   ;; Native claude-code-ide context commands (f7/f8 are free):
+   ;;   <f7> — @-mention the current region (or line) into the running prompt.
+   ;;   <f8> — send a prompt from the minibuffer without switching windows.
+   ;; (The active file, cursor position, and region are already tracked and
+   ;; pushed to Claude automatically while a session runs — these are for the
+   ;; explicit cases.)
+   (global-set-key (kbd "C-x <f7>") #'claude-code-ide-insert-at-mentioned)
+   (global-set-key (kbd "C-x <f8>") #'claude-code-ide-send-prompt)
 
    #+end_src
 
@@ -5086,7 +5249,79 @@ moving through the list — the chosen theme is applied only on RET."
    #+RESULTS:
    : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
 
-** kubernetes
+** kubernetes (tramp-container)
+
+   Built into Tramp since Emacs 29 (=tramp-container.el=). It registers a
+   full ~kubernetes~ method — no external package and no manual
+   ~tramp-methods~ push required. It supersedes ~kubernetes-tramp~.
+
+   Path syntax:
+   - =/kubernetes:POD:/path= — shell into POD.
+   - =/kubernetes:CONTAINER.POD:/path= — pick a specific container.
+
+   Two gotchas bit this setup while migrating off the ~kubectl~ method:
+
+   1. [@1]  ~tramp-kubernetes-namespace~ defaults to ="default"=, and Tramp
+      then forces =--namespace=default= onto every ~kubectl exec=,
+      overriding the namespace baked into the current context. With our
+      context (=oleksii.koval-rgk8s-prod-eu=) already pointing at the right
+      namespace, that override made pods "not found" and the connection
+      failed. Setting the variable to nil makes Tramp omit =--namespace= and
+      defer to the context — matching how the old bare ~kubectl~ method
+      behaved.
+
+   2. [@2]  The ~%x~ (context + namespace) argument is expanded via a
+      connection-local variable (~tramp-extra-expand-args~) carried by
+      ~tramp-kubernetes-connection-local-default-profile~. Tramp registers
+      this profile at startup, but something later in our init rebuilds the
+      connection-local alists and drops it, giving =Invalid format character
+      '%x'= — but *only* on a fresh start; re-evaluating the two
+      ~connection-local-set-*~ forms makes it work. The offending rebuild
+      isn't in our own files (nothing here touches
+      ~connection-local-criteria-alist~ / ~connection-local-profile-alist~;
+      the stray ~<host>-vars~ profiles are created by Emacs/Tramp at
+      runtime), so instead of chasing it we re-assert the profile from
+      ~emacs-startup-hook~, which fires after the whole init — the same
+      point a manual re-eval would. Registering it inline does *not*
+      survive; the hook does.
+
+   #+begin_src emacs-lisp :results output none
+   (require 'tramp-container)
+
+   ;; (1) Don't force --namespace=default; defer to the current kube context.
+   (setq tramp-kubernetes-namespace nil)
+
+   ;; (2) Re-assert the kubernetes connection-local profile that teaches
+   ;; Tramp to expand %x / %a / %h. Tramp registers it at startup, but
+   ;; something later in our init rebuilds the connection-local alists and
+   ;; drops it — symptom: "Invalid format character '%x'" only on a FRESH
+   ;; start, and it goes away as soon as the two forms below are re-eval'ed.
+   ;; So we register from `emacs-startup-hook', which runs AFTER the whole
+   ;; init (org-babel-load-file, custom, everything that clobbers it), the
+   ;; same moment a manual re-eval would happen. Running it inline here does
+   ;; NOT survive; the hook is what makes it stick across restarts.
+   (defun my-tramp-register-kubernetes-profile ()
+     "(Re)register the tramp-container kubernetes connection-local profile."
+     (connection-local-set-profile-variables
+      'tramp-kubernetes-connection-local-default-profile
+      '((tramp-config-check . tramp-kubernetes--current-context-data)
+        (tramp-extra-expand-args
+         . (?a (tramp-kubernetes--container       (car tramp-current-connection))
+            ?h (tramp-kubernetes--pod             (car tramp-current-connection))
+            ?x (tramp-kubernetes--context-namespace (car tramp-current-connection))))))
+     (connection-local-set-profiles
+      '(:application tramp :protocol "kubernetes")
+      'tramp-kubernetes-connection-local-default-profile))
+
+   (add-hook 'emacs-startup-hook #'my-tramp-register-kubernetes-profile)
+   #+end_src
+
+** kubernetes (old — kubernetes-tramp, obsoleted)
+
+   Superseded by the built-in ~tramp-container~ ~kubernetes~ method (see
+   the section below). ~kubernetes-tramp~ has been obsoleted upstream, and
+   the hand-pushed ~kubectl~ method is redundant now that Tramp ships a
+   richer one.
 
    #+begin_src emacs-lisp
    (use-package kubernetes-tramp)
