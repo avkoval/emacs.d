@@ -3345,7 +3345,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
   (use-package projectile)
   (use-package helm-projectile
     :init
-    (projectile-global-mode)
+    ;; (projectile-global-mode)
     (setq projectile-enable-caching t)
     :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
            ([(C-tab)] . helm-buffers-list)
