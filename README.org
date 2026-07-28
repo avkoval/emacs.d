@@ -234,7 +234,7 @@
       (let ((sort-fold-case t))
         (call-interactively 'sort-lines)))
 
-    (global-set-key (kbd "s-s L") 'sort-lines-nocase)
+    ;; (global-set-key (kbd "s-s L") 'sort-lines-nocase)
 
 
     ;; remap alt mouse wheel keys to generate Up/Down
@@ -296,7 +296,7 @@
       (interactive)
       (kill-buffer (buffer-name))
       )
-    (global-set-key [M-delete] 'geosoft-kill-buffer)
+    ;; (global-set-key [M-delete] 'geosoft-kill-buffer)
 
                                             ; (global-set-key (kbd "C-z C-z") 'suspend-frame)
 
@@ -305,7 +305,7 @@
 
 
     (global-set-key (kbd "C-c C-t") 'switch-to-tree)
-    (global-set-key (kbd "s-s m") 'discover-my-major)
+    ;; (global-set-key (kbd "s-s m") 'discover-my-major)
 
     (defun insert-file-name ()
       "Insert current file name."
@@ -1218,7 +1218,7 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
           (dot . t)
           (awk . t)
           (emacs-lisp . t)
-          (verb . t)
+          ;; (verb . t)
           (sql . t)
           (calc . t)
           )
@@ -1473,7 +1473,7 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
        (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)
 
 
-       (add-hook 'org-mode-hook #'yas-minor-mode)
+       ;; (add-hook 'org-mode-hook #'yas-minor-mode)
        (defun org-plus-yasnippet()
          (setq-local yas-indent-line 'fixed))
        (add-hook 'org-mode-hook #'org-plus-yasnippet)
@@ -2118,7 +2118,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
  ;; Enable vertico
  (use-package vertico
    :init
-   ;; (vertico-mode)
+   (vertico-mode)
 
    ;; Different scroll margin
    ;; (setq vertico-scroll-margin 0)
@@ -2871,8 +2871,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 
     ;; Default (local) shell = zsh
-    (setq shell-file-name "/usr/bin/zsh"
-          explicit-shell-file-name "/usr/bin/zsh")
+    (setq shell-file-name "/bin/zsh"
+          explicit-shell-file-name "/bin/zsh")
 
     (with-eval-after-load 'tramp
       ;; For any TRAMP connection, override to bash
@@ -4031,7 +4031,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      )
    #+end_src
 
-** consult-omni
+** COMMENT consult-omni
 
    #+begin_src emacs-lisp :results output none
      (global-unset-key (kbd "C-x /"))
@@ -4289,30 +4289,31 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 ** eat?
 
    #+begin_src emacs-lisp
-     (straight-use-package
-      '(eat :type git
-            :host codeberg
-            :repo "akib/emacs-eat"
-            :files ("*.el" ("term" "term/*.el") "*.texi"
-                    "*.ti" ("terminfo/e" "terminfo/e/*")
-                    ("terminfo/65" "terminfo/65/*")
-                    ("integration" "integration/*")
-                    (:exclude ".dir-locals.el" "*-tests.el"))))
+        ;; (straight-use-package
+        ;;  '(eat :type git
+        ;;        :host codeberg
+        ;;        :repo "akib/emacs-eat"
+        ;;        :files ("*.el" ("term" "term/*.el") "*.texi"
+        ;;                "*.ti" ("terminfo/e" "terminfo/e/*")
+        ;;                ("terminfo/65" "terminfo/65/*")
+        ;;                ("integration" "integration/*")
+        ;;                (:exclude ".dir-locals.el" "*-tests.el"))))
+   (use-package eat)
    (global-set-key (kbd "<f6>") 'eat)
 
 
-(with-eval-after-load 'eat
-  (defun my-eat-C-z-dispatch ()
-    "Leave eat's terminal input mode and replay C-z so the command loop
-dispatches it through the normal (global) keymap. Use `C-c j' (or
-`eat-semi-char-mode' / `eat-char-mode') to return to terminal input."
-    (interactive)
-    (eat-emacs-mode)
-    (push ?\C-z unread-command-events))
+   (with-eval-after-load 'eat
+     (defun my-eat-C-z-dispatch ()
+       "Leave eat's terminal input mode and replay C-z so the command loop
+   dispatches it through the normal (global) keymap. Use `C-c j' (or
+   `eat-semi-char-mode' / `eat-char-mode') to return to terminal input."
+       (interactive)
+       (eat-emacs-mode)
+       (push ?\C-z unread-command-events))
 
-  (dolist (map '(eat-semi-char-mode-map eat-char-mode-map eat-line-mode-map))
-    (when (boundp map)
-      (define-key (symbol-value map) (kbd "C-z") #'my-eat-C-z-dispatch))))
+     (dolist (map '(eat-semi-char-mode-map eat-char-mode-map eat-line-mode-map))
+       (when (boundp map)
+         (define-key (symbol-value map) (kbd "C-z") #'my-eat-C-z-dispatch))))
 
    #+end_src
 
@@ -4384,7 +4385,7 @@ dispatches it through the normal (global) keymap. Use `C-c j' (or
 
    #+RESULTS:
    : yank-with-indent
-** p-search
+** COMMENT p-search
 
    #+begin_src emacs-lisp
    (quelpa '(p-search :repo "zkry/p-search" :fetcher github))
@@ -4490,13 +4491,23 @@ Format: \"/full/path/file.el:L42\"."
            (kill-new result)
            (message "Copied '%s' to the clipboard." result)))))
 
+   (defun my-dired-copy-file-path ()
+     "Copy the absolute path of the file at point in dired to the clipboard."
+     (interactive)
+     (let ((filename (dired-get-filename nil t)))
+       (when filename
+         (kill-new filename)
+         (message "Copied '%s' to the clipboard." filename))))
+
    (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
    (global-set-key (kbd "C-x <f2>")  'my-insert-projectile-hyperbole-link)
    (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
+   (with-eval-after-load 'dired
+     (define-key dired-mode-map (kbd "W") 'my-dired-copy-file-path))
    #+end_src
 
    #+RESULTS:
-   : copy-file-name-with-line-to-clipboard
+   : my-dired-copy-file-path
 
 *** Hyperbole support
 
@@ -5086,7 +5097,7 @@ moving through the list — the chosen theme is applied only on RET."
    #+RESULTS:
    : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
 
-** kubernetes
+** COMMENT kubernetes
 
    #+begin_src emacs-lisp
    (use-package kubernetes-tramp)
@@ -5511,7 +5522,7 @@ moving through the list — the chosen theme is applied only on RET."
      :mode (("\\.clj\\'" . clojure-mode)
             ("\\.edn\\'" . clojure-mode))
      :init
-     (add-hook 'clojure-mode-hook #'yas-minor-mode)
+     ;; (add-hook 'clojure-mode-hook #'yas-minor-mode)
      ;; (add-hook 'clojure-mode-hook #'linum-mode)
      (add-hook 'clojure-mode-hook #'subword-mode)
      ;; (add-hook 'clojure-mode-hook #'smartparens-mode)
@@ -5616,7 +5627,7 @@ moving through the list — the chosen theme is applied only on RET."
 
  (add-hook 'web-mode-hook
            '(lambda ()
-              (yas-minor-mode)
+;;              (yas-minor-mode)
               (yas-activate-extra-mode 'web-mode)
               (display-line-numbers-mode)
               ;; (highlight-indentation-mode t)
@@ -5875,3 +5886,4 @@ moving through the list — the chosen theme is applied only on RET."
 : bc-on-region
 
 * Unsorted (WIP)
+
