@@ -591,8 +591,13 @@
 * Internal dependencies
 ** cond-let
 
+Provided by the ELPA package (also pulled in as a magit/forge dependency).
+Managed via use-package so it is an explicitly-selected package — do NOT
+vendor a copy under =lisp/=, which would shadow the package on load-path
+and cause version-skew macro errors after magit/forge upgrades.
+
 #+begin_src emacs-lisp
-(require 'cond-let)
+(use-package cond-let)
 #+end_src
 ** Dash
 
