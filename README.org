@@ -568,7 +568,7 @@
      :config (auto-compile-on-load-mode))
    #+END_SRC
 
-** Straight
+** COMMENT Straight
 
    #+begin_src emacs-lisp :results output none
    (defvar bootstrap-version)
@@ -589,7 +589,7 @@
    #+end_src
 
 * Internal dependencies
-** cond-let
+** COMMENT cond-let
 
 Provided by the ELPA package (also pulled in as a magit/forge dependency).
 Managed via use-package so it is an explicitly-selected package — do NOT
@@ -599,6 +599,9 @@ and cause version-skew macro errors after magit/forge upgrades.
 #+begin_src emacs-lisp
 (use-package cond-let)
 #+end_src
+
+#+RESULTS:
+
 ** Dash
 
    A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
