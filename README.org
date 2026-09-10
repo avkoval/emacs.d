@@ -4,6 +4,23 @@
 #+TITLE: Oleksii Koval (ok) emacs configuration file
 
 * Basic keybindings and configration settings
+** ~PATH~ for CLI tools
+
+   A GUI Emacs inherits whatever environment it was launched with, which on
+   macOS usually means =~/.local/bin= is missing — so =codex=, =claude= and
+   friends are invisible to ~executable-find~ and to subprocesses. Add it to
+   both ~exec-path~ (used by ~start-process~) and ~PATH~ (used by
+   ~shell-command~ and anything that re-resolves the binary itself).
+
+   #+BEGIN_SRC emacs-lisp :results output none
+     (dolist (dir (list (expand-file-name "~/.local/bin")
+                        "/opt/homebrew/bin"))
+       (when (file-directory-p dir)
+         (add-to-list 'exec-path dir)
+         (unless (member dir (split-string (getenv "PATH") path-separator))
+           (setenv "PATH" (concat dir path-separator (getenv "PATH"))))))
+   #+END_SRC
+
 ** Disable ~tool-bar~
 
    Disable ~tool-bar~
@@ -594,7 +611,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      :config (auto-compile-on-load-mode))
    #+END_SRC
 
-** Straight
+** COMMENT Straight
 
    #+begin_src emacs-lisp :results output none
    (defvar bootstrap-version)
@@ -615,7 +632,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    #+end_src
 
 * Internal dependencies
-** cond-let
+** COMMENT cond-let
 
 Provided by the ELPA package (also pulled in as a magit/forge dependency).
 Managed via use-package so it is an explicitly-selected package — do NOT
@@ -625,6 +642,9 @@ and cause version-skew macro errors after magit/forge upgrades.
 #+begin_src emacs-lisp
 (use-package cond-let)
 #+end_src
+
+#+RESULTS:
+
 ** Dash
 
    A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
@@ -2648,12 +2668,16 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+BEGIN_SRC emacs-lisp :results output none
      ;; (dired-async-mode 1)
      (setq dired-omit-files "^\\...+$")
+     ;; two-panel behaviour: C / R default to the dir of another visible dired
+     (setq dired-dwim-target t)
      ;;(defun avk-dired-mode-hook ()
      ;; (local-set-key [(tab)] 'other-window))
 
      ;; (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
      (defun open-file-externally(arg)
-       (async-shell-command (format "xdg-open \"%s\"" arg))
+       "Open ARG with the OS default application."
+       (let ((opener (if (eq system-type 'darwin) "open" "xdg-open")))
+	 (async-shell-command (format "%s %s" opener (shell-quote-argument arg))))
        )
 
      (defun open-files-externally()
@@ -4980,7 +5004,8 @@ Format: \"/full/path/file.el:L42\"."
          (message "Copied '%s' to the clipboard." filename))))
 
    (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
-   (global-set-key (kbd "C-x <f2>")  'my-insert-projectile-hyperbole-link)
+   ;; was C-x <f2>, moved to free up f2 for `my-codex-list-sessions'
+   (global-set-key (kbd "C-x <f5>")  'my-insert-projectile-hyperbole-link)
    (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
    (with-eval-after-load 'dired
      (define-key dired-mode-map (kbd "W") 'my-dired-copy-file-path))
@@ -5484,7 +5509,9 @@ Format: \"/full/path/file.el:L42\"."
          (read-only-mode 1))               ; C-x C-q to edit, M-w to copy
        (pop-to-buffer out)))
 
-   ;; C-x <f2> and <f3> are taken (hyperbole link / ztree); f4,f6-f9 are free.
+   ;; C-x f-key map: f1 claude sessions, f2 codex sessions, f3 ztree,
+   ;; f4 transcript, f5 hyperbole link, f6 export, f7 @-mention, f8 prompt,
+   ;; f11 prefix (display-line-numbers). f9, f10, f12 are still free.
    (global-set-key (kbd "C-x <f4>") #'my-claude-open-transcript)
 
    ;; Bulk archiver: regenerate the org copy of ALL sessions (bin/claude-
@@ -5514,6 +5541,85 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : claude-code-ide-list-sessions
+
+** codex-cli — switch between open sessions
+
+   `codex-cli' has no process registry of its own (unlike claude-code-ide,
+   whose ~claude-code-ide-list-sessions~ walks a hash table) — it encodes
+   everything in the terminal buffer name: ~*codex-cli:PROJECT*~ for the
+   default session, ~*codex-cli:PROJECT:SESSION*~ for a named one. So the
+   buffer list *is* the session list, and picking a session is a filter over
+   it. This is the ~C-x <f2>~ counterpart of ~C-x <f1>~.
+
+   #+begin_src emacs-lisp :results output none
+   (defconst my-codex-session-buffer-regexp
+     "\\`\\*codex-cli:\\([^:*]+\\)\\(?::\\([^*]+\\)\\)?\\*\\'"
+     "Match a `codex-cli' session buffer name.
+   Group 1 is the project, group 2 the session id (nil for the default
+   session).")
+
+   (defun my-codex--session-buffers ()
+     "Return every buffer that looks like a Codex session, live or dead."
+     (seq-filter
+      (lambda (b)
+        (let ((name (buffer-name b)))
+          (and name
+               (not (string-prefix-p "*codex-cli-log:" name))
+               (or (string-match-p my-codex-session-buffer-regexp name)
+                   ;; a codex started by hand in an eat/vterm/shell buffer
+                   (when-let* ((proc (get-buffer-process b)))
+                     (seq-some (lambda (arg) (string-match-p "\\bcodex\\b" arg))
+                               (process-command proc)))))))
+      (buffer-list)))
+
+   (defun my-codex--session-label (buf)
+     "Return a completion label describing Codex session buffer BUF."
+     (let* ((name (buffer-name buf))
+            (live (process-live-p (get-buffer-process buf)))
+            (id (if (string-match my-codex-session-buffer-regexp name)
+                    (format "%s:%s" (match-string 1 name)
+                            (or (match-string 2 name) "default"))
+                  ;; unparsed name: fall back to the buffer and its directory
+                  (format "%s  %s" name
+                          (with-current-buffer buf
+                            (abbreviate-file-name (or default-directory "")))))))
+       (concat id
+               (and (get-buffer-window buf t) "  [visible]")
+               (and (not live) "  [dead]"))))
+
+   (defun my-codex-list-sessions ()
+     "List open Codex sessions and switch to the selected one.
+   Companion to `claude-code-ide-list-sessions' on C-x <f1>."
+     (interactive)
+     (let ((buffers (my-codex--session-buffers)))
+       (unless buffers (user-error "No open Codex sessions"))
+       (let* ((candidates
+               (mapcar (lambda (b) (cons (my-codex--session-label b) b))
+                       ;; live sessions first, then alphabetical
+                       (sort buffers
+                             (lambda (a b)
+                               (let ((la (process-live-p (get-buffer-process a)))
+                                     (lb (process-live-p (get-buffer-process b))))
+                                 (if (eq (not la) (not lb))
+                                     (string< (buffer-name a) (buffer-name b))
+                                   (and la t)))))))
+              (choice (if (cdr candidates)
+                          (completing-read "Switch to Codex session: "
+                                           candidates nil t)
+                        (caar candidates)))
+              (buf (cdr (assoc choice candidates))))
+         (when (buffer-live-p buf)
+           ;; reuse the window if it is already up, else codex-cli's own side
+           ;; window geometry (right, 90 cols) when those vars are loaded
+           (select-window
+            (or (get-buffer-window buf)
+                (display-buffer-in-side-window
+                 buf `((side . ,(if (boundp 'codex-cli-side) codex-cli-side 'right))
+                       (window-width . ,(if (boundp 'codex-cli-width)
+                                            codex-cli-width 90))))))))))
+
+   (global-set-key (kbd "C-x <f2>") #'my-codex-list-sessions)
+   #+end_src
 
 ** gemini
 
@@ -6547,4 +6653,3 @@ moving through the list — the chosen theme is applied only on RET."
 : bc-on-region
 
 * Unsorted (WIP)
-
