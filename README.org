@@ -99,6 +99,32 @@
     (global-set-key ["s-ё"] 'delete-other-windows)
     ;; (global-set-key ["s-\\"] 'delete-other-windows)
 
+    ;; Move by whitespace-delimited chunks ("big words"), coarser than
+    ;; M-f/M-b which break on every dot/slash/@ inside things like URLs.
+    ;; With the "^" spec, holding Shift extends the region, so
+    ;; M-S-s-<left> selects the previous chunk (e.g. the whole git@... URL).
+    (defvar my/bigword-separators " \t\n"
+      "Characters that separate chunks for `my/backward-bigword'/`my/forward-bigword'.
+Default is whitespace only, so a git URL counts as one chunk.  Add
+punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
+
+    (defun my/backward-bigword (&optional n)
+      "Move backward over N whitespace-delimited chunks (see `my/bigword-separators')."
+      (interactive "^p")
+      (dotimes (_ (or n 1))
+        (skip-chars-backward my/bigword-separators)
+        (skip-chars-backward (concat "^" my/bigword-separators))))
+
+    (defun my/forward-bigword (&optional n)
+      "Move forward over N whitespace-delimited chunks (see `my/bigword-separators')."
+      (interactive "^p")
+      (dotimes (_ (or n 1))
+        (skip-chars-forward my/bigword-separators)
+        (skip-chars-forward (concat "^" my/bigword-separators))))
+
+    (global-set-key (kbd "M-s-<left>")  'my/backward-bigword)
+    (global-set-key (kbd "M-s-<right>") 'my/forward-bigword)
+
 
     (global-set-key [mouse-2] 'yank) ;; paste on middle mouse key
 
@@ -972,6 +998,373 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
 
 #+RESULTS:
 : my/org-table-copy-as-tsv
+
+*** markdown / plantuml
+
+    Markdown has no ~org-babel~, so a fenced ~```plantuml~ block cannot be executed
+    the way an org source block can.  The code below adds the missing half: render
+    the block at point with PlantUML, write the image next to the document, and
+    insert (or update) a Markdown image link right after the closing fence — the
+    Markdown equivalent of ~C-c C-c~ on an org babel block producing a ~#+RESULTS:~
+    link.
+
+    | key         | command                                | effect                            |
+    |-------------+----------------------------------------+-----------------------------------|
+    | ~C-c C-v~   | ~my/markdown-plantuml-render-block~    | render the block at point         |
+    | ~C-u C-c C-v~ | ~my/markdown-plantuml-render-block~  | ask where to save the image       |
+    | ~C-c C-S-v~ | ~my/markdown-plantuml-render-buffer~   | render every block in the buffer  |
+    | ~C-c C-u~   | ~plantuml-preview-current-block~       | preview only, no file, no link    |
+    | ~C-c C-x C-i~ | ~markdown-toggle-inline-images~      | show / hide images in the buffer  |
+
+    The output file name is resolved in this order:
+
+    1. [@1]  ~file=~ (or ~out=~) in the fence info string —
+       ~```plantuml file=images/architecture.svg~;
+    2. [@2]  the diagram's own name — ~@startuml component-view~ becomes
+       ~images/component-view.png~;
+    3. [@3]  otherwise ~images/<md-basename>-<N>.png~, where ~N~ counts PlantUML
+       blocks in the file.
+
+    ~format=svg~ in the info string overrides ~my/markdown-plantuml-format~ for a
+    single block.  Rendering is idempotent: re-running replaces the existing image
+    line instead of appending a second one, so ~C-c C-S-v~ is safe to run after
+    editing several diagrams.
+
+    Rendering goes through ~plantuml-jar-path~ when the jar is readable, and falls
+    back to a ~plantuml~ executable on ~PATH~ otherwise.
+
+    #+begin_src emacs-lisp :results output none
+      (defgroup my/markdown-plantuml nil
+        "Render fenced PlantUML blocks in Markdown buffers."
+        :group 'markdown)
+
+      (defcustom my/markdown-plantuml-format "png"
+        "Default image format for rendered Markdown PlantUML blocks."
+        :type '(choice (const "png") (const "svg")) :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-image-dir "images"
+        "Directory (relative to the Markdown file) where diagrams are written."
+        :type 'string :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-languages '("plantuml" "puml" "uml")
+        "Fenced-code languages treated as PlantUML."
+        :type '(repeat string) :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-java-args '("-Djava.awt.headless=true")
+        "Extra JVM arguments used when rendering through the PlantUML jar."
+        :type '(repeat string) :group 'my/markdown-plantuml)
+
+      (defconst my/markdown-plantuml--fence-open-re
+        "^[ \t]*\\(?1:`\\{3,\\}\\|~\\{3,\\}\\)[ \t]*{?[ \t]*\\(?3:[^ \t\n`{}]+\\)\\(?:[ \t]+\\(?4:[^\n]*?\\)\\)?[ \t]*}?[ \t]*$"
+        "Match an opening fence.  Group 1 fence, group 3 language, group 4 info string.")
+
+      ;;; ---------------------------------------------------------------- block
+
+      (defun my/markdown-plantuml--blocks ()
+        "Return a list of PlantUML blocks in the buffer, in order.
+      Each element is a plist with keys :open-beg :open-end :body-beg
+    :body-end :end :info and :index."
+        (save-excursion
+          (save-restriction
+            (widen)
+            (goto-char (point-min))
+            (let ((blocks '()) (index 0))
+              (while (re-search-forward my/markdown-plantuml--fence-open-re nil t)
+                (let* ((fence (match-string-no-properties 1))
+                       (lang (downcase (or (match-string-no-properties 3) "")))
+                       (info (or (match-string-no-properties 4) ""))
+                       (open-beg (match-beginning 0))
+                       (open-end (match-end 0))
+                       (body-beg (min (point-max) (1+ open-end)))
+                       (close-re (format "^[ \t]*%s[ \t]*$"
+                                         (regexp-quote (substring fence 0 3)))))
+                  (forward-line 1)
+                  (if (not (re-search-forward close-re nil t))
+                      (goto-char (point-max))
+                    (when (member lang my/markdown-plantuml-languages)
+                      (setq index (1+ index))
+                      (push (list :open-beg open-beg :open-end open-end
+                                  :body-beg body-beg
+                                  :body-end (match-beginning 0)
+                                  :end (match-end 0)
+                                  :info info :index index)
+                            blocks)))))
+              (nreverse blocks)))))
+
+      (defun my/markdown-plantuml--block-at-point ()
+        "Return the PlantUML block surrounding point, or nil."
+        (let ((pos (point)))
+          (seq-find (lambda (b) (and (>= pos (plist-get b :open-beg))
+                                     (<= pos (plist-get b :end))))
+                    (my/markdown-plantuml--blocks))))
+
+      ;;; ---------------------------------------------------------------- naming
+
+      (defun my/markdown-plantuml--info-value (info key)
+        "Return value of KEY=VALUE in INFO string, or nil."
+        (when (string-match (format "\\_<%s=\\(\"\\([^\"]*\\)\"\\|\\([^ \t]+\\)\\)"
+                                    (regexp-quote key))
+                            info)
+          (or (match-string 2 info) (match-string 3 info))))
+
+      (defun my/markdown-plantuml--sanitize (name)
+        (let ((s (replace-regexp-in-string "[^[:alnum:]._-]+" "-" (string-trim name))))
+          (string-trim s "-+" "-+")))
+
+      (defun my/markdown-plantuml--output-file (block body)
+        "Compute the output file name for BLOCK with BODY."
+        (let* ((info (plist-get block :info))
+               (fmt (or (my/markdown-plantuml--info-value info "format")
+                        my/markdown-plantuml-format))
+               (explicit (or (my/markdown-plantuml--info-value info "file")
+                             (my/markdown-plantuml--info-value info "out")))
+               (named (when (string-match "^[ \t]*@start[a-z]+[ \t]+\\([^\n]+?\\)[ \t]*$" body)
+                        (my/markdown-plantuml--sanitize (match-string 1 body))))
+               (base (or (and buffer-file-name
+                              (file-name-base buffer-file-name))
+                         "diagram")))
+          (cond
+           (explicit (cons explicit (or (file-name-extension explicit) fmt)))
+           (t (cons (expand-file-name
+                     (format "%s.%s" (or named (format "%s-%d" base (plist-get block :index))) fmt)
+                     my/markdown-plantuml-image-dir)
+                    fmt)))))
+
+      ;;; ---------------------------------------------------------------- render
+
+      (defun my/markdown-plantuml--command ()
+        "Return (PROGRAM . LEADING-ARGS) for invoking PlantUML."
+        (let ((jar (and (boundp 'plantuml-jar-path)
+                        plantuml-jar-path
+                        (expand-file-name plantuml-jar-path))))
+          (if (and jar (file-readable-p jar) (executable-find "java"))
+              (cons "java" (append my/markdown-plantuml-java-args (list "-jar" jar)))
+            (let ((exe (executable-find "plantuml")))
+              (unless exe
+                (user-error "Neither `plantuml-jar-path' nor a `plantuml' executable is available"))
+              (cons exe nil)))))
+
+      (defun my/markdown-plantuml--render (body outfile fmt)
+        "Render BODY to OUTFILE in FMT.  Signal an error on failure."
+        (let* ((cmd (my/markdown-plantuml--command))
+               (errfile (make-temp-file "md-plantuml-err"))
+               (dir (file-name-directory outfile)))
+          (when dir (make-directory dir t))
+          (unwind-protect
+              (with-temp-buffer
+                (insert body)
+                (unless (string-suffix-p "\n" body) (insert "\n"))
+                (let ((status (apply #'call-process-region
+                                     (point-min) (point-max) (car cmd)
+                                     nil (list (list :file outfile) errfile) nil
+                                     (append (cdr cmd)
+                                             (list "-charset" "UTF-8"
+                                                   (concat "-t" fmt)
+                                                   "-pipe")))))
+                  (unless (eq status 0)
+                    (error "PlantUML failed (%s): %s" status
+                           (with-temp-buffer (insert-file-contents errfile)
+                                             (string-trim (buffer-string)))))))
+            (delete-file errfile))
+          outfile))
+
+      ;;; ---------------------------------------------------------------- insert
+
+      (defun my/markdown-plantuml--link-bounds (after)
+        "Return (BEG . END) of an existing image line following position AFTER, or nil."
+        (save-excursion
+          (goto-char after)
+          (forward-line 1)
+          (while (and (not (eobp)) (looking-at-p "^[ \t]*$")) (forward-line 1))
+          (when (looking-at "^[ \t]*!\\[[^]]*\\](\\([^)]*\\))[ \t]*$")
+            (cons (line-beginning-position) (line-end-position)))))
+
+      (defun my/markdown-plantuml-render-block (&optional arg)
+        "Render the fenced PlantUML block at point and insert the image below it.
+      With prefix ARG, prompt for the output file name."
+        (interactive "P")
+        (let ((block (or (my/markdown-plantuml--block-at-point)
+                         (user-error "Point is not inside a PlantUML code block"))))
+          (my/markdown-plantuml--do-block block arg)
+          (my/markdown-plantuml--refresh-images)))
+
+      (defun my/markdown-plantuml--do-block (block &optional prompt)
+        (let* ((body (buffer-substring-no-properties
+                      (plist-get block :body-beg) (plist-get block :body-end)))
+               (spec (my/markdown-plantuml--output-file block body))
+               (outfile (if prompt
+                            (read-file-name "Save diagram to: " nil nil nil (car spec))
+                          (car spec)))
+               (fmt (or (file-name-extension outfile) (cdr spec)))
+               (abs (expand-file-name outfile))
+               (rel (file-relative-name abs default-directory)))
+          (my/markdown-plantuml--render body abs fmt)
+          (clear-image-cache abs)
+          (save-excursion
+            (let ((existing (my/markdown-plantuml--link-bounds (plist-get block :end)))
+                  (line (format "![%s](%s)"
+                                (file-name-base abs)
+                                (if (string-prefix-p "../../" rel) abs rel))))
+              (if existing
+                  (progn (goto-char (car existing))
+                         (delete-region (car existing) (cdr existing))
+                         (insert line))
+                (goto-char (plist-get block :end))
+                (insert "\n\n" line))))
+          (message "Rendered %s" rel)
+          abs))
+
+      (defun my/markdown-plantuml-render-buffer ()
+        "Render every PlantUML block in the buffer, inserting/updating images."
+        (interactive)
+        (let ((n 0))
+          ;; Work bottom-up so earlier positions stay valid.
+          (dolist (block (nreverse (my/markdown-plantuml--blocks)))
+            (my/markdown-plantuml--do-block block)
+            (setq n (1+ n)))
+          (my/markdown-plantuml--refresh-images)
+          (message "Rendered %d PlantUML block%s" n (if (= n 1) "" "s"))))
+
+      (defun my/markdown-plantuml--refresh-images ()
+        (when (and (derived-mode-p 'markdown-mode) (display-images-p))
+          (ignore-errors (markdown-remove-inline-images))
+          (ignore-errors (markdown-display-inline-images))))
+
+      (with-eval-after-load 'markdown-mode
+        (define-key markdown-mode-map (kbd "C-c C-v") #'my/markdown-plantuml-render-block)
+        (define-key markdown-mode-map (kbd "C-c C-S-v") #'my/markdown-plantuml-render-buffer))
+    #+end_src
+
+*** markdown / plantuml — preview and save helpers
+
+    ~plantuml-preview-current-block~ renders into a scratch buffer without touching
+    the document; ~plantuml-save-current-block~ writes the ~@startuml…@enduml~ block
+    around point to an arbitrary file.
+
+    #+begin_src emacs-lisp :results output none
+      (with-eval-after-load 'markdown-mode
+        (define-key markdown-mode-map (kbd "C-c C-u") #'plantuml-preview-current-block))
+
+      (defun plantuml-save-current-block (file)
+        "Render the @startuml…@enduml block around point into FILE."
+        (interactive "FSave diagram to: ")
+        (save-excursion
+          (let ((beg (search-backward "@startuml"))
+                (end (search-forward "@enduml")))
+            (call-process-region
+             beg end "java" nil (list (list :file file) nil) nil
+             "-jar" (expand-file-name plantuml-jar-path)
+             "-charset" "UTF-8"
+             (concat "-t" (file-name-extension file))
+             "-pipe"))))
+    #+end_src
+
+*** Copy Markdown as markup (for Google Sheets)
+
+Convert Markdown to rich text and put it on the clipboard so that pasting
+into a Google Sheets cell (or any rich-text target — LibreOffice, Docs,
+Gmail compose) keeps the formatting instead of showing raw ~**asterisks**~.
+
+The trick is the clipboard MIME target: Emacs' kill ring is plain text
+only, but Google Sheets reads the ~text/html~ flavour on paste. So the
+Markdown is rendered to HTML with pandoc and pushed onto the X CLIPBOARD
+via ~xclip -t text/html~. Bold, italic, inline code and links survive;
+bulleted / numbered lists paste as multi-line text inside the cell (Sheets
+keeps the line breaks and text styling — the literal bullet glyph may or
+may not appear depending on the paste target).
+
+With a region active it converts the region, otherwise the whole buffer.
+A plain-text copy is also pushed to the Emacs kill ring as a fallback for
+in-Emacs yanking.
+
+To paste into a single Sheets cell: double-click the cell (or press ~F2~)
+to enter edit mode first, then paste — otherwise Sheets may split a list
+across rows.
+
+#+begin_src emacs-lisp
+(defun copy-markdown-as-markup (&optional beg end)
+  "Copy Markdown in region (or whole buffer) to the clipboard as rich markup.
+Renders the Markdown to HTML with pandoc and puts it on the X CLIPBOARD with
+the `text/html' target via xclip, so pasting into Google Sheets (or another
+rich-text app) preserves bold/italic/lists.  Also pushes a plain-text copy to
+the Emacs kill ring as a fallback."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (point-min) (point-max))))
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (unless (executable-find "xclip")
+    (user-error "xclip not found on PATH"))
+  (let* ((md   (buffer-substring-no-properties beg end))
+         (html (with-temp-buffer
+                 (insert md)
+                 (unless (zerop (call-process-region
+                                 (point-min) (point-max)
+                                 "pandoc" t t nil
+                                 "-f" "markdown" "-t" "html"))
+                   (error "pandoc failed to convert Markdown to HTML"))
+                 (buffer-string))))
+    ;; Plain-text fallback to the Emacs kill ring first...
+    (kill-new md)
+    ;; ...then the HTML onto the X CLIPBOARD.  This runs last so it wins over
+    ;; the plain-text copy Emacs just pushed via `interprogram-cut-function'.
+    (with-temp-buffer
+      (insert html)
+      (call-process-region (point-min) (point-max)
+                           "xclip" nil nil nil
+                           "-selection" "clipboard"
+                           "-t" "text/html"))
+    (message "Copied %d chars of Markdown as rich markup to clipboard"
+             (length md))))
+#+end_src
+
+#+RESULTS:
+: copy-markdown-as-markup
+
+*** Copy Markdown as rendered text
+
+Like ~copy-markdown-as-markup~ above, but strips all markup and copies plain
+*rendered* text instead of HTML.  This is the more predictable option for
+Google Sheets: HTML lists/tables make Sheets spread the paste across several
+cells, whereas plain text drops into a single cell (paste in edit mode — ~F2~
+— to keep multi-line text in one cell rather than one row per line).
+
+Markdown is rendered to plain text with pandoc (~-t plain --wrap=none~):
+~**bold**~ / ~*italic*~ lose their markers, list items render as ~- item~ /
+~1. item~, and links collapse to their visible text.  The result goes to the
+kill ring, which Emacs mirrors onto the X CLIPBOARD.
+
+With a region active it converts the region, otherwise the whole buffer.
+
+#+begin_src emacs-lisp
+(defun copy-markdown-as-text (&optional beg end)
+  "Copy Markdown in region (or whole buffer) to the clipboard as rendered text.
+Renders the Markdown to plain text with pandoc (markup stripped, lists kept as
+text) and puts it on the kill ring / clipboard.  Unlike `copy-markdown-as-markup'
+this pastes into a single Google Sheets cell instead of spreading across cells."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (point-min) (point-max))))
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (let* ((md   (buffer-substring-no-properties beg end))
+         (text (with-temp-buffer
+                 (insert md)
+                 (unless (zerop (call-process-region
+                                 (point-min) (point-max)
+                                 "pandoc" t t nil
+                                 "-f" "markdown" "-t" "plain" "--wrap=none"))
+                   (error "pandoc failed to convert Markdown to text"))
+                 (string-trim (buffer-string)))))
+    (kill-new text)
+    (message "Copied %d chars of rendered Markdown text to clipboard"
+             (length text))))
+#+end_src
+
+#+RESULTS:
+: copy-markdown-as-text
 
 *** org-mind-map
 
@@ -2021,6 +2414,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
       ("f" copy-current-buffer-name "Remember current buffer name")
       ("c" my-copy-current-filename "Copy current filename")
       ("d" my-copy-current-directory "Copy current directory")
+      ("m" copy-markdown-as-markup "Copy Markdown region/buffer as rich markup")
+      ("t" copy-markdown-as-text "Copy Markdown region/buffer as rendered text")
       ("w" isearch-forward-word "Isearch forward word")
       ("h." highlight-symbol-at-point "Highlight symbol at point")
       ("hl" highlight-lines-matching-regexp "Highlight lines matcing RegExp")
@@ -2448,7 +2843,42 @@ https://github.com/thndrbrrr/gtasks-org-tools
               ("C-c g" . git-link)
               )
        )
-     (use-package magit-todos)
+     (use-package magit-todos
+       ;; Set in :config, NOT :custom. `magit-todos-scanner' has a :set function that
+       ;; silently no-ops while `magit-todos-scanners' is still nil, and use-package
+       ;; runs :custom before the package loads — so a :custom value would be dropped.
+       :config
+       ;; Pin rg explicitly. The auto-chooser can land on the find|grep fallback, which
+       ;; honours no ignore rules and descends into every dot-directory; rg skips
+       ;; dot-dirs and respects .gitignore by default.
+       (setopt magit-todos-scanner #'magit-todos--scan-with-rg)
+       ;; Passed through to whichever scanner actually runs, so these hold even if rg
+       ;; is missing. Two distinct problems:
+       ;;   - `.venv/' / `.claude/' / `node_modules/': huge trees, and one .venv per
+       ;;     git worktree (a repo with 16 worktrees has 16 of them).
+       ;;   - the asset globs: single minified lines of ~1M characters overflow Emacs'
+       ;;     regexp matcher, which is what emits "File has lines too long to search".
+       ;;     These live in tracked source too, so excluding .venv alone is not enough.
+       (setopt magit-todos-exclude-globs
+               '(".git/" ".venv/" ".claude/" "node_modules/" "site/"
+                 "*.min.js" "*.min.css" "*.map" "*.svg" "*.so" "*.cap"))
+       ;; Two things used to silently clobber the two settings above; both are
+       ;; worth remembering, because neither produces any warning:
+       ;;
+       ;;   1. `custom-set-variables' in ~/.emacs.  That block runs *after*
+       ;;      `org-babel-load-file' on this file, so anything Custom has ever
+       ;;      saved wins over what is set here.  The magit-todos entries have
+       ;;      been deleted from it; don't let "Apply and Save" put them back.
+       ;;   2. A project's .dir-locals.el.  `magit-status-mode' applies
+       ;;      dir-locals (`magit-hack-dir-local-variables'), and a dir-local
+       ;;      value *replaces* the global list rather than extending it — so a
+       ;;      project pinning `magit-todos-exclude-globs' to its own two entries
+       ;;      dropped .venv/ and *.map again.  Prefer adding project-specific
+       ;;      directories (like "site/" above) to the global list.
+       ;;
+       ;; Declaring the option safe keeps any remaining dir-local from prompting.
+       (put 'magit-todos-exclude-globs 'safe-local-variable
+            (lambda (val) (and (listp val) (seq-every-p #'stringp val)))))
      (use-package forge
        :after magit)
      (use-package github-review)
@@ -3826,7 +4256,8 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 
    #+RESULTS:
-   | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map  'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
+   | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map 
+ 'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
 
 ** helm-systemd
 
@@ -5225,7 +5656,7 @@ Format: \"/full/path/file.el:L42\"."
    (use-package theme-looper)
 
    (defvar my-favorite-themes
-     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid)
+     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid cobalt)
      "Themes shared by `theme-looper' and `my-theme-looper-pick'.")
 
    (theme-looper-set-favorite-themes my-favorite-themes)
