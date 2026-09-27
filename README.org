@@ -1386,6 +1386,119 @@ this pastes into a single Google Sheets cell instead of spreading across cells."
 #+RESULTS:
 : copy-markdown-as-text
 
+*** Convert Markdown region to Org
+
+The inverse of the two "Copy Markdown as …" helpers above: take Markdown
+text that already lives in a buffer — a chunk pasted from a chat, a ticket
+description, an LLM answer — and get it back as Org markup.  Headings become
+~*~ stars, ~**bold**~ becomes ~*bold*~, fenced code blocks become
+~#+begin_src~ … ~#+end_src~, tables and links are converted too.
+
+The result goes to the kill ring (which Emacs mirrors onto the clipboard)
+rather than replacing the source text — same idiom as the
+~youtrack--insert-org-task~ yankers in [[file:youtrack/youtrack.org][youtrack/youtrack.org]].  That way the
+conversion can be dropped into an existing outline at the right depth with
+~C-c C-x C-y~ (~org-paste-subtree~), which re-levels the pasted headings to
+match the insertion point; plain ~C-y~ works for fragments without headings.
+With a prefix argument (~C-u M-x my/markdown-to-org~) the region is replaced
+in place instead.
+
+Conversion runs through pandoc.  The region is written to a temporary file
+created by ~make-temp-file~ — a unique, unpredictable name under
+~temporary-file-directory~ (i.e. ~/tmp~), created with mode ~0600~, so no other
+user can read the text or win a symlink race on the path.  Both the input
+file and the stderr capture file are removed in an ~unwind-protect~, so
+nothing is left behind even if pandoc fails or =C-g= interrupts the call.
+Nothing is copied or modified unless pandoc exits successfully.
+
+With a region active it converts the region, otherwise the whole buffer.
+
+#+begin_src emacs-lisp
+(defcustom my/markdown-to-org-input-format "markdown-auto_identifiers"
+  "Pandoc input format used by `my/markdown-to-org'.
+Use \"gfm-auto_identifiers\" for GitHub-flavoured Markdown (task lists,
+strikethrough, autolinks), or \"commonmark-auto_identifiers\" for strict
+CommonMark.
+
+The `-auto_identifiers' suffix is what keeps pandoc from attaching a
+:PROPERTIES: / :CUSTOM_ID: drawer to every generated heading — the extension
+lives on the reader, not the writer, so it has to be disabled here rather than
+in the output format.  Drop the suffix to get the drawers back."
+  :type 'string
+  :group 'markdown)
+
+(defcustom my/markdown-to-org-pandoc-args '("--wrap=none")
+  "Extra arguments passed to pandoc by `my/markdown-to-org'.
+The default keeps paragraphs on a single line; use \"--wrap=auto\" together
+with \"--columns=120\" to hard-wrap the generated Org text instead."
+  :type '(repeat string)
+  :group 'markdown)
+
+(defun my/markdown-to-org--convert (md)
+  "Convert the Markdown string MD to Org markup with pandoc and return it.
+MD is handed to pandoc through a temporary file created by `make-temp-file'
+\(unique name, mode 0600, under `temporary-file-directory'), which is deleted
+again once the conversion finishes, successfully or not.  Signal an error with
+pandoc's own diagnostics when the conversion fails."
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (let ((infile  (make-temp-file "md2org-" nil ".md"))
+        (errfile (make-temp-file "md2org-" nil ".err")))
+    (unwind-protect
+        (let ((coding-system-for-write 'utf-8-unix)
+              (coding-system-for-read  'utf-8-unix))
+          (write-region md nil infile nil 'silent)
+          (with-temp-buffer
+            (let ((status (apply #'call-process
+                                 "pandoc" nil (list t errfile) nil
+                                 (append (list "-f" my/markdown-to-org-input-format
+                                               "-t" "org")
+                                         my/markdown-to-org-pandoc-args
+                                         (list infile)))))
+              (unless (eq status 0)
+                (error "pandoc failed (%s): %s"
+                       status
+                       (string-trim
+                        (with-temp-buffer
+                          (insert-file-contents errfile)
+                          (buffer-string))))))
+            (buffer-string)))
+      (ignore-errors (delete-file infile))
+      (ignore-errors (delete-file errfile)))))
+
+(defun my/markdown-to-org (beg end &optional arg)
+  "Convert the Markdown between BEG and END to Org markup and copy it.
+Interactively operate on the active region, or on the whole buffer when no
+region is active.  The Org text is pushed onto the kill ring (and so onto the
+clipboard); paste it into an outline with `org-paste-subtree' (\\[org-paste-subtree])
+so the headings are re-levelled to the insertion point, or with \\[yank] for a
+fragment without headings.
+
+With prefix ARG, replace the converted text in place instead of copying it."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end) current-prefix-arg)
+     (list (point-min) (point-max) current-prefix-arg)))
+  (let* ((md  (buffer-substring-no-properties beg end))
+         (org (string-trim-right (my/markdown-to-org--convert md))))
+    (if arg
+        (progn
+          (save-excursion
+            (delete-region beg end)
+            (goto-char beg)
+            (insert org "\n"))
+          (message "Converted %d chars of Markdown to Org in place" (length md)))
+      (kill-new org)
+      (message "Copied %d chars of Org to kill ring — %s to insert."
+               (length org)
+               (if (string-match-p "\\`\\*+ " org)
+                   "use C-c C-x C-y (org-paste-subtree)"
+                 "yank with C-y")))))
+#+end_src
+
+#+RESULTS:
+: my/markdown-to-org
+
 *** org-mind-map
 
     #+begin_src emacs-lisp :results output none
@@ -2300,6 +2413,21 @@ https://github.com/thndrbrrr/gtasks-org-tools
    : indent-bars-mode
 
 ** hyperbole
+
+   ~hyperbole-mode~ is a *global* minor mode, and everything below — the Action
+   Key (~M-RET~ / ~hkey-either~), the Action Mouse Key, and every ~defib~ / ~defil~
+   implicit button type defined further down — is dead while it is off.  When
+   a ref like ~"path/file.py:L42"~ suddenly stops being clickable, check
+   ~hyperbole-mode~ *first*; ~M-RET is undefined~ in the echo area is the tell.
+
+   The usual way it gets switched off by accident: in the Hyperbole minibuffer
+   menu (~C-h h~), ~X~ is *not* "eXit the menu" — it is ~hui:menu-exit-hyperbole~,
+   which runs ~(hyperbole-mode 0)~ and disables Hyperbole globally for the rest
+   of the session.  Use ~Q~ to quit the menu.  Recover with ~M-x hyperbole-mode~.
+
+   Note that ~(hyperbole-mode)~ called from Lisp always *enables* (it only
+   toggles when called interactively), so re-evaluating this block is a safe
+   way to switch it back on.
 
    #+begin_src emacs-lisp
    (use-package hyperbole)
@@ -4776,6 +4904,291 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    : .*
 
+** drawio
+
+   [[https://www.drawio.com/][draw.io]] (diagrams.net) files are plain XML at the top level, so they are
+   git-diffable and Emacs can read them — but the editing and the rendering both
+   live in the desktop application. This section wires the two together: the XML
+   opens in ~nxml-mode~, one key hands the file to the draw.io app, and a second
+   key exports the pages to images that can be linked from Org.
+
+   Prerequisite — the desktop app supplies the headless exporter (~drawio -x~):
+
+   #+begin_src sh :eval no
+     yay -S drawio-desktop-bin
+   #+end_src
+
+   Commands:
+
+   | ~C-z D o~   | ~my/drawio-open~             | open the file at point in the draw.io app |
+   | ~C-z D e~   | ~my/drawio-export~           | export every page to images               |
+   | ~C-u C-z D e~ | ~my/drawio-export~         | export a single chosen page               |
+   | ~C-z D i~   | ~my/drawio-insert-org-link~  | export one page and link it here          |
+
+   ~C-c C-v~ and ~C-c C-e~ do the same inside a buffer visiting a =.drawio= file.
+   (Not ~C-c C-o~ — that is the prefix ~nxml-mode~ keeps for its outline commands.)
+
+   Behaviour:
+
+   1. [@1]  Page names come from the ~name=~ attribute of each ~<diagram>~
+      element, so the image files are named after the pages rather than after
+      their index alone: =[Draft] BPMN (As is).drawio= exports
+      =draft-bpmn-as-is-01-авториз-корист.png= and friends. A compressed
+      diagram body does not matter — the page names live in the outer, always
+      plain, XML.
+   2. [@2]  Images are written to a =diagrams= subdirectory next to the source
+      (~my/drawio-export-dir~), at 2× scale for PNG (~my/drawio-export-scale~).
+      Set ~my/drawio-export-format~ to ="svg"= for vector output.
+   3. [@3]  Export runs asynchronously, one page at a time — draw.io is an
+      Electron application and a second concurrent instance forwards to the
+      first instead of exporting. Process output collects in =*drawio*=.
+   4. [@4]  ~my/drawio-open~ takes its argument from the Dired line, the Org
+      link at point, or the visited file, whichever applies.
+
+   The MELPA package ~org-drawio~ covers similar ground with a ~#+drawio:~
+   keyword, but it exports via PDF (an extra ~pdf2svg~ dependency), handles one
+   page per keyword, and its "open" path on GNU/Linux passes both the binary and
+   the file to ~xdg-open~. The helpers below avoid that detour and work on
+   =.drawio= files wherever they already live in the repository.
+
+   #+begin_src emacs-lisp :results output none
+     (require 'subr-x)
+     (require 'seq)
+     (require 'org-element)
+     (declare-function dired-get-file-for-visit "dired" ())
+
+     (defgroup my/drawio nil
+       "Drive the draw.io desktop application from Emacs."
+       :group 'external
+       :prefix "my/drawio-")
+
+     (defcustom my/drawio-executable "drawio"
+       "Name of, or path to, the draw.io desktop binary."
+       :type 'string :group 'my/drawio)
+
+     (defcustom my/drawio-extra-args '("--no-sandbox")
+       "Extra arguments passed to every draw.io invocation."
+       :type '(repeat string) :group 'my/drawio)
+
+     (defcustom my/drawio-export-format "png"
+       "Default export format."
+       :type '(choice (const "png") (const "svg") (const "pdf"))
+       :group 'my/drawio)
+
+     (defcustom my/drawio-export-scale 2
+       "Scale factor for PNG export, 1 means 100%."
+       :type 'number :group 'my/drawio)
+
+     (defcustom my/drawio-export-dir "diagrams"
+       "Where exported images are written, relative to the .drawio file.
+     An absolute path is used as is; nil exports next to the source file."
+       :type '(choice (const :tag "Beside the source file" nil) string)
+       :group 'my/drawio)
+
+     (defcustom my/drawio-export-crop nil
+       "When non-nil pass --crop, trimming the image to the diagram bounds."
+       :type 'boolean :group 'my/drawio)
+
+     (defconst my/drawio-file-regexp "\\.\\(?:drawio\\|dio\\)\\(?:\\.xml\\)?\\'"
+       "Files treated as draw.io sources.")
+
+     (defconst my/drawio--buffer "*drawio*"
+       "Buffer collecting draw.io process output.")
+
+     (defun my/drawio--program ()
+       "Return the draw.io binary, or fail with an install hint."
+       (or (executable-find my/drawio-executable)
+           (user-error "draw.io not found: install it with `yay -S drawio-desktop-bin'")))
+
+     (defun my/drawio--unescape (string)
+       "Resolve the XML entities draw.io writes into page names in STRING."
+       (dolist (pair '(("&lt;" . "<") ("&gt;" . ">") ("&quot;" . "\"")
+                       ("&apos;" . "'") ("&#39;" . "'") ("&#10;" . " ")
+                       ("&amp;" . "&"))
+                      string)
+         (setq string (string-replace (car pair) (cdr pair) string))))
+
+     (defun my/drawio-pages (file)
+       "Return the page names of FILE, in document order."
+       (with-temp-buffer
+         (insert-file-contents file)
+         (goto-char (point-min))
+         (let ((pages nil) (n 0))
+           (while (re-search-forward "<diagram\\([^>]*\\)>" nil t)
+             (let* ((attrs (match-string 1))
+                    (name (and (string-match "name=\"\\([^\"]*\\)\"" attrs)
+                               (my/drawio--unescape (match-string 1 attrs)))))
+               (push (or name (format "page-%d" n)) pages)
+               (setq n (1+ n))))
+           (nreverse pages))))
+
+     (defun my/drawio--slug (name)
+       "Turn NAME into a filename-safe slug."
+       (let ((s (replace-regexp-in-string
+                 "[^[:alnum:]]+" "-" (downcase (string-trim name)))))
+         (setq s (string-trim s "-+" "-+"))
+         (if (string= s "") "page" s)))
+
+     (defun my/drawio--output-dir (file)
+       "Return the directory exported images of FILE go to."
+       (let ((base (file-name-directory (expand-file-name file))))
+         (cond ((or (null my/drawio-export-dir) (string= my/drawio-export-dir ""))
+                base)
+               ((file-name-absolute-p my/drawio-export-dir)
+                (file-name-as-directory (expand-file-name my/drawio-export-dir)))
+               (t (file-name-as-directory
+                   (expand-file-name my/drawio-export-dir base))))))
+
+     (defun my/drawio--output-file (file index name dir fmt)
+       "Return the image path for page INDEX named NAME of FILE, as FMT, under DIR."
+       (expand-file-name (format "%s-%02d-%s.%s"
+                                 (my/drawio--slug (file-name-base file))
+                                 index (my/drawio--slug name) fmt)
+                         dir))
+
+     (defun my/drawio--file-at-point ()
+       "Best guess at a .drawio file near point, or nil."
+       (seq-find
+        (lambda (f) (and f (string-match-p my/drawio-file-regexp f)))
+        (list (and (derived-mode-p 'dired-mode)
+                   (ignore-errors (dired-get-file-for-visit)))
+              (and (derived-mode-p 'org-mode)
+                   (let ((el (org-element-context)))
+                     (and (eq (org-element-type el) 'link)
+                          (equal (org-element-property :type el) "file")
+                          (expand-file-name (org-element-property :path el)))))
+              buffer-file-name)))
+
+     (defun my/drawio--read-file (&optional prompt)
+       "Read a .drawio file name, defaulting to the one at point.  PROMPT overrides."
+       (let ((default (my/drawio--file-at-point)))
+         (read-file-name (or prompt "Drawio file: ")
+                         (and default (file-name-directory default))
+                         default t
+                         (and default (file-name-nondirectory default)))))
+
+     (defun my/drawio--read-page (file)
+       "Read one page of FILE, returning (INDEX . NAME)."
+       (let* ((i -1)
+              (alist (mapcar (lambda (name)
+                               (setq i (1+ i))
+                               (cons (format "%d: %s" i name) (cons i name)))
+                             (my/drawio-pages file))))
+         (unless alist (user-error "No <diagram> pages found in %s" file))
+         (cdr (assoc (completing-read "Page: " alist nil t) alist))))
+
+     (defun my/drawio--export-page (file index outfile fmt callback)
+       "Export page INDEX of FILE to OUTFILE as FMT, then call CALLBACK with success."
+       (let* ((prog (my/drawio--program))
+              (args (append (list "-x" "-f" fmt "-p" (number-to-string index)
+                                  "-o" outfile)
+                            (when (and (equal fmt "png") my/drawio-export-scale)
+                              (list "-s" (number-to-string my/drawio-export-scale)))
+                            (when my/drawio-export-crop (list "--crop"))
+                            my/drawio-extra-args
+                            (list (expand-file-name file)))))
+         (set-process-sentinel
+          (apply #'start-process "drawio-export" my/drawio--buffer prog args)
+          (lambda (_proc event)
+            (funcall callback (and (string-match-p "finished" event)
+                                   (file-exists-p outfile)))))))
+
+     (defun my/drawio--export-queue (file specs dir fmt done acc)
+       "Export SPECS of FILE into DIR as FMT one at a time, then call DONE with ACC."
+       (if (null specs)
+           (funcall done (nreverse acc))
+         (let* ((index (caar specs))
+                (name (cdar specs))
+                (out (my/drawio--output-file file index name dir fmt)))
+           (message "drawio: page %d — %s" index name)
+           (my/drawio--export-page
+            file index out fmt
+            (lambda (ok)
+              (my/drawio--export-queue file (cdr specs) dir fmt done
+                                       (if ok (cons out acc) acc)))))))
+
+     (defun my/drawio-export (file &optional page-index)
+       "Export every page of FILE to `my/drawio-export-format' images.
+     With a prefix argument, export only the chosen PAGE-INDEX."
+       (interactive
+        (let ((f (my/drawio--read-file "Export drawio file: ")))
+          (list f (and current-prefix-arg (car (my/drawio--read-page f))))))
+       (let* ((i -1)
+              (specs (mapcar (lambda (name) (setq i (1+ i)) (cons i name))
+                             (my/drawio-pages file)))
+              (dir (my/drawio--output-dir file))
+              (fmt my/drawio-export-format))
+         (unless specs (user-error "No <diagram> pages found in %s" file))
+         (when page-index (setq specs (list (nth page-index specs))))
+         (make-directory dir t)
+         (let ((total (length specs)))
+           (my/drawio--export-queue
+            file specs dir fmt
+            (lambda (outs)
+              (message "drawio: exported %d/%d page(s) to %s"
+                       (length outs) total (abbreviate-file-name dir)))
+            nil))))
+
+     (defun my/drawio-open (file)
+       "Open FILE, by default the .drawio file at point, in the draw.io desktop app."
+       (interactive (list (my/drawio--read-file "Open in draw.io: ")))
+       (let ((path (expand-file-name file)))
+         (apply #'start-process "drawio" my/drawio--buffer (my/drawio--program)
+                (append my/drawio-extra-args (list path)))
+         (message "draw.io: %s" (abbreviate-file-name path))))
+
+     (defun my/drawio-insert-org-link (file)
+       "Export one page of FILE and insert an Org link to the image at point."
+       (interactive (list (my/drawio--read-file "Insert page from: ")))
+       (unless (derived-mode-p 'org-mode)
+         (user-error "Not an Org buffer"))
+       (let* ((page (my/drawio--read-page file))
+              (index (car page))
+              (name (cdr page))
+              (dir (my/drawio--output-dir file))
+              (fmt my/drawio-export-format)
+              (out (my/drawio--output-file file index name dir fmt))
+              (buffer (current-buffer))
+              (marker (copy-marker (point) t)))
+         (make-directory dir t)
+         (my/drawio--export-page
+          file index out fmt
+          (lambda (ok)
+            (if (not ok)
+                (message "drawio: export failed, see %s" my/drawio--buffer)
+              (with-current-buffer buffer
+                (save-excursion
+                  (goto-char marker)
+                  (insert (format "#+CAPTION: %s\n[[file:%s]]\n"
+                                  name (file-relative-name out default-directory))))
+                (org-redisplay-inline-images))
+              (message "drawio: %s" (abbreviate-file-name out)))))))
+
+     (defvar my/drawio-file-mode-map
+       (let ((map (make-sparse-keymap)))
+         (define-key map (kbd "C-c C-v") #'my/drawio-open)
+         (define-key map (kbd "C-c C-e") #'my/drawio-export)
+         map)
+       "Keymap for `my/drawio-file-mode'.")
+
+     (define-minor-mode my/drawio-file-mode
+       "Minor mode for buffers visiting draw.io XML sources."
+       :lighter " dio" :keymap my/drawio-file-mode-map)
+
+     (defun my/drawio--maybe-enable ()
+       "Enable `my/drawio-file-mode' when the buffer visits a draw.io source."
+       (when (and buffer-file-name
+                  (string-match-p my/drawio-file-regexp buffer-file-name))
+         (my/drawio-file-mode 1)))
+
+     (add-to-list 'auto-mode-alist (cons my/drawio-file-regexp #'nxml-mode))
+     (add-hook 'nxml-mode-hook #'my/drawio--maybe-enable)
+
+     (global-set-key (kbd "C-z D o") #'my/drawio-open)
+     (global-set-key (kbd "C-z D e") #'my/drawio-export)
+     (global-set-key (kbd "C-z D i") #'my/drawio-insert-org-link)
+   #+end_src
+
 ** el-search
 
    #+begin_src emacs-lisp
@@ -5044,6 +5457,21 @@ Format: \"/full/path/file.el:L42\"."
      : ibtypes::my-projectile-template-file2
 
 **** Standard ~FILE~ link with "folder/filename.ext:LXX" should work
+
+     Both this type and the absolute one below share the same ~"~ … ~"~
+     delimiters, so the TEXT-REGEXP is the only thing telling them apart — and
+     ~defil~ matches it with a plain ~string-match~, i.e. *unanchored*, against the
+     text between the delimiters.  An unanchored ~"/.*?:L…"~ therefore matches the
+     ~/~ *inside* ~folder/filename.ext:LXX~, so the absolute type (which comes
+     first in ~(htype:names 'ibtypes)~) swallowed every project-relative ref with
+     a directory component and passed it to ~find-file~ against the current
+     buffer's ~default-directory~ instead of the projectile root.
+
+     Hence ~\\`~ … ~\\'~ on both regexps: relative must *not* start with ~/~,
+     absolute must.  (~[[:digit:]]+~, not ~[:digit:]*~ — the latter is a bracket
+     expression over the characters ~:digt~ and matches zero of them, so it never
+     constrained anything.)
+
      #+begin_src emacs-lisp
      (defun my-open-projectile-file-on-line-n (locator)
        ;; (interactive)
@@ -5061,7 +5489,7 @@ Format: \"/full/path/file.el:L42\"."
 
        )
      ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
-     (defil my-projectile-file-locator "\"" "\"" ".*?:L[:digit:]*" 'my-open-projectile-file-on-line-n)
+     (defil my-projectile-file-locator "\"" "\"" "\\`[^/].*?:L[[:digit:]]+\\'" 'my-open-projectile-file-on-line-n)
      #+end_src
 
      #+RESULTS:
@@ -5076,7 +5504,7 @@ Format: \"/full/path/file.el:L42\"."
          (goto-char (point-min))
          (forward-line (- (string-to-number line-no) 1))))
 
-     (defil my-absolute-file-locator "\"" "\"" "/.*?:L[:digit:]*" 'my-open-absolute-file-on-line-n)
+     (defil my-absolute-file-locator "\"" "\"" "\\`/.*?:L[[:digit:]]+\\'" 'my-open-absolute-file-on-line-n)
      #+end_src
 
      #+RESULTS:
@@ -5413,6 +5841,59 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    | flycheck | flymake |
 
+** ghostel — keep C-z an Emacs prefix, never a suspend key
+
+   #+begin_src emacs-lisp
+
+   ;; ghostel is the terminal emulator `claude-code-ide' drives (see the next
+   ;; section).  Like eat, its default input mode (`ghostel-semi-char-mode')
+   ;; forwards almost every key straight to the pty — C-z included, where the
+   ;; Claude Code CLI reads it as "suspend" and drops the session into the
+   ;; background.  In this config C-z is the personal prefix key (C-z g magit,
+   ;; C-z i ibuffer, C-z C-c org-capture, …), so a reflexive C-z inside the
+   ;; Claude window killed the session instead of opening the prefix map.  The
+   ;; eat backend had the same trap; see `my-eat-C-z-dispatch' in the "eat?"
+   ;; section above.
+   ;;
+   ;; `ghostel-keymap-exceptions' is the supported way out: keys listed there
+   ;; are never bound to `ghostel--send-event', so they fall through to
+   ;; `ghostel-mode-map' and then the global map.  C-z stays a plain Emacs
+   ;; prefix *without* leaving semi-char mode — no `C-c C-j' round-trip like
+   ;; the eat workaround needed, and which-key/`C-z C-h' still describe the
+   ;; map.  The list must be set through `setopt'/customize rather than
+   ;; `setq': its :set function is what rebuilds
+   ;; `ghostel-semi-char-mode-map'.
+   ;;
+   ;; A deliberate suspend remains available on `C-c C-z'
+   ;; (`ghostel-send-C-z') — nothing is lost, it just stops being one
+   ;; mistyped key away.
+
+   (use-package ghostel
+     :defer t)
+
+   (defun my-ghostel-C-z-prefix ()
+     "Dispatch the global `C-z' prefix map instead of sending C-z to the pty.
+   Second line of defence for `ghostel-char-mode', which deliberately ignores
+   `ghostel-keymap-exceptions' and grabs every key.  `set-transient-map' makes
+   the global C-z map active for the next key, so `C-z g', `C-z r n' and the
+   rest of the multi-key sequences work from there too."
+     (interactive)
+     (let ((map (lookup-key global-map (kbd "C-z"))))
+       (if (keymapp map)
+           (set-transient-map map)
+         (user-error "C-z is not a prefix key in the global map"))))
+
+   (with-eval-after-load 'ghostel
+     ;; Semi-char mode (the mode every Claude/ghostel buffer starts in).
+     (unless (member "C-z" ghostel-keymap-exceptions)
+       (setopt ghostel-keymap-exceptions
+               (append ghostel-keymap-exceptions '("C-z"))))
+     ;; Char mode binds everything, exceptions included — bind C-z there by
+     ;; hand so an accidental `C-c M-d' cannot silently re-arm the suspend.
+     (define-key ghostel-char-mode-map (kbd "C-z") #'my-ghostel-C-z-prefix))
+
+   #+end_src
+
 ** claude-code-ide
 
    #+begin_src emacs-lisp
@@ -5438,6 +5919,10 @@ Format: \"/full/path/file.el:L42\"."
             ("C-c C-'" . claude-code-ide-menu)
             ("C-x <f1>" . claude-code-ide-list-sessions)
             )
+     ;; Terminal backend: ghostel (was eat).  Kept here so the choice
+     ;; survives a restart; the C-z-is-a-prefix fix for it lives in the
+     ;; "ghostel" section above.
+     :custom (claude-code-ide-terminal-backend 'ghostel)
      :config
      (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
 
