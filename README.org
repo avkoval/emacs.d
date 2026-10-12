@@ -116,6 +116,32 @@
     (global-set-key ["s-ё"] 'delete-other-windows)
     ;; (global-set-key ["s-\\"] 'delete-other-windows)
 
+    ;; Move by whitespace-delimited chunks ("big words"), coarser than
+    ;; M-f/M-b which break on every dot/slash/@ inside things like URLs.
+    ;; With the "^" spec, holding Shift extends the region, so
+    ;; M-S-s-<left> selects the previous chunk (e.g. the whole git@... URL).
+    (defvar my/bigword-separators " \t\n"
+      "Characters that separate chunks for `my/backward-bigword'/`my/forward-bigword'.
+Default is whitespace only, so a git URL counts as one chunk.  Add
+punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
+
+    (defun my/backward-bigword (&optional n)
+      "Move backward over N whitespace-delimited chunks (see `my/bigword-separators')."
+      (interactive "^p")
+      (dotimes (_ (or n 1))
+        (skip-chars-backward my/bigword-separators)
+        (skip-chars-backward (concat "^" my/bigword-separators))))
+
+    (defun my/forward-bigword (&optional n)
+      "Move forward over N whitespace-delimited chunks (see `my/bigword-separators')."
+      (interactive "^p")
+      (dotimes (_ (or n 1))
+        (skip-chars-forward my/bigword-separators)
+        (skip-chars-forward (concat "^" my/bigword-separators))))
+
+    (global-set-key (kbd "M-s-<left>")  'my/backward-bigword)
+    (global-set-key (kbd "M-s-<right>") 'my/forward-bigword)
+
 
     (global-set-key [mouse-2] 'yank) ;; paste on middle mouse key
 
@@ -143,7 +169,6 @@
                                             ; (define-key global-map  "\C-cmx"         'nxml-mode) / somehow I press it sometimes in org-mode?
     (define-key global-map  "\C-cmd"         'django-html-mumamo-mode)
     (define-key global-map  "\C-cmc"         'conf-mode)
-    (define-key global-map  "\C-cmo"         'company-mode)
     (define-key global-map  "\C-cms"         'speedbar)
     (define-key global-map  "\C-cmf"         'display-fill-column-indicator-mode)
     (define-key global-map  "\C-cmt"         'global-tab-line-mode)
@@ -915,6 +940,20 @@ and cause version-skew macro errors after magit/forge upgrades.
    : string-inflection-cycle
 
 ** org-mode
+*** org-bullets
+    #+begin_src emacs-lisp
+    (add-hook 'org-mode-hook (lambda ()
+                               (org-bullets-mode 1)
+                               ))
+    #+end_src
+
+*** org-indent
+    #+begin_src emacs-lisp
+    (add-hook 'org-mode-hook (lambda ()
+                               (org-indent-mode)
+                               ))
+    #+end_src
+
 *** org-babel sql
 
     #+begin_src emacs-lisp :results output none
@@ -992,6 +1031,486 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
 
 #+RESULTS:
 : my/org-table-copy-as-tsv
+
+*** markdown / plantuml
+
+    Markdown has no ~org-babel~, so a fenced ~```plantuml~ block cannot be executed
+    the way an org source block can.  The code below adds the missing half: render
+    the block at point with PlantUML, write the image next to the document, and
+    insert (or update) a Markdown image link right after the closing fence — the
+    Markdown equivalent of ~C-c C-c~ on an org babel block producing a ~#+RESULTS:~
+    link.
+
+    | key         | command                                | effect                            |
+    |-------------+----------------------------------------+-----------------------------------|
+    | ~C-c C-v~   | ~my/markdown-plantuml-render-block~    | render the block at point         |
+    | ~C-u C-c C-v~ | ~my/markdown-plantuml-render-block~  | ask where to save the image       |
+    | ~C-c C-S-v~ | ~my/markdown-plantuml-render-buffer~   | render every block in the buffer  |
+    | ~C-c C-u~   | ~plantuml-preview-current-block~       | preview only, no file, no link    |
+    | ~C-c C-x C-i~ | ~markdown-toggle-inline-images~      | show / hide images in the buffer  |
+
+    The output file name is resolved in this order:
+
+    1. [@1]  ~file=~ (or ~out=~) in the fence info string —
+       ~```plantuml file=images/architecture.svg~;
+    2. [@2]  the diagram's own name — ~@startuml component-view~ becomes
+       ~images/component-view.png~;
+    3. [@3]  otherwise ~images/<md-basename>-<N>.png~, where ~N~ counts PlantUML
+       blocks in the file.
+
+    ~format=svg~ in the info string overrides ~my/markdown-plantuml-format~ for a
+    single block.  Rendering is idempotent: re-running replaces the existing image
+    line instead of appending a second one, so ~C-c C-S-v~ is safe to run after
+    editing several diagrams.
+
+    Rendering goes through ~plantuml-jar-path~ when the jar is readable, and falls
+    back to a ~plantuml~ executable on ~PATH~ otherwise.
+
+    #+begin_src emacs-lisp :results output none
+      (defgroup my/markdown-plantuml nil
+        "Render fenced PlantUML blocks in Markdown buffers."
+        :group 'markdown)
+
+      (defcustom my/markdown-plantuml-format "png"
+        "Default image format for rendered Markdown PlantUML blocks."
+        :type '(choice (const "png") (const "svg")) :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-image-dir "images"
+        "Directory (relative to the Markdown file) where diagrams are written."
+        :type 'string :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-languages '("plantuml" "puml" "uml")
+        "Fenced-code languages treated as PlantUML."
+        :type '(repeat string) :group 'my/markdown-plantuml)
+
+      (defcustom my/markdown-plantuml-java-args '("-Djava.awt.headless=true")
+        "Extra JVM arguments used when rendering through the PlantUML jar."
+        :type '(repeat string) :group 'my/markdown-plantuml)
+
+      (defconst my/markdown-plantuml--fence-open-re
+        "^[ \t]*\\(?1:`\\{3,\\}\\|~\\{3,\\}\\)[ \t]*{?[ \t]*\\(?3:[^ \t\n`{}]+\\)\\(?:[ \t]+\\(?4:[^\n]*?\\)\\)?[ \t]*}?[ \t]*$"
+        "Match an opening fence.  Group 1 fence, group 3 language, group 4 info string.")
+
+      ;;; ---------------------------------------------------------------- block
+
+      (defun my/markdown-plantuml--blocks ()
+        "Return a list of PlantUML blocks in the buffer, in order.
+      Each element is a plist with keys :open-beg :open-end :body-beg
+    :body-end :end :info and :index."
+        (save-excursion
+          (save-restriction
+            (widen)
+            (goto-char (point-min))
+            (let ((blocks '()) (index 0))
+              (while (re-search-forward my/markdown-plantuml--fence-open-re nil t)
+                (let* ((fence (match-string-no-properties 1))
+                       (lang (downcase (or (match-string-no-properties 3) "")))
+                       (info (or (match-string-no-properties 4) ""))
+                       (open-beg (match-beginning 0))
+                       (open-end (match-end 0))
+                       (body-beg (min (point-max) (1+ open-end)))
+                       (close-re (format "^[ \t]*%s[ \t]*$"
+                                         (regexp-quote (substring fence 0 3)))))
+                  (forward-line 1)
+                  (if (not (re-search-forward close-re nil t))
+                      (goto-char (point-max))
+                    (when (member lang my/markdown-plantuml-languages)
+                      (setq index (1+ index))
+                      (push (list :open-beg open-beg :open-end open-end
+                                  :body-beg body-beg
+                                  :body-end (match-beginning 0)
+                                  :end (match-end 0)
+                                  :info info :index index)
+                            blocks)))))
+              (nreverse blocks)))))
+
+      (defun my/markdown-plantuml--block-at-point ()
+        "Return the PlantUML block surrounding point, or nil."
+        (let ((pos (point)))
+          (seq-find (lambda (b) (and (>= pos (plist-get b :open-beg))
+                                     (<= pos (plist-get b :end))))
+                    (my/markdown-plantuml--blocks))))
+
+      ;;; ---------------------------------------------------------------- naming
+
+      (defun my/markdown-plantuml--info-value (info key)
+        "Return value of KEY=VALUE in INFO string, or nil."
+        (when (string-match (format "\\_<%s=\\(\"\\([^\"]*\\)\"\\|\\([^ \t]+\\)\\)"
+                                    (regexp-quote key))
+                            info)
+          (or (match-string 2 info) (match-string 3 info))))
+
+      (defun my/markdown-plantuml--sanitize (name)
+        (let ((s (replace-regexp-in-string "[^[:alnum:]._-]+" "-" (string-trim name))))
+          (string-trim s "-+" "-+")))
+
+      (defun my/markdown-plantuml--output-file (block body)
+        "Compute the output file name for BLOCK with BODY."
+        (let* ((info (plist-get block :info))
+               (fmt (or (my/markdown-plantuml--info-value info "format")
+                        my/markdown-plantuml-format))
+               (explicit (or (my/markdown-plantuml--info-value info "file")
+                             (my/markdown-plantuml--info-value info "out")))
+               (named (when (string-match "^[ \t]*@start[a-z]+[ \t]+\\([^\n]+?\\)[ \t]*$" body)
+                        (my/markdown-plantuml--sanitize (match-string 1 body))))
+               (base (or (and buffer-file-name
+                              (file-name-base buffer-file-name))
+                         "diagram")))
+          (cond
+           (explicit (cons explicit (or (file-name-extension explicit) fmt)))
+           (t (cons (expand-file-name
+                     (format "%s.%s" (or named (format "%s-%d" base (plist-get block :index))) fmt)
+                     my/markdown-plantuml-image-dir)
+                    fmt)))))
+
+      ;;; ---------------------------------------------------------------- render
+
+      (defun my/markdown-plantuml--command ()
+        "Return (PROGRAM . LEADING-ARGS) for invoking PlantUML."
+        (let ((jar (and (boundp 'plantuml-jar-path)
+                        plantuml-jar-path
+                        (expand-file-name plantuml-jar-path))))
+          (if (and jar (file-readable-p jar) (executable-find "java"))
+              (cons "java" (append my/markdown-plantuml-java-args (list "-jar" jar)))
+            (let ((exe (executable-find "plantuml")))
+              (unless exe
+                (user-error "Neither `plantuml-jar-path' nor a `plantuml' executable is available"))
+              (cons exe nil)))))
+
+      (defun my/markdown-plantuml--render (body outfile fmt)
+        "Render BODY to OUTFILE in FMT.  Signal an error on failure."
+        (let* ((cmd (my/markdown-plantuml--command))
+               (errfile (make-temp-file "md-plantuml-err"))
+               (dir (file-name-directory outfile)))
+          (when dir (make-directory dir t))
+          (unwind-protect
+              (with-temp-buffer
+                (insert body)
+                (unless (string-suffix-p "\n" body) (insert "\n"))
+                (let ((status (apply #'call-process-region
+                                     (point-min) (point-max) (car cmd)
+                                     nil (list (list :file outfile) errfile) nil
+                                     (append (cdr cmd)
+                                             (list "-charset" "UTF-8"
+                                                   (concat "-t" fmt)
+                                                   "-pipe")))))
+                  (unless (eq status 0)
+                    (error "PlantUML failed (%s): %s" status
+                           (with-temp-buffer (insert-file-contents errfile)
+                                             (string-trim (buffer-string)))))))
+            (delete-file errfile))
+          outfile))
+
+      ;;; ---------------------------------------------------------------- insert
+
+      (defun my/markdown-plantuml--link-bounds (after)
+        "Return (BEG . END) of an existing image line following position AFTER, or nil."
+        (save-excursion
+          (goto-char after)
+          (forward-line 1)
+          (while (and (not (eobp)) (looking-at-p "^[ \t]*$")) (forward-line 1))
+          (when (looking-at "^[ \t]*!\\[[^]]*\\](\\([^)]*\\))[ \t]*$")
+            (cons (line-beginning-position) (line-end-position)))))
+
+      (defun my/markdown-plantuml-render-block (&optional arg)
+        "Render the fenced PlantUML block at point and insert the image below it.
+      With prefix ARG, prompt for the output file name."
+        (interactive "P")
+        (let ((block (or (my/markdown-plantuml--block-at-point)
+                         (user-error "Point is not inside a PlantUML code block"))))
+          (my/markdown-plantuml--do-block block arg)
+          (my/markdown-plantuml--refresh-images)))
+
+      (defun my/markdown-plantuml--do-block (block &optional prompt)
+        (let* ((body (buffer-substring-no-properties
+                      (plist-get block :body-beg) (plist-get block :body-end)))
+               (spec (my/markdown-plantuml--output-file block body))
+               (outfile (if prompt
+                            (read-file-name "Save diagram to: " nil nil nil (car spec))
+                          (car spec)))
+               (fmt (or (file-name-extension outfile) (cdr spec)))
+               (abs (expand-file-name outfile))
+               (rel (file-relative-name abs default-directory)))
+          (my/markdown-plantuml--render body abs fmt)
+          (clear-image-cache abs)
+          (save-excursion
+            (let ((existing (my/markdown-plantuml--link-bounds (plist-get block :end)))
+                  (line (format "![%s](%s)"
+                                (file-name-base abs)
+                                (if (string-prefix-p "../../" rel) abs rel))))
+              (if existing
+                  (progn (goto-char (car existing))
+                         (delete-region (car existing) (cdr existing))
+                         (insert line))
+                (goto-char (plist-get block :end))
+                (insert "\n\n" line))))
+          (message "Rendered %s" rel)
+          abs))
+
+      (defun my/markdown-plantuml-render-buffer ()
+        "Render every PlantUML block in the buffer, inserting/updating images."
+        (interactive)
+        (let ((n 0))
+          ;; Work bottom-up so earlier positions stay valid.
+          (dolist (block (nreverse (my/markdown-plantuml--blocks)))
+            (my/markdown-plantuml--do-block block)
+            (setq n (1+ n)))
+          (my/markdown-plantuml--refresh-images)
+          (message "Rendered %d PlantUML block%s" n (if (= n 1) "" "s"))))
+
+      (defun my/markdown-plantuml--refresh-images ()
+        (when (and (derived-mode-p 'markdown-mode) (display-images-p))
+          (ignore-errors (markdown-remove-inline-images))
+          (ignore-errors (markdown-display-inline-images))))
+
+      (with-eval-after-load 'markdown-mode
+        (define-key markdown-mode-map (kbd "C-c C-v") #'my/markdown-plantuml-render-block)
+        (define-key markdown-mode-map (kbd "C-c C-S-v") #'my/markdown-plantuml-render-buffer))
+    #+end_src
+
+*** markdown / plantuml — preview and save helpers
+
+    ~plantuml-preview-current-block~ renders into a scratch buffer without touching
+    the document; ~plantuml-save-current-block~ writes the ~@startuml…@enduml~ block
+    around point to an arbitrary file.
+
+    #+begin_src emacs-lisp :results output none
+      (with-eval-after-load 'markdown-mode
+        (define-key markdown-mode-map (kbd "C-c C-u") #'plantuml-preview-current-block))
+
+      (defun plantuml-save-current-block (file)
+        "Render the @startuml…@enduml block around point into FILE."
+        (interactive "FSave diagram to: ")
+        (save-excursion
+          (let ((beg (search-backward "@startuml"))
+                (end (search-forward "@enduml")))
+            (call-process-region
+             beg end "java" nil (list (list :file file) nil) nil
+             "-jar" (expand-file-name plantuml-jar-path)
+             "-charset" "UTF-8"
+             (concat "-t" (file-name-extension file))
+             "-pipe"))))
+    #+end_src
+
+*** Copy Markdown as markup (for Google Sheets)
+
+Convert Markdown to rich text and put it on the clipboard so that pasting
+into a Google Sheets cell (or any rich-text target — LibreOffice, Docs,
+Gmail compose) keeps the formatting instead of showing raw ~**asterisks**~.
+
+The trick is the clipboard MIME target: Emacs' kill ring is plain text
+only, but Google Sheets reads the ~text/html~ flavour on paste. So the
+Markdown is rendered to HTML with pandoc and pushed onto the X CLIPBOARD
+via ~xclip -t text/html~. Bold, italic, inline code and links survive;
+bulleted / numbered lists paste as multi-line text inside the cell (Sheets
+keeps the line breaks and text styling — the literal bullet glyph may or
+may not appear depending on the paste target).
+
+With a region active it converts the region, otherwise the whole buffer.
+A plain-text copy is also pushed to the Emacs kill ring as a fallback for
+in-Emacs yanking.
+
+To paste into a single Sheets cell: double-click the cell (or press ~F2~)
+to enter edit mode first, then paste — otherwise Sheets may split a list
+across rows.
+
+#+begin_src emacs-lisp
+(defun copy-markdown-as-markup (&optional beg end)
+  "Copy Markdown in region (or whole buffer) to the clipboard as rich markup.
+Renders the Markdown to HTML with pandoc and puts it on the X CLIPBOARD with
+the `text/html' target via xclip, so pasting into Google Sheets (or another
+rich-text app) preserves bold/italic/lists.  Also pushes a plain-text copy to
+the Emacs kill ring as a fallback."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (point-min) (point-max))))
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (unless (executable-find "xclip")
+    (user-error "xclip not found on PATH"))
+  (let* ((md   (buffer-substring-no-properties beg end))
+         (html (with-temp-buffer
+                 (insert md)
+                 (unless (zerop (call-process-region
+                                 (point-min) (point-max)
+                                 "pandoc" t t nil
+                                 "-f" "markdown" "-t" "html"))
+                   (error "pandoc failed to convert Markdown to HTML"))
+                 (buffer-string))))
+    ;; Plain-text fallback to the Emacs kill ring first...
+    (kill-new md)
+    ;; ...then the HTML onto the X CLIPBOARD.  This runs last so it wins over
+    ;; the plain-text copy Emacs just pushed via `interprogram-cut-function'.
+    (with-temp-buffer
+      (insert html)
+      (call-process-region (point-min) (point-max)
+                           "xclip" nil nil nil
+                           "-selection" "clipboard"
+                           "-t" "text/html"))
+    (message "Copied %d chars of Markdown as rich markup to clipboard"
+             (length md))))
+#+end_src
+
+#+RESULTS:
+: copy-markdown-as-markup
+
+*** Copy Markdown as rendered text
+
+Like ~copy-markdown-as-markup~ above, but strips all markup and copies plain
+*rendered* text instead of HTML.  This is the more predictable option for
+Google Sheets: HTML lists/tables make Sheets spread the paste across several
+cells, whereas plain text drops into a single cell (paste in edit mode — ~F2~
+— to keep multi-line text in one cell rather than one row per line).
+
+Markdown is rendered to plain text with pandoc (~-t plain --wrap=none~):
+~**bold**~ / ~*italic*~ lose their markers, list items render as ~- item~ /
+~1. item~, and links collapse to their visible text.  The result goes to the
+kill ring, which Emacs mirrors onto the X CLIPBOARD.
+
+With a region active it converts the region, otherwise the whole buffer.
+
+#+begin_src emacs-lisp
+(defun copy-markdown-as-text (&optional beg end)
+  "Copy Markdown in region (or whole buffer) to the clipboard as rendered text.
+Renders the Markdown to plain text with pandoc (markup stripped, lists kept as
+text) and puts it on the kill ring / clipboard.  Unlike `copy-markdown-as-markup'
+this pastes into a single Google Sheets cell instead of spreading across cells."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (point-min) (point-max))))
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (let* ((md   (buffer-substring-no-properties beg end))
+         (text (with-temp-buffer
+                 (insert md)
+                 (unless (zerop (call-process-region
+                                 (point-min) (point-max)
+                                 "pandoc" t t nil
+                                 "-f" "markdown" "-t" "plain" "--wrap=none"))
+                   (error "pandoc failed to convert Markdown to text"))
+                 (string-trim (buffer-string)))))
+    (kill-new text)
+    (message "Copied %d chars of rendered Markdown text to clipboard"
+             (length text))))
+#+end_src
+
+#+RESULTS:
+: copy-markdown-as-text
+
+*** Convert Markdown region to Org
+
+The inverse of the two "Copy Markdown as …" helpers above: take Markdown
+text that already lives in a buffer — a chunk pasted from a chat, a ticket
+description, an LLM answer — and get it back as Org markup.  Headings become
+~*~ stars, ~**bold**~ becomes ~*bold*~, fenced code blocks become
+~#+begin_src~ … ~#+end_src~, tables and links are converted too.
+
+The result goes to the kill ring (which Emacs mirrors onto the clipboard)
+rather than replacing the source text — same idiom as the
+~youtrack--insert-org-task~ yankers in [[file:youtrack/youtrack.org][youtrack/youtrack.org]].  That way the
+conversion can be dropped into an existing outline at the right depth with
+~C-c C-x C-y~ (~org-paste-subtree~), which re-levels the pasted headings to
+match the insertion point; plain ~C-y~ works for fragments without headings.
+With a prefix argument (~C-u M-x my/markdown-to-org~) the region is replaced
+in place instead.
+
+Conversion runs through pandoc.  The region is written to a temporary file
+created by ~make-temp-file~ — a unique, unpredictable name under
+~temporary-file-directory~ (i.e. ~/tmp~), created with mode ~0600~, so no other
+user can read the text or win a symlink race on the path.  Both the input
+file and the stderr capture file are removed in an ~unwind-protect~, so
+nothing is left behind even if pandoc fails or =C-g= interrupts the call.
+Nothing is copied or modified unless pandoc exits successfully.
+
+With a region active it converts the region, otherwise the whole buffer.
+
+#+begin_src emacs-lisp
+(defcustom my/markdown-to-org-input-format "markdown-auto_identifiers"
+  "Pandoc input format used by `my/markdown-to-org'.
+Use \"gfm-auto_identifiers\" for GitHub-flavoured Markdown (task lists,
+strikethrough, autolinks), or \"commonmark-auto_identifiers\" for strict
+CommonMark.
+
+The `-auto_identifiers' suffix is what keeps pandoc from attaching a
+:PROPERTIES: / :CUSTOM_ID: drawer to every generated heading — the extension
+lives on the reader, not the writer, so it has to be disabled here rather than
+in the output format.  Drop the suffix to get the drawers back."
+  :type 'string
+  :group 'markdown)
+
+(defcustom my/markdown-to-org-pandoc-args '("--wrap=none")
+  "Extra arguments passed to pandoc by `my/markdown-to-org'.
+The default keeps paragraphs on a single line; use \"--wrap=auto\" together
+with \"--columns=120\" to hard-wrap the generated Org text instead."
+  :type '(repeat string)
+  :group 'markdown)
+
+(defun my/markdown-to-org--convert (md)
+  "Convert the Markdown string MD to Org markup with pandoc and return it.
+MD is handed to pandoc through a temporary file created by `make-temp-file'
+\(unique name, mode 0600, under `temporary-file-directory'), which is deleted
+again once the conversion finishes, successfully or not.  Signal an error with
+pandoc's own diagnostics when the conversion fails."
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found on PATH"))
+  (let ((infile  (make-temp-file "md2org-" nil ".md"))
+        (errfile (make-temp-file "md2org-" nil ".err")))
+    (unwind-protect
+        (let ((coding-system-for-write 'utf-8-unix)
+              (coding-system-for-read  'utf-8-unix))
+          (write-region md nil infile nil 'silent)
+          (with-temp-buffer
+            (let ((status (apply #'call-process
+                                 "pandoc" nil (list t errfile) nil
+                                 (append (list "-f" my/markdown-to-org-input-format
+                                               "-t" "org")
+                                         my/markdown-to-org-pandoc-args
+                                         (list infile)))))
+              (unless (eq status 0)
+                (error "pandoc failed (%s): %s"
+                       status
+                       (string-trim
+                        (with-temp-buffer
+                          (insert-file-contents errfile)
+                          (buffer-string))))))
+            (buffer-string)))
+      (ignore-errors (delete-file infile))
+      (ignore-errors (delete-file errfile)))))
+
+(defun my/markdown-to-org (beg end &optional arg)
+  "Convert the Markdown between BEG and END to Org markup and copy it.
+Interactively operate on the active region, or on the whole buffer when no
+region is active.  The Org text is pushed onto the kill ring (and so onto the
+clipboard); paste it into an outline with `org-paste-subtree' (\\[org-paste-subtree])
+so the headings are re-levelled to the insertion point, or with \\[yank] for a
+fragment without headings.
+
+With prefix ARG, replace the converted text in place instead of copying it."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end) current-prefix-arg)
+     (list (point-min) (point-max) current-prefix-arg)))
+  (let* ((md  (buffer-substring-no-properties beg end))
+         (org (string-trim-right (my/markdown-to-org--convert md))))
+    (if arg
+        (progn
+          (save-excursion
+            (delete-region beg end)
+            (goto-char beg)
+            (insert org "\n"))
+          (message "Converted %d chars of Markdown to Org in place" (length md)))
+      (kill-new org)
+      (message "Copied %d chars of Org to kill ring — %s to insert."
+               (length org)
+               (if (string-match-p "\\`\\*+ " org)
+                   "use C-c C-x C-y (org-paste-subtree)"
+                 "yank with C-y")))))
+#+end_src
+
+#+RESULTS:
+: my/markdown-to-org
 
 *** org-mind-map
 
@@ -1188,6 +1707,42 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
      :after ox)
    #+end_src
 
+*** org-qa-walk
+
+#+begin_src emacs-lisp
+(load "~/.emacs.d/org-qa-walk/org-qa-walk.el")
+#+end_src
+
+#+RESULTS:
+: t
+
+*** okorg2slides
+
+#+begin_src emacs-lisp
+(use-package okorg2slides
+  :ensure nil
+  :load-path "~/.emacs.d/okorg2slides"
+  :after org
+  :demand t)
+#+end_src
+
+#+RESULTS:
+
+*** org2docx export (DOCX/PDF with formal styles)
+
+   Exports the buffer to ~<basename>.docx~ and ~<basename>.pdf~ next to the file through
+   [[file:org2docx/org2docx.el][org2docx/org2docx.el]] (pandoc + LibreOffice, profiles ~formal~ and ~internal~).
+   ~C-c C-e w w~ or ~M-x org2docx-export~ (~C-u~ asks for the profile); see [[file:org2docx/README.md][org2docx/README.md]].
+
+   #+begin_src emacs-lisp :results output none
+   (use-package org2docx
+     :ensure nil
+     :load-path "~/.emacs.d/org2docx"
+     :after org
+     :demand t
+     :commands (org2docx-export my/org2docx-export))
+   #+end_src
+
 *** ob-mongo
 
    #+begin_src emacs-lisp :results output none
@@ -1205,7 +1760,6 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
               (lambda ()
      (local-set-key (kbd "s-z") 'cider-inspect-last-result)))
    #+end_src
-
 
 
 *** main org mode settings
@@ -1291,12 +1845,13 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
      (global-font-lock-mode 1)
 
      ;; temp disabled
-     ;; (defun my-org-mode-hook ()
+     ;;(defun my-org-mode-hook ()
      ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
      ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
      ;;   (yas-minor-mode)
-     ;;   ;(org-bullets-mode 1)
-     ;;   )
+     ;;   (org-bullets-mode t)
+      ;;  )
+
      ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
 
      (setq org-src-fontify-natively t)
@@ -1607,7 +2162,11 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
 
     #+BEGIN_SRC emacs-lisp
     (use-package org-bullets)
+    (org-bullets-mode)
     #+END_SRC
+
+    #+RESULTS:
+    : t
 
 *** org-jira
 
@@ -1908,6 +2467,21 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** hyperbole
 
+   ~hyperbole-mode~ is a *global* minor mode, and everything below — the Action
+   Key (~M-RET~ / ~hkey-either~), the Action Mouse Key, and every ~defib~ / ~defil~
+   implicit button type defined further down — is dead while it is off.  When
+   a ref like ~"path/file.py:L42"~ suddenly stops being clickable, check
+   ~hyperbole-mode~ *first*; ~M-RET is undefined~ in the echo area is the tell.
+
+   The usual way it gets switched off by accident: in the Hyperbole minibuffer
+   menu (~C-h h~), ~X~ is *not* "eXit the menu" — it is ~hui:menu-exit-hyperbole~,
+   which runs ~(hyperbole-mode 0)~ and disables Hyperbole globally for the rest
+   of the session.  Use ~Q~ to quit the menu.  Recover with ~M-x hyperbole-mode~.
+
+   Note that ~(hyperbole-mode)~ called from Lisp always *enables* (it only
+   toggles when called interactively), so re-evaluating this block is a safe
+   way to switch it back on.
+
    #+begin_src emacs-lisp
    (use-package hyperbole)
    (hyperbole-mode)
@@ -2041,6 +2615,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
       ("f" copy-current-buffer-name "Remember current buffer name")
       ("c" my-copy-current-filename "Copy current filename")
       ("d" my-copy-current-directory "Copy current directory")
+      ("m" copy-markdown-as-markup "Copy Markdown region/buffer as rich markup")
+      ("t" copy-markdown-as-text "Copy Markdown region/buffer as rendered text")
       ("w" isearch-forward-word "Isearch forward word")
       ("h." highlight-symbol-at-point "Highlight symbol at point")
       ("hl" highlight-lines-matching-regexp "Highlight lines matcing RegExp")
@@ -2472,7 +3048,42 @@ https://github.com/thndrbrrr/gtasks-org-tools
               ("C-c g" . git-link)
               )
        )
-     (use-package magit-todos)
+     (use-package magit-todos
+       ;; Set in :config, NOT :custom. `magit-todos-scanner' has a :set function that
+       ;; silently no-ops while `magit-todos-scanners' is still nil, and use-package
+       ;; runs :custom before the package loads — so a :custom value would be dropped.
+       :config
+       ;; Pin rg explicitly. The auto-chooser can land on the find|grep fallback, which
+       ;; honours no ignore rules and descends into every dot-directory; rg skips
+       ;; dot-dirs and respects .gitignore by default.
+       (setopt magit-todos-scanner #'magit-todos--scan-with-rg)
+       ;; Passed through to whichever scanner actually runs, so these hold even if rg
+       ;; is missing. Two distinct problems:
+       ;;   - `.venv/' / `.claude/' / `node_modules/': huge trees, and one .venv per
+       ;;     git worktree (a repo with 16 worktrees has 16 of them).
+       ;;   - the asset globs: single minified lines of ~1M characters overflow Emacs'
+       ;;     regexp matcher, which is what emits "File has lines too long to search".
+       ;;     These live in tracked source too, so excluding .venv alone is not enough.
+       (setopt magit-todos-exclude-globs
+               '(".git/" ".venv/" ".claude/" "node_modules/" "site/"
+                 "*.min.js" "*.min.css" "*.map" "*.svg" "*.so" "*.cap"))
+       ;; Two things used to silently clobber the two settings above; both are
+       ;; worth remembering, because neither produces any warning:
+       ;;
+       ;;   1. `custom-set-variables' in ~/.emacs.  That block runs *after*
+       ;;      `org-babel-load-file' on this file, so anything Custom has ever
+       ;;      saved wins over what is set here.  The magit-todos entries have
+       ;;      been deleted from it; don't let "Apply and Save" put them back.
+       ;;   2. A project's .dir-locals.el.  `magit-status-mode' applies
+       ;;      dir-locals (`magit-hack-dir-local-variables'), and a dir-local
+       ;;      value *replaces* the global list rather than extending it — so a
+       ;;      project pinning `magit-todos-exclude-globs' to its own two entries
+       ;;      dropped .venv/ and *.map again.  Prefer adding project-specific
+       ;;      directories (like "site/" above) to the global list.
+       ;;
+       ;; Declaring the option safe keeps any remaining dir-local from prompting.
+       (put 'magit-todos-exclude-globs 'safe-local-variable
+            (lambda (val) (and (listp val) (seq-every-p #'stringp val)))))
      (use-package forge
        :after magit)
      (use-package github-review)
@@ -2542,14 +3153,19 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+END_SRC
 
 ** hl-todo
+   :LOGBOOK:
+   - State "TODO"       from "TODO"       [2026-10-04 Sun 15:45]
+   - State "TODO"       from              [2026-10-04 Sun 15:45]
+   :END:
 
    Highlight TODO, FIXME, etc faces
 
    #+BEGIN_SRC emacs-lisp :results output none
-     (use-package hl-todo
-       :config
-       (global-hl-todo-mode)
-       )
+   (use-package hl-todo
+     :config
+     (global-hl-todo-mode)
+     )
+   (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
    #+END_SRC
 
 ** imenu
@@ -3191,7 +3807,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    (defun my-shell-mode-hook ()
      (hide-trailing-whitespace)
-     (company-mode)
+     ;; (company-mode)
      )
 
    (add-hook 'shell-mode-hook 'my-shell-mode-hook)
@@ -3970,41 +4586,46 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 ** tab-line
    see also https://github.com/thread314/intuitive-tab-line-mode
    #+begin_src emacs-lisp :results output none
-   (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
-   (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
-   (use-package tab-line
-     :init
-     (defvar-keymap tab-line-mode-map
-       :doc "Keymap for keys of `tab-line-mode'."
-       "C-x C-<left>"  #'tab-line-switch-to-prev-tab
-       "C-x C-<right>" #'tab-line-switch-to-next-tab)
-     )
+     (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
+     (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
+     (use-package tab-line
+       :custom
+       ;; Emacs 31.1+: don't rebind C-x <left>/<right> (and C-x C-<left>/<right>)
+       ;; from previous-buffer/next-buffer to tab-line-switch-to-prev/next-tab.
+       (tab-line-define-keys nil)
+       ;; :init
+       ;; (defvar-keymap tab-line-mode-map
+       ;;   :doc "Keymap for keys of `tab-line-mode'."
+       ;;    "C-x C-<left>"  #'tab-line-switch-to-prev-tab
+       ;;    "C-x C-<right>" #'tab-line-switch-to-next-tab
+       ;;    )
+       )
 
-   ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
-   ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
+     ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
+     ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
 
-   ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
-   ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
-   ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
+     ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
+     ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
 
-   ;; (use-package intuitive-tab-line
-   ;;   :load-path "lisp/intuitive-tab-line-mode"
-   ;;   :custom
-   ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
-   ;;   (tab-line-switch-cycling t)
-   ;;   :config
-   ;;   (global-tab-line-mode 1)
-   ;;   (recentf-mode 1)
-   ;;   (setq
-   ;;    tab-line-new-button-show nil  ;; do not show add-new button
-   ;;    tab-line-close-button-show nil  ;; do not show close button
-   ;;    tab-line-separator " "  ;; delimitation between tabs
-   ;;    ))
+     ;; (use-package intuitive-tab-line
+     ;;   :load-path "lisp/intuitive-tab-line-mode"
+     ;;   :custom
+     ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
+     ;;   (tab-line-switch-cycling t)
+     ;;   :config
+     ;;   (global-tab-line-mode 1)
+     ;;   (recentf-mode 1)
+     ;;   (setq
+     ;;    tab-line-new-button-show nil  ;; do not show add-new button
+     ;;    tab-line-close-button-show nil  ;; do not show close button
+     ;;    tab-line-separator " "  ;; delimitation between tabs
+     ;;    ))
 
-   ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
-   ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
-   ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
-   ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
+     ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
+     ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
+     ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
    #+end_src
 
 ** window management
@@ -4346,6 +4967,291 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    : .*
 
+** drawio
+
+   [[https://www.drawio.com/][draw.io]] (diagrams.net) files are plain XML at the top level, so they are
+   git-diffable and Emacs can read them — but the editing and the rendering both
+   live in the desktop application. This section wires the two together: the XML
+   opens in ~nxml-mode~, one key hands the file to the draw.io app, and a second
+   key exports the pages to images that can be linked from Org.
+
+   Prerequisite — the desktop app supplies the headless exporter (~drawio -x~):
+
+   #+begin_src sh :eval no
+     yay -S drawio-desktop-bin
+   #+end_src
+
+   Commands:
+
+   | ~C-z D o~   | ~my/drawio-open~             | open the file at point in the draw.io app |
+   | ~C-z D e~   | ~my/drawio-export~           | export every page to images               |
+   | ~C-u C-z D e~ | ~my/drawio-export~         | export a single chosen page               |
+   | ~C-z D i~   | ~my/drawio-insert-org-link~  | export one page and link it here          |
+
+   ~C-c C-v~ and ~C-c C-e~ do the same inside a buffer visiting a =.drawio= file.
+   (Not ~C-c C-o~ — that is the prefix ~nxml-mode~ keeps for its outline commands.)
+
+   Behaviour:
+
+   1. [@1]  Page names come from the ~name=~ attribute of each ~<diagram>~
+      element, so the image files are named after the pages rather than after
+      their index alone: =[Draft] BPMN (As is).drawio= exports
+      =draft-bpmn-as-is-01-авториз-корист.png= and friends. A compressed
+      diagram body does not matter — the page names live in the outer, always
+      plain, XML.
+   2. [@2]  Images are written to a =diagrams= subdirectory next to the source
+      (~my/drawio-export-dir~), at 2× scale for PNG (~my/drawio-export-scale~).
+      Set ~my/drawio-export-format~ to ="svg"= for vector output.
+   3. [@3]  Export runs asynchronously, one page at a time — draw.io is an
+      Electron application and a second concurrent instance forwards to the
+      first instead of exporting. Process output collects in =*drawio*=.
+   4. [@4]  ~my/drawio-open~ takes its argument from the Dired line, the Org
+      link at point, or the visited file, whichever applies.
+
+   The MELPA package ~org-drawio~ covers similar ground with a ~#+drawio:~
+   keyword, but it exports via PDF (an extra ~pdf2svg~ dependency), handles one
+   page per keyword, and its "open" path on GNU/Linux passes both the binary and
+   the file to ~xdg-open~. The helpers below avoid that detour and work on
+   =.drawio= files wherever they already live in the repository.
+
+   #+begin_src emacs-lisp :results output none
+     (require 'subr-x)
+     (require 'seq)
+     (require 'org-element)
+     (declare-function dired-get-file-for-visit "dired" ())
+
+     (defgroup my/drawio nil
+       "Drive the draw.io desktop application from Emacs."
+       :group 'external
+       :prefix "my/drawio-")
+
+     (defcustom my/drawio-executable "drawio"
+       "Name of, or path to, the draw.io desktop binary."
+       :type 'string :group 'my/drawio)
+
+     (defcustom my/drawio-extra-args '("--no-sandbox")
+       "Extra arguments passed to every draw.io invocation."
+       :type '(repeat string) :group 'my/drawio)
+
+     (defcustom my/drawio-export-format "png"
+       "Default export format."
+       :type '(choice (const "png") (const "svg") (const "pdf"))
+       :group 'my/drawio)
+
+     (defcustom my/drawio-export-scale 2
+       "Scale factor for PNG export, 1 means 100%."
+       :type 'number :group 'my/drawio)
+
+     (defcustom my/drawio-export-dir "diagrams"
+       "Where exported images are written, relative to the .drawio file.
+     An absolute path is used as is; nil exports next to the source file."
+       :type '(choice (const :tag "Beside the source file" nil) string)
+       :group 'my/drawio)
+
+     (defcustom my/drawio-export-crop nil
+       "When non-nil pass --crop, trimming the image to the diagram bounds."
+       :type 'boolean :group 'my/drawio)
+
+     (defconst my/drawio-file-regexp "\\.\\(?:drawio\\|dio\\)\\(?:\\.xml\\)?\\'"
+       "Files treated as draw.io sources.")
+
+     (defconst my/drawio--buffer "*drawio*"
+       "Buffer collecting draw.io process output.")
+
+     (defun my/drawio--program ()
+       "Return the draw.io binary, or fail with an install hint."
+       (or (executable-find my/drawio-executable)
+           (user-error "draw.io not found: install it with `yay -S drawio-desktop-bin'")))
+
+     (defun my/drawio--unescape (string)
+       "Resolve the XML entities draw.io writes into page names in STRING."
+       (dolist (pair '(("&lt;" . "<") ("&gt;" . ">") ("&quot;" . "\"")
+                       ("&apos;" . "'") ("&#39;" . "'") ("&#10;" . " ")
+                       ("&amp;" . "&"))
+                      string)
+         (setq string (string-replace (car pair) (cdr pair) string))))
+
+     (defun my/drawio-pages (file)
+       "Return the page names of FILE, in document order."
+       (with-temp-buffer
+         (insert-file-contents file)
+         (goto-char (point-min))
+         (let ((pages nil) (n 0))
+           (while (re-search-forward "<diagram\\([^>]*\\)>" nil t)
+             (let* ((attrs (match-string 1))
+                    (name (and (string-match "name=\"\\([^\"]*\\)\"" attrs)
+                               (my/drawio--unescape (match-string 1 attrs)))))
+               (push (or name (format "page-%d" n)) pages)
+               (setq n (1+ n))))
+           (nreverse pages))))
+
+     (defun my/drawio--slug (name)
+       "Turn NAME into a filename-safe slug."
+       (let ((s (replace-regexp-in-string
+                 "[^[:alnum:]]+" "-" (downcase (string-trim name)))))
+         (setq s (string-trim s "-+" "-+"))
+         (if (string= s "") "page" s)))
+
+     (defun my/drawio--output-dir (file)
+       "Return the directory exported images of FILE go to."
+       (let ((base (file-name-directory (expand-file-name file))))
+         (cond ((or (null my/drawio-export-dir) (string= my/drawio-export-dir ""))
+                base)
+               ((file-name-absolute-p my/drawio-export-dir)
+                (file-name-as-directory (expand-file-name my/drawio-export-dir)))
+               (t (file-name-as-directory
+                   (expand-file-name my/drawio-export-dir base))))))
+
+     (defun my/drawio--output-file (file index name dir fmt)
+       "Return the image path for page INDEX named NAME of FILE, as FMT, under DIR."
+       (expand-file-name (format "%s-%02d-%s.%s"
+                                 (my/drawio--slug (file-name-base file))
+                                 index (my/drawio--slug name) fmt)
+                         dir))
+
+     (defun my/drawio--file-at-point ()
+       "Best guess at a .drawio file near point, or nil."
+       (seq-find
+        (lambda (f) (and f (string-match-p my/drawio-file-regexp f)))
+        (list (and (derived-mode-p 'dired-mode)
+                   (ignore-errors (dired-get-file-for-visit)))
+              (and (derived-mode-p 'org-mode)
+                   (let ((el (org-element-context)))
+                     (and (eq (org-element-type el) 'link)
+                          (equal (org-element-property :type el) "file")
+                          (expand-file-name (org-element-property :path el)))))
+              buffer-file-name)))
+
+     (defun my/drawio--read-file (&optional prompt)
+       "Read a .drawio file name, defaulting to the one at point.  PROMPT overrides."
+       (let ((default (my/drawio--file-at-point)))
+         (read-file-name (or prompt "Drawio file: ")
+                         (and default (file-name-directory default))
+                         default t
+                         (and default (file-name-nondirectory default)))))
+
+     (defun my/drawio--read-page (file)
+       "Read one page of FILE, returning (INDEX . NAME)."
+       (let* ((i -1)
+              (alist (mapcar (lambda (name)
+                               (setq i (1+ i))
+                               (cons (format "%d: %s" i name) (cons i name)))
+                             (my/drawio-pages file))))
+         (unless alist (user-error "No <diagram> pages found in %s" file))
+         (cdr (assoc (completing-read "Page: " alist nil t) alist))))
+
+     (defun my/drawio--export-page (file index outfile fmt callback)
+       "Export page INDEX of FILE to OUTFILE as FMT, then call CALLBACK with success."
+       (let* ((prog (my/drawio--program))
+              (args (append (list "-x" "-f" fmt "-p" (number-to-string index)
+                                  "-o" outfile)
+                            (when (and (equal fmt "png") my/drawio-export-scale)
+                              (list "-s" (number-to-string my/drawio-export-scale)))
+                            (when my/drawio-export-crop (list "--crop"))
+                            my/drawio-extra-args
+                            (list (expand-file-name file)))))
+         (set-process-sentinel
+          (apply #'start-process "drawio-export" my/drawio--buffer prog args)
+          (lambda (_proc event)
+            (funcall callback (and (string-match-p "finished" event)
+                                   (file-exists-p outfile)))))))
+
+     (defun my/drawio--export-queue (file specs dir fmt done acc)
+       "Export SPECS of FILE into DIR as FMT one at a time, then call DONE with ACC."
+       (if (null specs)
+           (funcall done (nreverse acc))
+         (let* ((index (caar specs))
+                (name (cdar specs))
+                (out (my/drawio--output-file file index name dir fmt)))
+           (message "drawio: page %d — %s" index name)
+           (my/drawio--export-page
+            file index out fmt
+            (lambda (ok)
+              (my/drawio--export-queue file (cdr specs) dir fmt done
+                                       (if ok (cons out acc) acc)))))))
+
+     (defun my/drawio-export (file &optional page-index)
+       "Export every page of FILE to `my/drawio-export-format' images.
+     With a prefix argument, export only the chosen PAGE-INDEX."
+       (interactive
+        (let ((f (my/drawio--read-file "Export drawio file: ")))
+          (list f (and current-prefix-arg (car (my/drawio--read-page f))))))
+       (let* ((i -1)
+              (specs (mapcar (lambda (name) (setq i (1+ i)) (cons i name))
+                             (my/drawio-pages file)))
+              (dir (my/drawio--output-dir file))
+              (fmt my/drawio-export-format))
+         (unless specs (user-error "No <diagram> pages found in %s" file))
+         (when page-index (setq specs (list (nth page-index specs))))
+         (make-directory dir t)
+         (let ((total (length specs)))
+           (my/drawio--export-queue
+            file specs dir fmt
+            (lambda (outs)
+              (message "drawio: exported %d/%d page(s) to %s"
+                       (length outs) total (abbreviate-file-name dir)))
+            nil))))
+
+     (defun my/drawio-open (file)
+       "Open FILE, by default the .drawio file at point, in the draw.io desktop app."
+       (interactive (list (my/drawio--read-file "Open in draw.io: ")))
+       (let ((path (expand-file-name file)))
+         (apply #'start-process "drawio" my/drawio--buffer (my/drawio--program)
+                (append my/drawio-extra-args (list path)))
+         (message "draw.io: %s" (abbreviate-file-name path))))
+
+     (defun my/drawio-insert-org-link (file)
+       "Export one page of FILE and insert an Org link to the image at point."
+       (interactive (list (my/drawio--read-file "Insert page from: ")))
+       (unless (derived-mode-p 'org-mode)
+         (user-error "Not an Org buffer"))
+       (let* ((page (my/drawio--read-page file))
+              (index (car page))
+              (name (cdr page))
+              (dir (my/drawio--output-dir file))
+              (fmt my/drawio-export-format)
+              (out (my/drawio--output-file file index name dir fmt))
+              (buffer (current-buffer))
+              (marker (copy-marker (point) t)))
+         (make-directory dir t)
+         (my/drawio--export-page
+          file index out fmt
+          (lambda (ok)
+            (if (not ok)
+                (message "drawio: export failed, see %s" my/drawio--buffer)
+              (with-current-buffer buffer
+                (save-excursion
+                  (goto-char marker)
+                  (insert (format "#+CAPTION: %s\n[[file:%s]]\n"
+                                  name (file-relative-name out default-directory))))
+                (org-redisplay-inline-images))
+              (message "drawio: %s" (abbreviate-file-name out)))))))
+
+     (defvar my/drawio-file-mode-map
+       (let ((map (make-sparse-keymap)))
+         (define-key map (kbd "C-c C-v") #'my/drawio-open)
+         (define-key map (kbd "C-c C-e") #'my/drawio-export)
+         map)
+       "Keymap for `my/drawio-file-mode'.")
+
+     (define-minor-mode my/drawio-file-mode
+       "Minor mode for buffers visiting draw.io XML sources."
+       :lighter " dio" :keymap my/drawio-file-mode-map)
+
+     (defun my/drawio--maybe-enable ()
+       "Enable `my/drawio-file-mode' when the buffer visits a draw.io source."
+       (when (and buffer-file-name
+                  (string-match-p my/drawio-file-regexp buffer-file-name))
+         (my/drawio-file-mode 1)))
+
+     (add-to-list 'auto-mode-alist (cons my/drawio-file-regexp #'nxml-mode))
+     (add-hook 'nxml-mode-hook #'my/drawio--maybe-enable)
+
+     (global-set-key (kbd "C-z D o") #'my/drawio-open)
+     (global-set-key (kbd "C-z D e") #'my/drawio-export)
+     (global-set-key (kbd "C-z D i") #'my/drawio-insert-org-link)
+   #+end_src
+
 ** el-search
 
    #+begin_src emacs-lisp
@@ -4528,7 +5434,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
           "Marking window '%s' as dedicated"
         "Un-dedicating window '%s'") (current-buffer)))
    #+end_src
-** Copy file name to clipboard
+`** Copy file name to clipboard
 
    #+begin_src emacs-lisp
    (defun copy-file-name-to-clipboard ()
@@ -4614,6 +5520,21 @@ Format: \"/full/path/file.el:L42\"."
      : ibtypes::my-projectile-template-file2
 
 **** Standard ~FILE~ link with "folder/filename.ext:LXX" should work
+
+     Both this type and the absolute one below share the same ~"~ … ~"~
+     delimiters, so the TEXT-REGEXP is the only thing telling them apart — and
+     ~defil~ matches it with a plain ~string-match~, i.e. *unanchored*, against the
+     text between the delimiters.  An unanchored ~"/.*?:L…"~ therefore matches the
+     ~/~ *inside* ~folder/filename.ext:LXX~, so the absolute type (which comes
+     first in ~(htype:names 'ibtypes)~) swallowed every project-relative ref with
+     a directory component and passed it to ~find-file~ against the current
+     buffer's ~default-directory~ instead of the projectile root.
+
+     Hence ~\\`~ … ~\\'~ on both regexps: relative must *not* start with ~/~,
+     absolute must.  (~[[:digit:]]+~, not ~[:digit:]*~ — the latter is a bracket
+     expression over the characters ~:digt~ and matches zero of them, so it never
+     constrained anything.)
+
      #+begin_src emacs-lisp
         (defun my-open-projectile-file-on-line-n (locator)
           ;; (interactive)
@@ -4629,12 +5550,9 @@ Format: \"/full/path/file.el:L42\"."
              (goto-char (point-min)) (forward-line (- (string-to-number line-no) 1))
            )
 
-          )
-        ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
-        (defil my-projectile-file-locator
-               "\"" "\""
-               "\\`.*:L[[:digit:]]+\\'"
-               #'my-open-projectile-file-on-line-n)
+       )
+     ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
+     (defil my-projectile-file-locator "\"" "\"" "\\`[^/].*?:L[[:digit:]]+\\'" 'my-open-projectile-file-on-line-n)
      #+end_src
 
 
@@ -4651,7 +5569,7 @@ Format: \"/full/path/file.el:L42\"."
          (goto-char (point-min))
          (forward-line (- (string-to-number line-no) 1))))
 
-     (defil my-absolute-file-locator "\"" "\"" "\\`/.*:L[[:digit:]]+\\'" #'my-open-absolute-file-on-line-n)
+     (defil my-absolute-file-locator "\"" "\"" "\\`/.*?:L[[:digit:]]+\\'" 'my-open-absolute-file-on-line-n)
      #+end_src
 
      #+RESULTS:
@@ -4988,6 +5906,59 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    | flycheck | flymake |
 
+** ghostel — keep C-z an Emacs prefix, never a suspend key
+
+   #+begin_src emacs-lisp
+
+   ;; ghostel is the terminal emulator `claude-code-ide' drives (see the next
+   ;; section).  Like eat, its default input mode (`ghostel-semi-char-mode')
+   ;; forwards almost every key straight to the pty — C-z included, where the
+   ;; Claude Code CLI reads it as "suspend" and drops the session into the
+   ;; background.  In this config C-z is the personal prefix key (C-z g magit,
+   ;; C-z i ibuffer, C-z C-c org-capture, …), so a reflexive C-z inside the
+   ;; Claude window killed the session instead of opening the prefix map.  The
+   ;; eat backend had the same trap; see `my-eat-C-z-dispatch' in the "eat?"
+   ;; section above.
+   ;;
+   ;; `ghostel-keymap-exceptions' is the supported way out: keys listed there
+   ;; are never bound to `ghostel--send-event', so they fall through to
+   ;; `ghostel-mode-map' and then the global map.  C-z stays a plain Emacs
+   ;; prefix *without* leaving semi-char mode — no `C-c C-j' round-trip like
+   ;; the eat workaround needed, and which-key/`C-z C-h' still describe the
+   ;; map.  The list must be set through `setopt'/customize rather than
+   ;; `setq': its :set function is what rebuilds
+   ;; `ghostel-semi-char-mode-map'.
+   ;;
+   ;; A deliberate suspend remains available on `C-c C-z'
+   ;; (`ghostel-send-C-z') — nothing is lost, it just stops being one
+   ;; mistyped key away.
+
+   (use-package ghostel
+     :defer t)
+
+   (defun my-ghostel-C-z-prefix ()
+     "Dispatch the global `C-z' prefix map instead of sending C-z to the pty.
+   Second line of defence for `ghostel-char-mode', which deliberately ignores
+   `ghostel-keymap-exceptions' and grabs every key.  `set-transient-map' makes
+   the global C-z map active for the next key, so `C-z g', `C-z r n' and the
+   rest of the multi-key sequences work from there too."
+     (interactive)
+     (let ((map (lookup-key global-map (kbd "C-z"))))
+       (if (keymapp map)
+           (set-transient-map map)
+         (user-error "C-z is not a prefix key in the global map"))))
+
+   (with-eval-after-load 'ghostel
+     ;; Semi-char mode (the mode every Claude/ghostel buffer starts in).
+     (unless (member "C-z" ghostel-keymap-exceptions)
+       (setopt ghostel-keymap-exceptions
+               (append ghostel-keymap-exceptions '("C-z"))))
+     ;; Char mode binds everything, exceptions included — bind C-z there by
+     ;; hand so an accidental `C-c M-d' cannot silently re-arm the suspend.
+     (define-key ghostel-char-mode-map (kbd "C-z") #'my-ghostel-C-z-prefix))
+
+   #+end_src
+
 ** claude-code-ide
 
    #+begin_src emacs-lisp
@@ -5013,6 +5984,10 @@ Format: \"/full/path/file.el:L42\"."
             ("C-c C-'" . claude-code-ide-menu)
             ("C-x <f1>" . claude-code-ide-list-sessions)
             )
+     ;; Terminal backend: ghostel (was eat).  Kept here so the choice
+     ;; survives a restart; the C-z-is-a-prefix fix for it lives in the
+     ;; "ghostel" section above.
+     :custom (claude-code-ide-terminal-backend 'ghostel)
      :config
      (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
 
@@ -5337,7 +6312,7 @@ Format: \"/full/path/file.el:L42\"."
    (use-package theme-looper)
 
    (defvar my-favorite-themes
-     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid)
+     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid cobalt)
      "Themes shared by `theme-looper' and `my-theme-looper-pick'.")
 
    (theme-looper-set-favorite-themes my-favorite-themes)
@@ -5975,7 +6950,7 @@ moving through the list — the chosen theme is applied only on RET."
               ;; (highlight-indentation-mode t)
               (when (is_buffer_of ".*\.vue$")
                   (tide-mode)
-                  (company-mode)
+                  ;; (company-mode)
                   (apheleia-mode +1)
                   )
               )
@@ -6029,7 +7004,8 @@ moving through the list — the chosen theme is applied only on RET."
        ;; install it separately via package-install
        ;; `M-x package-install [ret] company`
        (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
-       (company-mode +1))
+       ;; (company-mode +1)
+       )
 
      ;; aligns annotation to the right hand side
      (setq company-tooltip-align-annotations t)
@@ -6176,6 +7152,51 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 
    #+RESULTS:
+** completion preview mode
+   from: https://protesilaos.com/codelog/2026-08-29-emacs-completion-preview-mode/
+   #+begin_src emacs-lisp
+   
+   (use-package completion-preview
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-preview-active-mode-map
+       ("M-i" . completion-preview-insert-word)
+       ("M-n" . completion-preview-next-candidate)
+       ("M-p" . completion-preview-prev-candidate)
+       ("M-<return>" . completion-preview-insert)
+       ;; With TAB we effectively defer to the *Completions* buffer to
+       ;; show more completion candidates at once.
+       ("<tab>" . completion-preview-complete))
+     :config
+     (setq completion-preview-minimum-symbol-length 2)
+     (with-eval-after-load 'org
+       (add-to-list 'completion-preview-commands #'org-self-insert-command))
+     (global-completion-preview-mode 1))
+
+   ;; I have a more detailed configuration (and explanation) that works
+   ;; with Emacs 31 built-in completion capabilities:
+   ;; https://protesilaos.com/codelog/2026-07-29-emacs-default-minibuffer-completion-overview/.
+   (use-package minibuffer
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-in-region-mode-map
+       ("M-i" . minibuffer-choose-completion)
+       ("M-n" . minibuffer-next-completion)
+       ("M-p" . minibuffer-previous-completion))
+     :config
+     (setq completions-format 'one-column)
+     (setq completions-max-height 12)
+     (setq completion-auto-help t)
+     (setq completion-auto-select nil)
+     (setq minibuffer-visible-completions t)
+     (setq completion-eager-update t))
+   #+end_src
+
+   #+RESULTS:
+   : minibuffer-previous-completion
+
 ** auto revert
 
    #+begin_src emacs-lisp
