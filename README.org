@@ -169,7 +169,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
                                             ; (define-key global-map  "\C-cmx"         'nxml-mode) / somehow I press it sometimes in org-mode?
     (define-key global-map  "\C-cmd"         'django-html-mumamo-mode)
     (define-key global-map  "\C-cmc"         'conf-mode)
-    (define-key global-map  "\C-cmo"         'company-mode)
     (define-key global-map  "\C-cms"         'speedbar)
     (define-key global-map  "\C-cmf"         'display-fill-column-indicator-mode)
     (define-key global-map  "\C-cmt"         'global-tab-line-mode)
@@ -941,6 +940,20 @@ and cause version-skew macro errors after magit/forge upgrades.
    : string-inflection-cycle
 
 ** org-mode
+*** org-bullets
+    #+begin_src emacs-lisp
+    (add-hook 'org-mode-hook (lambda ()
+                               (org-bullets-mode 1)
+                               ))
+    #+end_src
+
+*** org-indent
+    #+begin_src emacs-lisp
+    (add-hook 'org-mode-hook (lambda ()
+                               (org-indent-mode)
+                               ))
+    #+end_src
+
 *** org-babel sql
 
     #+begin_src emacs-lisp :results output none
@@ -1694,6 +1707,42 @@ With prefix ARG, replace the converted text in place instead of copying it."
      :after ox)
    #+end_src
 
+*** org-qa-walk
+
+#+begin_src emacs-lisp
+(load "~/.emacs.d/org-qa-walk/org-qa-walk.el")
+#+end_src
+
+#+RESULTS:
+: t
+
+*** okorg2slides
+
+#+begin_src emacs-lisp
+(use-package okorg2slides
+  :ensure nil
+  :load-path "~/.emacs.d/okorg2slides"
+  :after org
+  :demand t)
+#+end_src
+
+#+RESULTS:
+
+*** org2docx export (DOCX/PDF with formal styles)
+
+   Exports the buffer to ~<basename>.docx~ and ~<basename>.pdf~ next to the file through
+   [[file:org2docx/org2docx.el][org2docx/org2docx.el]] (pandoc + LibreOffice, profiles ~formal~ and ~internal~).
+   ~C-c C-e w w~ or ~M-x org2docx-export~ (~C-u~ asks for the profile); see [[file:org2docx/README.md][org2docx/README.md]].
+
+   #+begin_src emacs-lisp :results output none
+   (use-package org2docx
+     :ensure nil
+     :load-path "~/.emacs.d/org2docx"
+     :after org
+     :demand t
+     :commands (org2docx-export my/org2docx-export))
+   #+end_src
+
 *** ob-mongo
 
    #+begin_src emacs-lisp :results output none
@@ -1711,7 +1760,6 @@ With prefix ARG, replace the converted text in place instead of copying it."
               (lambda ()
      (local-set-key (kbd "s-z") 'cider-inspect-last-result)))
    #+end_src
-
 
 
 *** main org mode settings
@@ -1797,12 +1845,13 @@ With prefix ARG, replace the converted text in place instead of copying it."
      (global-font-lock-mode 1)
 
      ;; temp disabled
-     ;; (defun my-org-mode-hook ()
+     ;;(defun my-org-mode-hook ()
      ;;   (local-set-key [(meta tab)] 'ido-switch-buffer)
      ;;   (local-set-key (kbd "C-z r g") 'org-redmine-get-issue)
      ;;   (yas-minor-mode)
-     ;;   ;(org-bullets-mode 1)
-     ;;   )
+     ;;   (org-bullets-mode t)
+      ;;  )
+
      ;; (add-hook 'org-mode-hook 'my-org-mode-hook)
 
      (setq org-src-fontify-natively t)
@@ -2113,7 +2162,11 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
     #+BEGIN_SRC emacs-lisp
     (use-package org-bullets)
+    (org-bullets-mode)
     #+END_SRC
+
+    #+RESULTS:
+    : t
 
 *** org-jira
 
@@ -3100,14 +3153,19 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+END_SRC
 
 ** hl-todo
+   :LOGBOOK:
+   - State "TODO"       from "TODO"       [2026-10-04 Sun 15:45]
+   - State "TODO"       from              [2026-10-04 Sun 15:45]
+   :END:
 
    Highlight TODO, FIXME, etc faces
 
    #+BEGIN_SRC emacs-lisp :results output none
-     (use-package hl-todo
-       :config
-       (global-hl-todo-mode)
-       )
+   (use-package hl-todo
+     :config
+     (global-hl-todo-mode)
+     )
+   (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
    #+END_SRC
 
 ** imenu
@@ -3749,7 +3807,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    (defun my-shell-mode-hook ()
      (hide-trailing-whitespace)
-     (company-mode)
+     ;; (company-mode)
      )
 
    (add-hook 'shell-mode-hook 'my-shell-mode-hook)
@@ -4528,41 +4586,46 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 ** tab-line
    see also https://github.com/thread314/intuitive-tab-line-mode
    #+begin_src emacs-lisp :results output none
-   (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
-   (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
-   (use-package tab-line
-     :init
-     (defvar-keymap tab-line-mode-map
-       :doc "Keymap for keys of `tab-line-mode'."
-       "C-x C-<left>"  #'tab-line-switch-to-prev-tab
-       "C-x C-<right>" #'tab-line-switch-to-next-tab)
-     )
+     (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
+     (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
+     (use-package tab-line
+       :custom
+       ;; Emacs 31.1+: don't rebind C-x <left>/<right> (and C-x C-<left>/<right>)
+       ;; from previous-buffer/next-buffer to tab-line-switch-to-prev/next-tab.
+       (tab-line-define-keys nil)
+       ;; :init
+       ;; (defvar-keymap tab-line-mode-map
+       ;;   :doc "Keymap for keys of `tab-line-mode'."
+       ;;    "C-x C-<left>"  #'tab-line-switch-to-prev-tab
+       ;;    "C-x C-<right>" #'tab-line-switch-to-next-tab
+       ;;    )
+       )
 
-   ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
-   ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
+     ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
+     ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
 
-   ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
-   ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
-   ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
+     ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
+     ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
 
-   ;; (use-package intuitive-tab-line
-   ;;   :load-path "lisp/intuitive-tab-line-mode"
-   ;;   :custom
-   ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
-   ;;   (tab-line-switch-cycling t)
-   ;;   :config
-   ;;   (global-tab-line-mode 1)
-   ;;   (recentf-mode 1)
-   ;;   (setq
-   ;;    tab-line-new-button-show nil  ;; do not show add-new button
-   ;;    tab-line-close-button-show nil  ;; do not show close button
-   ;;    tab-line-separator " "  ;; delimitation between tabs
-   ;;    ))
+     ;; (use-package intuitive-tab-line
+     ;;   :load-path "lisp/intuitive-tab-line-mode"
+     ;;   :custom
+     ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
+     ;;   (tab-line-switch-cycling t)
+     ;;   :config
+     ;;   (global-tab-line-mode 1)
+     ;;   (recentf-mode 1)
+     ;;   (setq
+     ;;    tab-line-new-button-show nil  ;; do not show add-new button
+     ;;    tab-line-close-button-show nil  ;; do not show close button
+     ;;    tab-line-separator " "  ;; delimitation between tabs
+     ;;    ))
 
-   ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
-   ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
-   ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
-   ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
+     ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
+     ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
+     ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
    #+end_src
 
 ** window management
@@ -6885,7 +6948,7 @@ moving through the list — the chosen theme is applied only on RET."
               ;; (highlight-indentation-mode t)
               (when (is_buffer_of ".*\.vue$")
                   (tide-mode)
-                  (company-mode)
+                  ;; (company-mode)
                   (apheleia-mode +1)
                   )
               )
@@ -6939,7 +7002,8 @@ moving through the list — the chosen theme is applied only on RET."
        ;; install it separately via package-install
        ;; `M-x package-install [ret] company`
        (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
-       (company-mode +1))
+       ;; (company-mode +1)
+       )
 
      ;; aligns annotation to the right hand side
      (setq company-tooltip-align-annotations t)
@@ -7084,6 +7148,51 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 
    #+RESULTS:
+** completion preview mode
+   from: https://protesilaos.com/codelog/2026-08-29-emacs-completion-preview-mode/
+   #+begin_src emacs-lisp
+   
+   (use-package completion-preview
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-preview-active-mode-map
+       ("M-i" . completion-preview-insert-word)
+       ("M-n" . completion-preview-next-candidate)
+       ("M-p" . completion-preview-prev-candidate)
+       ("M-<return>" . completion-preview-insert)
+       ;; With TAB we effectively defer to the *Completions* buffer to
+       ;; show more completion candidates at once.
+       ("<tab>" . completion-preview-complete))
+     :config
+     (setq completion-preview-minimum-symbol-length 2)
+     (with-eval-after-load 'org
+       (add-to-list 'completion-preview-commands #'org-self-insert-command))
+     (global-completion-preview-mode 1))
+
+   ;; I have a more detailed configuration (and explanation) that works
+   ;; with Emacs 31 built-in completion capabilities:
+   ;; https://protesilaos.com/codelog/2026-07-29-emacs-default-minibuffer-completion-overview/.
+   (use-package minibuffer
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-in-region-mode-map
+       ("M-i" . minibuffer-choose-completion)
+       ("M-n" . minibuffer-next-completion)
+       ("M-p" . minibuffer-previous-completion))
+     :config
+     (setq completions-format 'one-column)
+     (setq completions-max-height 12)
+     (setq completion-auto-help t)
+     (setq completion-auto-select nil)
+     (setq minibuffer-visible-completions t)
+     (setq completion-eager-update t))
+   #+end_src
+
+   #+RESULTS:
+   : minibuffer-previous-completion
+
 ** auto revert
 
    #+begin_src emacs-lisp
