@@ -4615,24 +4615,29 @@ Format: \"/full/path/file.el:L42\"."
 
 **** Standard ~FILE~ link with "folder/filename.ext:LXX" should work
      #+begin_src emacs-lisp
-     (defun my-open-projectile-file-on-line-n (locator)
-       ;; (interactive)
-        (let* ((project-root (expand-file-name (projectile-project-root)))
-               (filename (car (split-string locator ":L")))
-               (line-no (car (cdr (split-string locator ":L"))))
-               (full-filename (concat project-root filename))
-               )
-          (message (concat "Project root: " project-root))
-          (message (concat "Filename: " filename " line " line-no))
-          (message (concat "Filename: " full-filename))
-          (find-file full-filename)
-          (goto-char (point-min)) (forward-line (- (string-to-number line-no) 1))
-        )
+        (defun my-open-projectile-file-on-line-n (locator)
+          ;; (interactive)
+           (let* ((project-root (expand-file-name (projectile-project-root)))
+                  (filename (car (split-string locator ":L")))
+                  (line-no (car (cdr (split-string locator ":L"))))
+                  (full-filename (concat project-root filename))
+                  )
+             (message (concat "Project root: " project-root))
+             (message (concat "Filename: " filename " line " line-no))
+             (message (concat "Filename: " full-filename))
+             (find-file full-filename)
+             (goto-char (point-min)) (forward-line (- (string-to-number line-no) 1))
+           )
 
-       )
-     ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
-     (defil my-projectile-file-locator "\"" "\"" ".*?:L[:digit:]*" 'my-open-projectile-file-on-line-n)
+          )
+        ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
+        (defil my-projectile-file-locator
+               "\"" "\""
+               "\\`.*:L[[:digit:]]+\\'"
+               #'my-open-projectile-file-on-line-n)
      #+end_src
+
+
 
      #+RESULTS:
      : ibtypes::my-projectile-file-locator
@@ -4646,7 +4651,7 @@ Format: \"/full/path/file.el:L42\"."
          (goto-char (point-min))
          (forward-line (- (string-to-number line-no) 1))))
 
-     (defil my-absolute-file-locator "\"" "\"" "/.*?:L[:digit:]*" 'my-open-absolute-file-on-line-n)
+     (defil my-absolute-file-locator "\"" "\"" "\\`/.*:L[[:digit:]]+\\'" #'my-open-absolute-file-on-line-n)
      #+end_src
 
      #+RESULTS:
@@ -6112,7 +6117,9 @@ moving through the list — the chosen theme is applied only on RET."
    #+begin_src emacs-lisp :results output none
      (use-package jtsx
        :ensure t
-       :mode (("\\.jsx?\\'" . jtsx-jsx-mode)
+       ;; .mjs/.cjs are plain ES/CommonJS modules -- same tree-sitter grammar,
+       ;; so they get the same mode as .js
+       :mode (("\\.[mc]?jsx?\\'" . jtsx-jsx-mode)
               ("\\.tsx\\'" . jtsx-tsx-mode)
               ;; ("\\.ts\\'" . jtsx-typescript-mode)
               )
@@ -6223,3 +6230,15 @@ moving through the list — the chosen theme is applied only on RET."
 : bc-on-region
 
 * Unsorted (WIP)
+
+* External browser
+
+Links opened from Emacs always go to Vivaldi, regardless of the macOS default
+browser.  The system default has to be flipped to Safari for the VPN tunnel
+(=defbrowser= toggles it), and Emacs should not follow it there.
+
+#+begin_src emacs-lisp
+(setq browse-url-browser-function #'browse-url-generic
+      browse-url-generic-program "open"
+      browse-url-generic-args '("-a" "Vivaldi"))
+#+end_src
