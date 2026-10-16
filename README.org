@@ -5853,13 +5853,9 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    : loaded
 
-* Core settings
+* Languages
 
-  Settings that lived only in Customize until October 2026 and have no package section of
-  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
-  overrides the ~:custom~ value set here (Customize's user theme has priority over the
-  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
-  time to time.
+  Major modes and their settings, one section per language or file type.
 
 ** Indentation and interpreters of built-in programming modes
 
@@ -5885,6 +5881,726 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      :custom
      (typescript-ts-mode-indent-offset 2))
    #+end_src
+
+** po-mode
+
+   Problem: it prevents conflict resolution as it turns ON po mode with ReadOnly flag set on a buffer.
+
+   #+begin_src emacs-lisp
+   (use-package po-mode
+     :bind (:map po-subedit-mode-map
+                 ("C-c C-c" . po-subedit-exit)
+                 ("C-c C-k" . po-subedit-abort)))
+   #+end_src
+
+   #+RESULTS:
+   : po-subedit-abort
+
+** Ahg (mercurial support)
+
+   I love Mercurial (over git) and I will never understand and agree that ~git~ is won the version control competition game.
+   I still use it for personal projects despite the declining support everywhere.
+
+    #+begin_src emacs-lisp
+    (use-package ahg)
+    (global-set-key (kbd "C-z h") 'ahg-status)
+    ;; (global-set-key (kbd "C-<f4>") 'ahg-status)
+    #+end_src
+
+** Language: go
+
+   #+begin_src emacs-lisp
+     (require 'go-template-mode)
+   #+end_src
+
+** apache mode
+   #+begin_src emacs-lisp
+     (use-package apache-mode)
+   #+end_src
+
+** crontab-mode
+   #+begin_src emacs-lisp
+     (use-package crontab-mode)
+   #+end_src
+
+** nginx
+
+   #+begin_src emacs-lisp
+   (use-package nginx-mode)
+   #+end_src
+
+** javascript
+
+   #+begin_src emacs-lisp
+     (defun my-js-console-log (arg)
+       "Insert js console.log(). Prefix argument will ask for string or variable name"
+       (interactive "P")
+       (message "raw prefix arg is %S" arg)
+       (insert "console.log(\"")
+       (when (equal '(4) arg)
+	 (insert (read-from-minibuffer "Prefix text: ") " ")
+	 )
+       (insert (shell-command-to-string "date  +\"ok-%Y-%m-%d-%s\" | tr -d '\\n'"))
+       (if (equal 1 arg)
+	   (insert "\" + );")
+	 (insert "\");"))
+       )
+
+     (eval-after-load 'typescript-ts-mode
+       '(progn
+	  (define-key typescript-ts-mode-map (kbd "C-z q") 'my-js-console-log)
+	  ))
+
+     (eval-after-load 'typescript-mode
+       '(progn
+	  (define-key typescript-mode-map (kbd "C-z q") 'my-js-console-log)
+	  ))
+
+     (use-package js2-mode)
+     ;; (use-package js3-mode)
+     ;; (use-package js2-refactor)
+     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+     (setq js-indent-level 2)
+
+   #+end_src
+
+** COMMENT Javascript
+   :LOGBOOK:
+   - State "BUGFIXED"   from              [2023-03-07 Tue 20:35]
+   :END:
+
+   #+begin_src emacs-lisp
+     ;; (autoload 'javascript-mode "javascript" nil t)
+     ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
+     (use-package js2-mode)
+     ;; (use-package js3-mode)
+     (use-package js2-refactor)
+     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+     (setq js-indent-level 2)
+
+     ;; jslint
+     ;; (use-package flymake-jslint)
+     ;; (use-package flymake-cursor)
+     (require 'json)
+     ;; (require 'flycheck)
+     ;; (defun my-parse-jslinter-warning (warning)
+     ;;   (flycheck-error-new
+     ;;    :line (1+ (cdr (assoc 'line warning)))
+     ;;    :column (1+ (cdr (assoc 'column warning)))
+     ;;    :message (cdr (assoc 'message warning))
+     ;;    :level 'error
+     ;;    :buffer (current-buffer)
+     ;;    :checker 'javascript-jslinter))
+     ;; (defun jslinter-error-parser (output checker buffer)
+     ;;   (mapcar 'parse-jslinter-warning
+     ;;           (cdr (assoc 'warnings (aref (json-read-from-string output) 0)))))
+     ;; (flycheck-define-checker javascript-jslinter
+     ;;   "A JavaScript syntax and style checker based on JSLinter.
+
+     ;; See URL `https://github.com/tensor5/JSLinter'."
+     ;;   :command ("jslint" "--raw" source)
+     ;;   :error-parser jslinter-error-parser
+     ;;   :modes (js-mode js2-mode js3-mode))
+
+
+     (add-hook 'js2-mode-hook
+	       (defun my-js2-mode-setup ()
+		 (flycheck-mode t)
+		 (when (executable-find "eslint")
+		   (flycheck-select-checker 'javascript-eslint))))
+   #+end_src
+
+** COMMENT React
+
+ #+begin_src emacs-lisp
+ (use-package rjsx-mode)
+ #+end_src
+
+** json-mode
+
+   #+begin_src emacs-lisp
+     (use-package json-mode)
+   #+end_src
+
+** logview
+   https://github.com/doublep/logview
+   #+begin_src emacs-lisp
+     (use-package logview)
+   #+end_src
+
+** php-mode
+
+   #+begin_src emacs-lisp
+   (use-package php-mode)
+   #+end_src
+
+** python (new)
+
+   #+begin_src emacs-lisp
+    (defun python-create-empty-init-py()
+      (interactive)
+      (shell-command "touch __init__.py")
+      )
+    (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
+    ;; (add-hook 'python-mode-hook
+    ;; 	  (setq indent-tabs-mode nil)
+    ;; 	  (setq tab-width 4)
+    ;; 	  (flycheck-mode)
+    ;; 	  )
+
+    ;; (setq pym
+    ;;       acs-python-command "/usr/bin/python3")
+    (defun pycodestyle-current-buffer()
+      (interactive)
+      (compile (concat "pycodestyle " (buffer-file-name)) nil)
+      )
+    (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
+
+    (use-package pylint
+      :bind (("C-c p l" . pylint))
+      )
+
+    (defun my-flake8-current-dir()
+      (interactive)
+      (compile "flake8" nil)
+      )
+
+    (global-set-key (kbd "C-z 8") 'my-flake8-current-dir)
+
+
+    (defun my-isort-current-dir()
+      (interactive)
+      (compile (concat "isort " (buffer-file-name)) nil)
+      )
+
+    (global-set-key (kbd "C-c p i") 'my-isort-current-dir)
+
+
+
+    ;; (defun flake8-current-buffer()
+    ;;   (interactive)
+    ;;   (compile (concat "flake8 " (buffer-file-name)) nil)
+    ;;   (switch-to-buffer "*compilation*")
+    ;;   (rename-buffer "*flake8*")
+    ;;   )
+
+    (defun flake8-current-buffer()
+      (interactive)
+      (compile (concat "flake8 " (buffer-file-name)) nil)
+      )
+
+   ;; (add-hook 'compilation-finish-functions 'switch-to-buffer-other-window 'compilation)
+
+    (global-set-key (kbd "C-c p f") 'flake8-current-buffer)
+
+
+    (use-package highlight-indentation
+      :bind (("C-z <f12>" . highlight-indentation-mode))
+      :defer t)
+    ;;(global-set-key (kbd "C-z 9") 'compile)
+
+    (add-hook 'python-mode-hook
+              '(lambda ()
+                 (global-set-key [(control shift menu)] 'pylookup-lookup)
+                 ;;	       (highlight-indentation-mode t)
+                 (display-line-numbers-mode nil)
+                 (define-key python-mode-map "\C-m" 'newline-and-indent)
+                 (if (buffer-file-name)
+                     (if (file-remote-p (buffer-file-name))
+                         (flymake-mode)
+                       (flycheck-mode t))
+                   )
+                 (lsp-mode)
+                 ; (apheleia-mode +1)
+                 (display-fill-column-indicator-mode)
+                 (indent-bars-mode)
+                 ;; (setq-local flycheck-checker 'python-pycheckers)
+                 )
+              )
+
+    (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
+    (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
+
+
+
+    (add-hook 'python-ts-mode-hook
+              '(lambda ()
+                 (define-key python-ts-mode-map "\C-m" 'newline-and-indent)
+                 (if (buffer-file-name)
+                     (if (file-remote-p (buffer-file-name))
+                         (flymake-mode)
+                       (flycheck-mode t))
+                   )
+                 ; (apheleia-mode +1)
+                 ;;(setq-local flycheck-checker 'python-pycheckers)
+                 )
+              )
+
+
+   #+end_src
+
+*** lsp-jedi
+
+    In most of cases I use ~lsp-bridge~ now, but there are keybindings to manually switch to ~lsp-jedi~ - this mode has some
+    interesting features too.
+
+    #+begin_src emacs-lisp
+    (use-package lsp-jedi
+      :ensure t
+      :config
+      (with-eval-after-load "lsp-mode"
+        (add-to-list 'lsp-disabled-clients 'pyls)
+        (add-to-list 'lsp-enabled-clients 'jedi)))
+
+
+    (defun my-enable-lsp-jedi ()
+      (interactive)
+      (add-hook 'python-ts-mode-hook #'lsp-mode)
+      )
+
+    (defun my-disable-lsp-jedi ()
+      (interactive)
+      (remove-hook 'python-ts-mode-hook #'lsp-mode)
+      )
+    #+end_src
+
+*** isort
+
+    #+begin_src emacs-lisp
+    (use-package py-isort)
+    #+end_src
+
+*** pyimport
+
+    #+begin_src emacs-lisp
+    (use-package pyinspect)
+    (use-package pyimpsort)
+    (use-package pyimport)
+    #+end_src
+
+** vuejs
+
+   #+begin_src emacs-lisp
+   ;; (use-package lsp-mode
+   ;;   :commands lsp)
+
+   ;; ;; for completions
+   ;; ;; (use-package company-lsp
+   ;; ;;   :after lsp-mode
+   ;; ;;   :config (push 'company-lsp company-backends))
+
+   ;; (use-package vue-mode
+   ;;   :mode "\\.vue\\'"
+   ;;   :config
+   ;;   (add-hook 'vue-mode-hook #'lsp))
+
+   (add-to-list 'auto-mode-alist '("\\.vue" . web-mode))
+   (add-to-list 'auto-mode-alist '("\\.jinja" . web-mode))
+   ;; (add-to-list 'auto-mode-alist '("\\.vue" . tide-mode))
+   ;; (apheleia-global-mode +1)
+
+
+   #+end_src
+
+** yaml-mode
+
+   #+begin_src emacs-lisp
+     (use-package yaml-mode)
+     (use-package indent-tools)
+     (add-hook 'yaml-mode-hook
+	       '(lambda ()
+		  (highlight-indentation-mode t)
+		  (display-line-numbers-mode t)
+		  (if (buffer-file-name)
+		      (if (file-remote-p (buffer-file-name))
+			  (flymake-mode)
+		        (flycheck-mode t))
+		    )
+		  )
+	       )
+
+     ;; https://stackoverflow.com/questions/12648388/emacs-yaml-editing
+
+     (defun yaml-next-field ()
+       "Jump to next yaml field"
+       (interactive)
+       (search-forward-regexp ": *"))
+
+     (defun yaml-prev-field ()
+       "Jump to next yaml field"
+       (interactive)
+       (search-backward-regexp ": *"))
+
+     (add-hook 'yaml-mode-hook
+	       (lambda ()
+		 (display-line-numbers-mode t)
+		 (define-key yaml-mode-map "\C-m" 'newline-and-indent)
+		 (define-key yaml-mode-map "\M-\r" 'insert-ts)
+		 (define-key yaml-mode-map (kbd "C-<tab>") 'yaml-next-field)
+		 (define-key yaml-mode-map (kbd "C-S-<tab>") 'yaml-prev-field)
+		 )
+	       )
+
+     (require 'indent-tools)
+     (global-set-key (kbd "C-c ,") 'indent-tools-hydra/body)
+   #+end_src
+
+** prog-mode
+
+   #+begin_src emacs-lisp
+     ;;   Always display line numbers in all sub-modes
+     (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+   #+end_src
+
+** Lisp & paredit
+
+   #+begin_src emacs-lisp
+     (use-package paredit)
+     (add-hook 'lisp-mode-hook 'paredit-mode)
+
+     ;; paredit autoload
+     (autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
+     (add-hook 'clojure-mode 'enable-paredit-mode)
+     (add-hook 'clojurescript-mode 'enable-paredit-mode)
+     (add-hook 'lisp-mode-hook 'paredit-mode)
+
+     ;; Make the key no longer bound to paredit-forward-barf-sexp
+     (define-key paredit-mode-map (kbd "<C-left>") nil)
+
+     ;; Make the key no longer bound to paredit-forward-slurp-sexp
+     (define-key paredit-mode-map (kbd "<C-right>") nil)
+   #+end_src
+
+   #+RESULTS:
+
+** terraform-mode
+
+   #+begin_src emacs-lisp
+     (use-package terraform-mode)
+     (add-to-list 'auto-mode-alist '("\\.tf\\.j2\\'" . terraform-mode))
+   #+end_src
+
+** makefile-mode
+
+   #+begin_src emacs-lisp
+     (add-to-list 'auto-mode-alist '("Makefile\\.*" . makefile-mode))
+   #+end_src
+
+** clojure-mode and cider
+
+   #+begin_src emacs-lisp
+   (use-package flycheck-clj-kondo
+     :ensure t)
+
+   (use-package clojure-mode
+     :ensure t
+     :mode (("\\.clj\\'" . clojure-mode)
+            ("\\.edn\\'" . clojure-mode))
+     :init
+     ;; (add-hook 'clojure-mode-hook #'yas-minor-mode)
+     ;; (add-hook 'clojure-mode-hook #'linum-mode)
+     (add-hook 'clojure-mode-hook #'subword-mode)
+     ;; (add-hook 'clojure-mode-hook #'smartparens-mode)
+     ;; (add-hook 'clojure-mode-hook #'rainbow-delimiters-mode)
+     (add-hook 'clojure-mode-hook #'eldoc-mode)
+     (add-hook 'clojure-mode-hook #'paredit-mode)
+     :config
+     (require 'flycheck-clj-kondo)
+   )
+   ;; (add-hook 'clojure-mode-hook #'idle-highlight-mode)
+
+
+
+   ;; (use-package clj-refactor)
+   ;; (use-package cider
+   ;;   :ensure t
+   ;;   :defer t
+   ;;   ;; :init (add-hook 'cider-mode-hook #'clj-refactor-mode)
+   ;;   :diminish subword-mode
+   ;;   :config
+   ;;   (setq nrepl-log-messages t
+   ;;         cider-repl-display-in-current-window t
+   ;;         cider-repl-use-clojure-font-lock t
+   ;;         cider-prompt-save-file-on-load 'always-save
+   ;;         cider-font-lock-dynamically '(macro core function var)
+   ;;         nrepl-hide-special-buffers t
+   ;;         cider-overlays-use-font-lock t)
+   ;;   (cider-repl-toggle-pretty-printing))
+
+   ;; ;; LSP for clojure from htt
+   ;; ps://clojure-lsp.io/clients/
+   ;; (dolist (m '(clojure-mode
+   ;;              clojurec-mode
+   ;;              clojurescript-mode
+   ;;              clojurex-mode))
+   ;;   (add-to-list 'lsp-language-id-configuration `(,m . "clojure")))
+   #+end_src
+
+*** clj-kondo
+
+   #+begin_src emacs-lisp
+     (use-package flymake-kondor
+       :ensure t
+       :hook (clojure-mode . flymake-kondor-setup)
+       :bind (([M-f6] . flymake-goto-next-error)
+              ([S-f6] . flymake-goto-prev-error))
+       :init
+       (add-hook 'clojure-mode-hook #'flymake-mode)
+       (add-hook 'clojure-mode-hook #'flymake-kondor-setup)
+   )
+   #+end_src
+
+** COMMENT typescript-ts-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-ts-mode))
+   #+end_src
+
+** typescript-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-mode))
+   #+end_src
+
+** web-mode
+
+ #+begin_src emacs-lisp
+ (use-package web-mode
+   :custom
+   (web-mode-script-padding 0))
+
+ (setq web-mode-markup-indent-offset 2)
+ (setq web-mode-css-indent-offset 2)
+ (setq web-mode-code-indent-offset 2)
+ (setq web-mode-indent-style 2)
+ (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
+ (setq web-mode-engines-alist '(("django" . "\\.html\\'") ) )
+
+
+
+ (defun is_buffer_of (ext)
+   (if (bufferp (current-buffer))
+       (progn (setq buffer_name (buffer-file-name (current-buffer)))
+              (if (stringp buffer_name)
+                  (if (string-match ext buffer_name) t nil)
+                nil))
+       nil))
+
+
+
+ (add-hook 'web-mode-hook
+           '(lambda ()
+;;              (yas-minor-mode)
+              (yas-activate-extra-mode 'web-mode)
+              (display-line-numbers-mode)
+              ;; (highlight-indentation-mode t)
+              (when (is_buffer_of ".*\.vue$")
+                  (tide-mode)
+                  ;; (company-mode)
+                  (apheleia-mode +1)
+                  )
+              )
+           )
+
+ ;; ;; http://web-mode.org/
+ ;; (add-hook 'web-mode-before-auto-complete-hooks
+ ;;           '(lambda ()
+ ;;              (let ((web-mode-cur-language
+ ;;                     (web-mode-language-at-pos)))
+ ;;                (if (string= web-mode-cur-language "django")
+ ;;                    (progn
+ ;;                      (message "web-mode: we are here")
+ ;;                      (yas-activate-extra-mode 'web-mode)
+ ;;                      (yas-minor-mode))
+ ;;                  (message "web-mode: not there")
+ ;;                  ))))
+
+ (fset 'macro-insert-trans
+    (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '([23 116 114 97 110 115 tab tab return 25] 0 "%d") arg)))
+
+ #+end_src
+
+** tide & typescript mode
+
+   https://github.com/ananthakumaran/tide
+
+   #+begin_src emacs-lisp
+
+     (use-package typescript-mode
+       :custom
+       (typescript-indent-level 2))
+     (use-package tide
+       :ensure t
+       :after (typescript-mode)
+       ;;:hook ((typescript-mode . tide-setup)
+   ;;	   (typescript-mode . flycheck-mode)
+   ;;	   (typescript-mode . tide-hl-identifier-mode))
+       ;; 	 ;; (before-save . tide-format-before-save)
+       ;; 	 )
+       )
+
+
+     (defun setup-tide-mode ()
+       (interactive)
+       (tide-setup)
+       (flycheck-mode +1)
+       (setq flycheck-check-syntax-automatically '(save mode-enabled))
+       (eldoc-mode +1)
+       (tide-hl-identifier-mode +1)
+       (apheleia-mode +1)
+       ;; company is an optional dependency. You have to
+       ;; install it separately via package-install
+       ;; `M-x package-install [ret] company`
+       (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
+       ;; (company-mode +1)
+       )
+
+     ;; aligns annotation to the right hand side
+     (setq company-tooltip-align-annotations t)
+
+     ;; formats the buffer before saving
+     ;; (add-hook 'before-save-hook 'tide-format-before-save)
+
+     (defun my-enable-tide ()
+       (interactive)
+       (add-hook 'typescript-mode-hook #'setup-tide-mode)
+       (add-hook 'tsx-ts-mode-hook #'setup-tide-mode)
+       )
+
+     (defun my-disable-tide ()
+       (interactive)
+       (remove-hook 'typescript-ts-mode-hook #'setup-tide-mode)
+       (remove-hook 'tsx-ts-mode-hook #'setup-tide-mode)
+       )
+   (my-enable-tide)
+   #+end_src
+
+** COMMENT python-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+   #+end_src
+
+** COMMENT python-ts-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
+   #+end_src
+
+** conf-mode
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.env" . conf-mode))
+   #+end_src
+
+** feature-mode
+
+  for cucumber / gherkin tests
+
+  #+begin_src emacs-lisp
+  (use-package feature-mode)
+  #+end_src
+
+** sgml / mailgun
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.mjml" . sgml-mode))
+   #+end_src
+
+** COMMENT org postgres / sql
+
+   #+begin_src emacs-lisp
+   (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((sql . t)))
+   #+end_src
+
+   #+RESULTS:
+
+** tree-sitter
+
+   #+begin_src emacs-lisp
+   (setq treesit-language-source-alist
+      '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+        (cmake "https://github.com/uyha/tree-sitter-cmake")
+        (css "https://github.com/tree-sitter/tree-sitter-css")
+        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
+        (go "https://github.com/tree-sitter/tree-sitter-go")
+        (html "https://github.com/tree-sitter/tree-sitter-html")
+        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+        (json "https://github.com/tree-sitter/tree-sitter-json")
+        (make "https://github.com/alemuller/tree-sitter-make")
+        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
+        (python "https://github.com/tree-sitter/tree-sitter-python")
+        (toml "https://github.com/tree-sitter/tree-sitter-toml")
+        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+   #+end_src
+
+** jtsx
+
+   #+begin_src emacs-lisp
+     (use-package jtsx
+       :ensure t
+       ;; .mjs/.cjs are plain ES/CommonJS modules -- same tree-sitter grammar,
+       ;; so they get the same mode as .js
+       :mode (("\\.[mc]?jsx?\\'" . jtsx-jsx-mode)
+              ("\\.tsx\\'" . jtsx-tsx-mode)
+              ;; ("\\.ts\\'" . jtsx-typescript-mode)
+              )
+       :commands jtsx-install-treesit-language
+       :hook ((jtsx-jsx-mode . hs-minor-mode)
+              (jtsx-tsx-mode . hs-minor-mode)
+              (jtsx-typescript-mode . hs-minor-mode))
+       :custom
+       ;; Optional customizations
+       (js-indent-level 2)
+       ;; (typescript-ts-mode-indent-offset 2)
+       ;; (jtsx-switch-indent-offset 0)
+       ;; (jtsx-indent-statement-block-regarding-standalone-parent nil)
+       ;; (jtsx-jsx-element-move-allow-step-out t)
+       ;; (jtsx-enable-jsx-electric-closing-element t)
+       ;; (jtsx-enable-electric-open-newline-between-jsx-element-tags t)
+       ;; (jtsx-enable-jsx-element-tags-auto-sync nil)
+       ;; (jtsx-enable-all-syntax-highlighting-features t)
+       :config
+       (defun jtsx-bind-keys-to-mode-map (mode-map)
+         "Bind keys to MODE-MAP."
+         (define-key mode-map (kbd "C-c C-j") 'jtsx-jump-jsx-element-tag-dwim)
+         (define-key mode-map (kbd "C-c j o") 'jtsx-jump-jsx-opening-tag)
+         (define-key mode-map (kbd "C-c j c") 'jtsx-jump-jsx-closing-tag)
+         (define-key mode-map (kbd "C-c j r") 'jtsx-rename-jsx-element)
+         (define-key mode-map (kbd "C-c <down>") 'jtsx-move-jsx-element-tag-forward)
+         (define-key mode-map (kbd "C-c <up>") 'jtsx-move-jsx-element-tag-backward)
+         (define-key mode-map (kbd "C-c C-<down>") 'jtsx-move-jsx-element-forward)
+         (define-key mode-map (kbd "C-c C-<up>") 'jtsx-move-jsx-element-backward)
+         (define-key mode-map (kbd "C-c C-S-<down>") 'jtsx-move-jsx-element-step-in-forward)
+         (define-key mode-map (kbd "C-c C-S-<up>") 'jtsx-move-jsx-element-step-in-backward)
+         (define-key mode-map (kbd "C-c j w") 'jtsx-wrap-in-jsx-element)
+         (define-key mode-map (kbd "C-c j u") 'jtsx-unwrap-jsx)
+         (define-key mode-map (kbd "C-c j d") 'jtsx-delete-jsx-node)
+         (define-key mode-map (kbd "C-c j t") 'jtsx-toggle-jsx-attributes-orientation)
+         (define-key mode-map (kbd "C-c j h") 'jtsx-rearrange-jsx-attributes-horizontally)
+         (define-key mode-map (kbd "C-c j v") 'jtsx-rearrange-jsx-attributes-vertically))
+
+       (defun jtsx-bind-keys-to-jtsx-jsx-mode-map ()
+         (jtsx-bind-keys-to-mode-map jtsx-jsx-mode-map))
+
+       (defun jtsx-bind-keys-to-jtsx-tsx-mode-map ()
+         (jtsx-bind-keys-to-mode-map jtsx-tsx-mode-map))
+
+       (add-hook 'jtsx-jsx-mode-hook 'jtsx-bind-keys-to-jtsx-jsx-mode-map)
+       (add-hook 'jtsx-tsx-mode-hook 'jtsx-bind-keys-to-jtsx-tsx-mode-map))
+
+   #+end_src
+
+** Jenkinsfile
+
+   #+begin_src emacs-lisp
+   (use-package jenkinsfile-mode)
+   #+end_src
+
+   #+RESULTS:
 
 * Emacs tools and minor modes
 ** COMMENT elfeed
@@ -7021,490 +7737,10 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    : claude-code-cycle-mode
 
-** po-mode
-
-   Problem: it prevents conflict resolution as it turns ON po mode with ReadOnly flag set on a buffer.
-
-   #+begin_src emacs-lisp
-   (use-package po-mode
-     :bind (:map po-subedit-mode-map
-                 ("C-c C-c" . po-subedit-exit)
-                 ("C-c C-k" . po-subedit-abort)))
-   #+end_src
-
-   #+RESULTS:
-   : po-subedit-abort
-
 * Emacs file editing modes (major modes)
   :LOGBOOK:
   CLOCK: [2025-05-03 Sat 15:14]--[2025-05-03 Sat 15:14] =>  0:00
   :END:
-** Ahg (mercurial support)
-
-   I love Mercurial (over git) and I will never understand and agree that ~git~ is won the version control competition game.
-   I still use it for personal projects despite the declining support everywhere.
-
-    #+begin_src emacs-lisp
-    (use-package ahg)
-    (global-set-key (kbd "C-z h") 'ahg-status)
-    ;; (global-set-key (kbd "C-<f4>") 'ahg-status)
-    #+end_src
-
-** Language: go
-
-   #+begin_src emacs-lisp
-     (require 'go-template-mode)
-   #+end_src
-
-** apache mode
-   #+begin_src emacs-lisp
-     (use-package apache-mode)
-   #+end_src
-
-** crontab-mode
-   #+begin_src emacs-lisp
-     (use-package crontab-mode)
-   #+end_src
-
-** nginx
-
-   #+begin_src emacs-lisp
-   (use-package nginx-mode)
-   #+end_src
-
-** javascript
-
-   #+begin_src emacs-lisp
-     (defun my-js-console-log (arg)
-       "Insert js console.log(). Prefix argument will ask for string or variable name"
-       (interactive "P")
-       (message "raw prefix arg is %S" arg)
-       (insert "console.log(\"")
-       (when (equal '(4) arg)
-	 (insert (read-from-minibuffer "Prefix text: ") " ")
-	 )
-       (insert (shell-command-to-string "date  +\"ok-%Y-%m-%d-%s\" | tr -d '\\n'"))
-       (if (equal 1 arg)
-	   (insert "\" + );")
-	 (insert "\");"))
-       )
-
-     (eval-after-load 'typescript-ts-mode
-       '(progn
-	  (define-key typescript-ts-mode-map (kbd "C-z q") 'my-js-console-log)
-	  ))
-
-     (eval-after-load 'typescript-mode
-       '(progn
-	  (define-key typescript-mode-map (kbd "C-z q") 'my-js-console-log)
-	  ))
-
-     (use-package js2-mode)
-     ;; (use-package js3-mode)
-     ;; (use-package js2-refactor)
-     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
-     (setq js-indent-level 2)
-
-   #+end_src
-
-** COMMENT Javascript
-   :LOGBOOK:
-   - State "BUGFIXED"   from              [2023-03-07 Tue 20:35]
-   :END:
-
-   #+begin_src emacs-lisp
-     ;; (autoload 'javascript-mode "javascript" nil t)
-     ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
-     (use-package js2-mode)
-     ;; (use-package js3-mode)
-     (use-package js2-refactor)
-     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
-     (setq js-indent-level 2)
-
-     ;; jslint
-     ;; (use-package flymake-jslint)
-     ;; (use-package flymake-cursor)
-     (require 'json)
-     ;; (require 'flycheck)
-     ;; (defun my-parse-jslinter-warning (warning)
-     ;;   (flycheck-error-new
-     ;;    :line (1+ (cdr (assoc 'line warning)))
-     ;;    :column (1+ (cdr (assoc 'column warning)))
-     ;;    :message (cdr (assoc 'message warning))
-     ;;    :level 'error
-     ;;    :buffer (current-buffer)
-     ;;    :checker 'javascript-jslinter))
-     ;; (defun jslinter-error-parser (output checker buffer)
-     ;;   (mapcar 'parse-jslinter-warning
-     ;;           (cdr (assoc 'warnings (aref (json-read-from-string output) 0)))))
-     ;; (flycheck-define-checker javascript-jslinter
-     ;;   "A JavaScript syntax and style checker based on JSLinter.
-
-     ;; See URL `https://github.com/tensor5/JSLinter'."
-     ;;   :command ("jslint" "--raw" source)
-     ;;   :error-parser jslinter-error-parser
-     ;;   :modes (js-mode js2-mode js3-mode))
-
-
-     (add-hook 'js2-mode-hook
-	       (defun my-js2-mode-setup ()
-		 (flycheck-mode t)
-		 (when (executable-find "eslint")
-		   (flycheck-select-checker 'javascript-eslint))))
-   #+end_src
-
-** COMMENT React
-
- #+begin_src emacs-lisp
- (use-package rjsx-mode)
- #+end_src
-
-** json-mode
-
-   #+begin_src emacs-lisp
-     (use-package json-mode)
-   #+end_src
-
-** logview
-   https://github.com/doublep/logview
-   #+begin_src emacs-lisp
-     (use-package logview)
-   #+end_src
-
-** php-mode
-
-   #+begin_src emacs-lisp
-   (use-package php-mode)
-   #+end_src
-
-** python (new)
-
-   #+begin_src emacs-lisp
-    (defun python-create-empty-init-py()
-      (interactive)
-      (shell-command "touch __init__.py")
-      )
-    (global-set-key (kbd "C-z p i") 'python-create-empty-init-py)
-    ;; (add-hook 'python-mode-hook
-    ;; 	  (setq indent-tabs-mode nil)
-    ;; 	  (setq tab-width 4)
-    ;; 	  (flycheck-mode)
-    ;; 	  )
-
-    ;; (setq pym
-    ;;       acs-python-command "/usr/bin/python3")
-    (defun pycodestyle-current-buffer()
-      (interactive)
-      (compile (concat "pycodestyle " (buffer-file-name)) nil)
-      )
-    (global-set-key (kbd "C-c p 8") 'pycodestyle-current-buffer)
-
-    (use-package pylint
-      :bind (("C-c p l" . pylint))
-      )
-
-    (defun my-flake8-current-dir()
-      (interactive)
-      (compile "flake8" nil)
-      )
-
-    (global-set-key (kbd "C-z 8") 'my-flake8-current-dir)
-
-
-    (defun my-isort-current-dir()
-      (interactive)
-      (compile (concat "isort " (buffer-file-name)) nil)
-      )
-
-    (global-set-key (kbd "C-c p i") 'my-isort-current-dir)
-
-
-
-    ;; (defun flake8-current-buffer()
-    ;;   (interactive)
-    ;;   (compile (concat "flake8 " (buffer-file-name)) nil)
-    ;;   (switch-to-buffer "*compilation*")
-    ;;   (rename-buffer "*flake8*")
-    ;;   )
-
-    (defun flake8-current-buffer()
-      (interactive)
-      (compile (concat "flake8 " (buffer-file-name)) nil)
-      )
-
-   ;; (add-hook 'compilation-finish-functions 'switch-to-buffer-other-window 'compilation)
-
-    (global-set-key (kbd "C-c p f") 'flake8-current-buffer)
-
-
-    (use-package highlight-indentation
-      :bind (("C-z <f12>" . highlight-indentation-mode))
-      :defer t)
-    ;;(global-set-key (kbd "C-z 9") 'compile)
-
-    (add-hook 'python-mode-hook
-              '(lambda ()
-                 (global-set-key [(control shift menu)] 'pylookup-lookup)
-                 ;;	       (highlight-indentation-mode t)
-                 (display-line-numbers-mode nil)
-                 (define-key python-mode-map "\C-m" 'newline-and-indent)
-                 (if (buffer-file-name)
-                     (if (file-remote-p (buffer-file-name))
-                         (flymake-mode)
-                       (flycheck-mode t))
-                   )
-                 (lsp-mode)
-                 ; (apheleia-mode +1)
-                 (display-fill-column-indicator-mode)
-                 (indent-bars-mode)
-                 ;; (setq-local flycheck-checker 'python-pycheckers)
-                 )
-              )
-
-    (define-key global-map (kbd "C-z p l") 'pylookup-lookup)
-    (define-key global-map (kbd "C-z C-o") 'pylookup-lookup)
-
-
-
-    (add-hook 'python-ts-mode-hook
-              '(lambda ()
-                 (define-key python-ts-mode-map "\C-m" 'newline-and-indent)
-                 (if (buffer-file-name)
-                     (if (file-remote-p (buffer-file-name))
-                         (flymake-mode)
-                       (flycheck-mode t))
-                   )
-                 ; (apheleia-mode +1)
-                 ;;(setq-local flycheck-checker 'python-pycheckers)
-                 )
-              )
-
-
-   #+end_src
-
-*** lsp-jedi
-
-    In most of cases I use ~lsp-bridge~ now, but there are keybindings to manually switch to ~lsp-jedi~ - this mode has some
-    interesting features too.
-
-    #+begin_src emacs-lisp
-    (use-package lsp-jedi
-      :ensure t
-      :config
-      (with-eval-after-load "lsp-mode"
-        (add-to-list 'lsp-disabled-clients 'pyls)
-        (add-to-list 'lsp-enabled-clients 'jedi)))
-
-
-    (defun my-enable-lsp-jedi ()
-      (interactive)
-      (add-hook 'python-ts-mode-hook #'lsp-mode)
-      )
-
-    (defun my-disable-lsp-jedi ()
-      (interactive)
-      (remove-hook 'python-ts-mode-hook #'lsp-mode)
-      )
-    #+end_src
-
-*** isort
-
-    #+begin_src emacs-lisp
-    (use-package py-isort)
-    #+end_src
-
-*** pyimport
-
-    #+begin_src emacs-lisp
-    (use-package pyinspect)
-    (use-package pyimpsort)
-    (use-package pyimport)
-    #+end_src
-
-** vuejs
-
-   #+begin_src emacs-lisp
-   ;; (use-package lsp-mode
-   ;;   :commands lsp)
-
-   ;; ;; for completions
-   ;; ;; (use-package company-lsp
-   ;; ;;   :after lsp-mode
-   ;; ;;   :config (push 'company-lsp company-backends))
-
-   ;; (use-package vue-mode
-   ;;   :mode "\\.vue\\'"
-   ;;   :config
-   ;;   (add-hook 'vue-mode-hook #'lsp))
-
-   (add-to-list 'auto-mode-alist '("\\.vue" . web-mode))
-   (add-to-list 'auto-mode-alist '("\\.jinja" . web-mode))
-   ;; (add-to-list 'auto-mode-alist '("\\.vue" . tide-mode))
-   ;; (apheleia-global-mode +1)
-
-
-   #+end_src
-
-** yaml-mode
-
-   #+begin_src emacs-lisp
-     (use-package yaml-mode)
-     (use-package indent-tools)
-     (add-hook 'yaml-mode-hook
-	       '(lambda ()
-		  (highlight-indentation-mode t)
-		  (display-line-numbers-mode t)
-		  (if (buffer-file-name)
-		      (if (file-remote-p (buffer-file-name))
-			  (flymake-mode)
-		        (flycheck-mode t))
-		    )
-		  )
-	       )
-
-     ;; https://stackoverflow.com/questions/12648388/emacs-yaml-editing
-
-     (defun yaml-next-field ()
-       "Jump to next yaml field"
-       (interactive)
-       (search-forward-regexp ": *"))
-
-     (defun yaml-prev-field ()
-       "Jump to next yaml field"
-       (interactive)
-       (search-backward-regexp ": *"))
-
-     (add-hook 'yaml-mode-hook
-	       (lambda ()
-		 (display-line-numbers-mode t)
-		 (define-key yaml-mode-map "\C-m" 'newline-and-indent)
-		 (define-key yaml-mode-map "\M-\r" 'insert-ts)
-		 (define-key yaml-mode-map (kbd "C-<tab>") 'yaml-next-field)
-		 (define-key yaml-mode-map (kbd "C-S-<tab>") 'yaml-prev-field)
-		 )
-	       )
-
-     (require 'indent-tools)
-     (global-set-key (kbd "C-c ,") 'indent-tools-hydra/body)
-   #+end_src
-
-** prog-mode
-
-   #+begin_src emacs-lisp
-     ;;   Always display line numbers in all sub-modes
-     (add-hook 'prog-mode-hook 'display-line-numbers-mode)
-   #+end_src
-
-** Lisp & paredit
-
-   #+begin_src emacs-lisp
-     (use-package paredit)
-     (add-hook 'lisp-mode-hook 'paredit-mode)
-
-     ;; paredit autoload
-     (autoload 'enable-paredit-mode "paredit" "Turn on pseudo-structural editing of Lisp code." t)
-     (add-hook 'clojure-mode 'enable-paredit-mode)
-     (add-hook 'clojurescript-mode 'enable-paredit-mode)
-     (add-hook 'lisp-mode-hook 'paredit-mode)
-
-     ;; Make the key no longer bound to paredit-forward-barf-sexp
-     (define-key paredit-mode-map (kbd "<C-left>") nil)
-
-     ;; Make the key no longer bound to paredit-forward-slurp-sexp
-     (define-key paredit-mode-map (kbd "<C-right>") nil)
-   #+end_src
-
-   #+RESULTS:
-
-** terraform-mode
-
-   #+begin_src emacs-lisp
-     (use-package terraform-mode)
-     (add-to-list 'auto-mode-alist '("\\.tf\\.j2\\'" . terraform-mode))
-   #+end_src
-
-** makefile-mode
-
-   #+begin_src emacs-lisp
-     (add-to-list 'auto-mode-alist '("Makefile\\.*" . makefile-mode))
-   #+end_src
-
-** clojure-mode and cider
-
-   #+begin_src emacs-lisp
-   (use-package flycheck-clj-kondo
-     :ensure t)
-
-   (use-package clojure-mode
-     :ensure t
-     :mode (("\\.clj\\'" . clojure-mode)
-            ("\\.edn\\'" . clojure-mode))
-     :init
-     ;; (add-hook 'clojure-mode-hook #'yas-minor-mode)
-     ;; (add-hook 'clojure-mode-hook #'linum-mode)
-     (add-hook 'clojure-mode-hook #'subword-mode)
-     ;; (add-hook 'clojure-mode-hook #'smartparens-mode)
-     ;; (add-hook 'clojure-mode-hook #'rainbow-delimiters-mode)
-     (add-hook 'clojure-mode-hook #'eldoc-mode)
-     (add-hook 'clojure-mode-hook #'paredit-mode)
-     :config
-     (require 'flycheck-clj-kondo)
-   )
-   ;; (add-hook 'clojure-mode-hook #'idle-highlight-mode)
-
-
-
-   ;; (use-package clj-refactor)
-   ;; (use-package cider
-   ;;   :ensure t
-   ;;   :defer t
-   ;;   ;; :init (add-hook 'cider-mode-hook #'clj-refactor-mode)
-   ;;   :diminish subword-mode
-   ;;   :config
-   ;;   (setq nrepl-log-messages t
-   ;;         cider-repl-display-in-current-window t
-   ;;         cider-repl-use-clojure-font-lock t
-   ;;         cider-prompt-save-file-on-load 'always-save
-   ;;         cider-font-lock-dynamically '(macro core function var)
-   ;;         nrepl-hide-special-buffers t
-   ;;         cider-overlays-use-font-lock t)
-   ;;   (cider-repl-toggle-pretty-printing))
-
-   ;; ;; LSP for clojure from htt
-   ;; ps://clojure-lsp.io/clients/
-   ;; (dolist (m '(clojure-mode
-   ;;              clojurec-mode
-   ;;              clojurescript-mode
-   ;;              clojurex-mode))
-   ;;   (add-to-list 'lsp-language-id-configuration `(,m . "clojure")))
-   #+end_src
-
-*** clj-kondo
-
-   #+begin_src emacs-lisp
-     (use-package flymake-kondor
-       :ensure t
-       :hook (clojure-mode . flymake-kondor-setup)
-       :bind (([M-f6] . flymake-goto-next-error)
-              ([S-f6] . flymake-goto-prev-error))
-       :init
-       (add-hook 'clojure-mode-hook #'flymake-mode)
-       (add-hook 'clojure-mode-hook #'flymake-kondor-setup)
-   )
-   #+end_src
-
-** COMMENT typescript-ts-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-ts-mode))
-   #+end_src
-
-** typescript-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-mode))
-   #+end_src
-
 ** vterm
 
  #+begin_src emacs-lisp
@@ -7519,246 +7755,6 @@ Format: \"/full/path/file.el:L42\"."
 
 
  #+end_src
-
-** web-mode
-
- #+begin_src emacs-lisp
- (use-package web-mode
-   :custom
-   (web-mode-script-padding 0))
-
- (setq web-mode-markup-indent-offset 2)
- (setq web-mode-css-indent-offset 2)
- (setq web-mode-code-indent-offset 2)
- (setq web-mode-indent-style 2)
- (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
- (setq web-mode-engines-alist '(("django" . "\\.html\\'") ) )
-
-
-
- (defun is_buffer_of (ext)
-   (if (bufferp (current-buffer))
-       (progn (setq buffer_name (buffer-file-name (current-buffer)))
-              (if (stringp buffer_name)
-                  (if (string-match ext buffer_name) t nil)
-                nil))
-       nil))
-
-
-
- (add-hook 'web-mode-hook
-           '(lambda ()
-;;              (yas-minor-mode)
-              (yas-activate-extra-mode 'web-mode)
-              (display-line-numbers-mode)
-              ;; (highlight-indentation-mode t)
-              (when (is_buffer_of ".*\.vue$")
-                  (tide-mode)
-                  ;; (company-mode)
-                  (apheleia-mode +1)
-                  )
-              )
-           )
-
- ;; ;; http://web-mode.org/
- ;; (add-hook 'web-mode-before-auto-complete-hooks
- ;;           '(lambda ()
- ;;              (let ((web-mode-cur-language
- ;;                     (web-mode-language-at-pos)))
- ;;                (if (string= web-mode-cur-language "django")
- ;;                    (progn
- ;;                      (message "web-mode: we are here")
- ;;                      (yas-activate-extra-mode 'web-mode)
- ;;                      (yas-minor-mode))
- ;;                  (message "web-mode: not there")
- ;;                  ))))
-
- (fset 'macro-insert-trans
-    (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '([23 116 114 97 110 115 tab tab return 25] 0 "%d") arg)))
-
- #+end_src
-
-** tide & typescript mode
-
-   https://github.com/ananthakumaran/tide
-
-   #+begin_src emacs-lisp
-
-     (use-package typescript-mode
-       :custom
-       (typescript-indent-level 2))
-     (use-package tide
-       :ensure t
-       :after (typescript-mode)
-       ;;:hook ((typescript-mode . tide-setup)
-   ;;	   (typescript-mode . flycheck-mode)
-   ;;	   (typescript-mode . tide-hl-identifier-mode))
-       ;; 	 ;; (before-save . tide-format-before-save)
-       ;; 	 )
-       )
-
-
-     (defun setup-tide-mode ()
-       (interactive)
-       (tide-setup)
-       (flycheck-mode +1)
-       (setq flycheck-check-syntax-automatically '(save mode-enabled))
-       (eldoc-mode +1)
-       (tide-hl-identifier-mode +1)
-       (apheleia-mode +1)
-       ;; company is an optional dependency. You have to
-       ;; install it separately via package-install
-       ;; `M-x package-install [ret] company`
-       (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
-       ;; (company-mode +1)
-       )
-
-     ;; aligns annotation to the right hand side
-     (setq company-tooltip-align-annotations t)
-
-     ;; formats the buffer before saving
-     ;; (add-hook 'before-save-hook 'tide-format-before-save)
-
-     (defun my-enable-tide ()
-       (interactive)
-       (add-hook 'typescript-mode-hook #'setup-tide-mode)
-       (add-hook 'tsx-ts-mode-hook #'setup-tide-mode)
-       )
-
-     (defun my-disable-tide ()
-       (interactive)
-       (remove-hook 'typescript-ts-mode-hook #'setup-tide-mode)
-       (remove-hook 'tsx-ts-mode-hook #'setup-tide-mode)
-       )
-   (my-enable-tide)
-   #+end_src
-
-** COMMENT python-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-   #+end_src
-
-** COMMENT python-ts-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
-   #+end_src
-
-** conf-mode
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.env" . conf-mode))
-   #+end_src
-
-** feature-mode
-
-  for cucumber / gherkin tests
-
-  #+begin_src emacs-lisp
-  (use-package feature-mode)
-  #+end_src
-
-** sgml / mailgun
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.mjml" . sgml-mode))
-   #+end_src
-
-** COMMENT org postgres / sql
-
-   #+begin_src emacs-lisp
-   (org-babel-do-load-languages
-    'org-babel-load-languages
-    '((sql . t)))
-   #+end_src
-
-   #+RESULTS:
-
-** tree-sitter
-
-   #+begin_src emacs-lisp
-   (setq treesit-language-source-alist
-      '((bash "https://github.com/tree-sitter/tree-sitter-bash")
-        (cmake "https://github.com/uyha/tree-sitter-cmake")
-        (css "https://github.com/tree-sitter/tree-sitter-css")
-        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
-        (go "https://github.com/tree-sitter/tree-sitter-go")
-        (html "https://github.com/tree-sitter/tree-sitter-html")
-        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
-        (json "https://github.com/tree-sitter/tree-sitter-json")
-        (make "https://github.com/alemuller/tree-sitter-make")
-        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
-        (python "https://github.com/tree-sitter/tree-sitter-python")
-        (toml "https://github.com/tree-sitter/tree-sitter-toml")
-        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
-        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
-        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
-   #+end_src
-
-** jtsx
-
-   #+begin_src emacs-lisp
-     (use-package jtsx
-       :ensure t
-       ;; .mjs/.cjs are plain ES/CommonJS modules -- same tree-sitter grammar,
-       ;; so they get the same mode as .js
-       :mode (("\\.[mc]?jsx?\\'" . jtsx-jsx-mode)
-              ("\\.tsx\\'" . jtsx-tsx-mode)
-              ;; ("\\.ts\\'" . jtsx-typescript-mode)
-              )
-       :commands jtsx-install-treesit-language
-       :hook ((jtsx-jsx-mode . hs-minor-mode)
-              (jtsx-tsx-mode . hs-minor-mode)
-              (jtsx-typescript-mode . hs-minor-mode))
-       :custom
-       ;; Optional customizations
-       (js-indent-level 2)
-       ;; (typescript-ts-mode-indent-offset 2)
-       ;; (jtsx-switch-indent-offset 0)
-       ;; (jtsx-indent-statement-block-regarding-standalone-parent nil)
-       ;; (jtsx-jsx-element-move-allow-step-out t)
-       ;; (jtsx-enable-jsx-electric-closing-element t)
-       ;; (jtsx-enable-electric-open-newline-between-jsx-element-tags t)
-       ;; (jtsx-enable-jsx-element-tags-auto-sync nil)
-       ;; (jtsx-enable-all-syntax-highlighting-features t)
-       :config
-       (defun jtsx-bind-keys-to-mode-map (mode-map)
-         "Bind keys to MODE-MAP."
-         (define-key mode-map (kbd "C-c C-j") 'jtsx-jump-jsx-element-tag-dwim)
-         (define-key mode-map (kbd "C-c j o") 'jtsx-jump-jsx-opening-tag)
-         (define-key mode-map (kbd "C-c j c") 'jtsx-jump-jsx-closing-tag)
-         (define-key mode-map (kbd "C-c j r") 'jtsx-rename-jsx-element)
-         (define-key mode-map (kbd "C-c <down>") 'jtsx-move-jsx-element-tag-forward)
-         (define-key mode-map (kbd "C-c <up>") 'jtsx-move-jsx-element-tag-backward)
-         (define-key mode-map (kbd "C-c C-<down>") 'jtsx-move-jsx-element-forward)
-         (define-key mode-map (kbd "C-c C-<up>") 'jtsx-move-jsx-element-backward)
-         (define-key mode-map (kbd "C-c C-S-<down>") 'jtsx-move-jsx-element-step-in-forward)
-         (define-key mode-map (kbd "C-c C-S-<up>") 'jtsx-move-jsx-element-step-in-backward)
-         (define-key mode-map (kbd "C-c j w") 'jtsx-wrap-in-jsx-element)
-         (define-key mode-map (kbd "C-c j u") 'jtsx-unwrap-jsx)
-         (define-key mode-map (kbd "C-c j d") 'jtsx-delete-jsx-node)
-         (define-key mode-map (kbd "C-c j t") 'jtsx-toggle-jsx-attributes-orientation)
-         (define-key mode-map (kbd "C-c j h") 'jtsx-rearrange-jsx-attributes-horizontally)
-         (define-key mode-map (kbd "C-c j v") 'jtsx-rearrange-jsx-attributes-vertically))
-
-       (defun jtsx-bind-keys-to-jtsx-jsx-mode-map ()
-         (jtsx-bind-keys-to-mode-map jtsx-jsx-mode-map))
-
-       (defun jtsx-bind-keys-to-jtsx-tsx-mode-map ()
-         (jtsx-bind-keys-to-mode-map jtsx-tsx-mode-map))
-
-       (add-hook 'jtsx-jsx-mode-hook 'jtsx-bind-keys-to-jtsx-jsx-mode-map)
-       (add-hook 'jtsx-tsx-mode-hook 'jtsx-bind-keys-to-jtsx-tsx-mode-map))
-
-   #+end_src
-
-** Jenkinsfile
-
-   #+begin_src emacs-lisp
-   (use-package jenkinsfile-mode)
-   #+end_src
-
-   #+RESULTS:
 
 * Small emacs functions of mine
 ** execute thunar here
