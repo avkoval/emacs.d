@@ -1884,7 +1884,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
    - ~C-c n l~ /locate/: only finds the place (opens the comment thread or highlights the text), types nothing.
    - ~C-c n s~ /stage/: prepares the action and stops before the final click (reply typed but not sent, Find and
      Replace filled but nothing replaced).
-   - ~C-c n S~ /submit/: same, including the final click; asks for confirmation.
+   - ~C-c n S~ /submit/: same, including the final click; asks for confirmation; on success marks the heading ~DONE~.
    - ~C-c n k~ stops the run.  Progress: buffer =*org-browser-run*=; outcome: =:BROWSER_STATUS:= and a
      =:BROWSER_LOG:= drawer in the heading.
    - In the org file: =#+PROPERTY: BROWSER_URL https://docs.google.com/document/d/<ID>/edit=; per-heading extra
@@ -1983,7 +1983,6 @@ With prefix ARG, replace the converted text in place instead of copying it."
      (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
      (global-set-key "\C-cls" 'org-store-link)
      (global-set-key "\C-ca" 'org-agenda)
-     (load "~/.emacs.d/org-agenda-custom-commands.el")
 
      (fset 'goto-org-agenda
            "\C-caa")
@@ -5634,7 +5633,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
           "Marking window '%s' as dedicated"
         "Un-dedicating window '%s'") (current-buffer)))
    #+end_src
-`** Copy file name to clipboard
+** Copy file name to clipboard
 
    #+begin_src emacs-lisp
    (defun copy-file-name-to-clipboard ()
@@ -7462,10 +7461,12 @@ moving through the list — the chosen theme is applied only on RET."
 
 Links opened from Emacs always go to Vivaldi, regardless of the macOS default
 browser.  The system default has to be flipped to Safari for the VPN tunnel
-(=defbrowser= toggles it), and Emacs should not follow it there.
+(=defbrowser= toggles it), and Emacs should not follow it there.  macOS only —
+on Linux the stock =browse-url= default is kept.
 
 #+begin_src emacs-lisp
-(setq browse-url-browser-function #'browse-url-generic
-      browse-url-generic-program "open"
-      browse-url-generic-args '("-a" "Vivaldi"))
+(when (eq system-type 'darwin)
+  (setq browse-url-browser-function #'browse-url-generic
+        browse-url-generic-program "open"
+        browse-url-generic-args '("-a" "Vivaldi")))
 #+end_src
