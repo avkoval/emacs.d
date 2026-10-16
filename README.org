@@ -221,14 +221,9 @@ and cause version-skew macro errors after magit/forge upgrades.
    (use-package dash)
    #+end_src
 
-* Basic keybindings and configuration settings
-** Disable ~tool-bar~
+* Keybindings
 
-   Disable ~tool-bar~
-
-   #+begin_src emacs-lisp
-   (tool-bar-mode -1)
-   #+end_src
+  Global key setup that the rest of the file builds on: freed prefixes, global bindings, Hyperbole and hydras.
 
 ** Free some keybindings
 
@@ -743,12 +738,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
    #+end_src
 
-** Fullscreen fix
-
-   #+begin_src emacs-lisp
-   (setq frame-resize-pixelwise t)
-   #+end_src
-
 ** Some mouse bindings
 
    #+begin_src emacs-lisp
@@ -756,6 +745,153 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    (global-set-key (kbd "s-<mouse-3>")  'split-window-right)
    (global-set-key (kbd "s-<drag-mouse-3>")  'delete-window)
    (global-set-key (kbd "s-<drag-mouse-1>")  'geosoft-kill-buffer)
+   #+end_src
+
+** hyperbole
+
+   ~hyperbole-mode~ is a *global* minor mode, and everything below — the Action
+   Key (~M-RET~ / ~hkey-either~), the Action Mouse Key, and every ~defib~ / ~defil~
+   implicit button type defined further down — is dead while it is off.  When
+   a ref like ~"path/file.py:L42"~ suddenly stops being clickable, check
+   ~hyperbole-mode~ *first*; ~M-RET is undefined~ in the echo area is the tell.
+
+   The usual way it gets switched off by accident: in the Hyperbole minibuffer
+   menu (~C-h h~), ~X~ is *not* "eXit the menu" — it is ~hui:menu-exit-hyperbole~,
+   which runs ~(hyperbole-mode 0)~ and disables Hyperbole globally for the rest
+   of the session.  Use ~Q~ to quit the menu.  Recover with ~M-x hyperbole-mode~.
+
+   Note that ~(hyperbole-mode)~ called from Lisp always *enables* (it only
+   toggles when called interactively), so re-evaluating this block is a safe
+   way to switch it back on.
+
+   #+begin_src emacs-lisp
+   (use-package hyperbole)
+   (hyperbole-mode)
+   #+end_src
+
+   #+RESULTS:
+   : t
+
+** Hydra
+
+   https://github.com/abo-abo/hydra - make Emacs bindings that stick around
+
+   This is a package for GNU Emacs that can be used to tie related commands into a family of short bindings with a common prefix - a Hydra.
+
+   #+begin_src emacs-lisp
+   (use-package hydra)
+   #+end_src
+
+   And now some various hydras
+
+*** M-s
+
+    Hydra for highlights.
+
+    #+begin_src emacs-lisp
+    (defun copy-current-buffer-name()
+      (interactive)
+      (kill-new (buffer-name))
+      )
+    (defun my-copy-current-filename()
+      (interactive)
+      (kill-new buffer-file-name)
+      )
+    (defun my-copy-current-directory()
+      (interactive)
+      (kill-new default-directory)
+      )
+    (defhydra alt_s_hydras_menu (:columns 2 :exit t)
+      "M-s menu"
+
+      ("." isearch-forward-symbol-at-point "Isearch symbol at point")
+      ("_" isearch-forward-symbol "Do incremental search forward for a symbol")
+      ("o" occur "Show occurencies")
+      ("f" copy-current-buffer-name "Remember current buffer name")
+      ("c" my-copy-current-filename "Copy current filename")
+      ("d" my-copy-current-directory "Copy current directory")
+      ("m" copy-markdown-as-markup "Copy Markdown region/buffer as rich markup")
+      ("t" copy-markdown-as-text "Copy Markdown region/buffer as rendered text")
+      ("w" isearch-forward-word "Isearch forward word")
+      ("h." highlight-symbol-at-point "Highlight symbol at point")
+      ("hl" highlight-lines-matching-regexp "Highlight lines matcing RegExp")
+      ("hp" highlight-phrase "Highlight phrase")
+      ("hr" highlight-regexp "Highlight RegExp")
+      ("hu" unhighlight-regexp "Unhighlight RegExp")
+      ("hw" hi-lock-write-interactive-patterns "Write interactive patterns")
+      ("M-w" eww-search-words "Search the web for the text")
+      )
+    (global-set-key "\M-s" 'alt_s_hydras_menu/body)
+    #+end_src
+
+** COMMENT Hydra + smerge
+
+ /I found it less useful and it often prevents me from doing right thing. I prefer ediff/
+
+ This configuration automatically activates a helpful ~smerge-mode~ hydra when a file containing merge conflicts is visited from a Magit diff section.  You can manually activate the hydra with the command ~unpackaged/smerge-hydra/body~.  (Inspired by [[https://github.com/kaushalmodi/.emacs.d/blob/master/setup-files/setup-diff.el][Kaushal Modi's Emacs config]].)
+
+ *Requires*:
+ +  [[https://github.com/abo-abo/hydra][hydra]]
+ +  [[https://magit.vc/][Magit]]
+
+ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
+
+ #+begin_src emacs-lisp
+   (require 'hydra)
+
+   (use-package smerge-mode
+     :config
+     (defhydra unpackaged/smerge-hydra
+       (:color pink :hint nil :post (smerge-auto-leave))
+       "
+   ^Move^       ^Keep^               ^Diff^                 ^Other^
+   ^^-----------^^-------------------^^---------------------^^-------
+   _n_ext       _b_ase               _<_: upper/base        _C_ombine
+   _p_rev       _u_pper              _=_: upper/lower       _r_esolve
+   ^^           _l_ower              _>_: base/lower        _k_ill current
+   ^^           _a_ll                _R_efine
+   ^^           _RET_: current       _E_diff
+   "
+       ("n" smerge-next)
+       ("p" smerge-prev)
+       ("b" smerge-keep-base)
+       ("u" smerge-keep-upper)
+       ("l" smerge-keep-lower)
+       ("a" smerge-keep-all)
+       ("RET" smerge-keep-current)
+       ("\C-m" smerge-keep-current)
+       ("<" smerge-diff-base-upper)
+       ("=" smerge-diff-upper-lower)
+       (">" smerge-diff-base-lower)
+       ("R" smerge-refine)
+       ("E" smerge-ediff)
+       ("C" smerge-combine-with-next)
+       ("r" smerge-resolve)
+       ("k" smerge-kill-current)
+       ("ZZ" (lambda ()
+               (interactive)
+               (save-buffer)
+               (bury-buffer))
+        "Save and bury buffer" :color blue)
+       ("q" nil "cancel" :color blue))
+     :hook (magit-diff-visit-file . (lambda ()
+                                      (when smerge-mode
+                                        (unpackaged/smerge-hydra/body)))))
+ #+end_src
+
+* Basic keybindings and configuration settings
+** Disable ~tool-bar~
+
+   Disable ~tool-bar~
+
+   #+begin_src emacs-lisp
+   (tool-bar-mode -1)
+   #+end_src
+
+** Fullscreen fix
+
+   #+begin_src emacs-lisp
+   (setq frame-resize-pixelwise t)
    #+end_src
 
 ** large files
@@ -2841,31 +2977,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+RESULTS:
    : indent-bars-mode
 
-** hyperbole
-
-   ~hyperbole-mode~ is a *global* minor mode, and everything below — the Action
-   Key (~M-RET~ / ~hkey-either~), the Action Mouse Key, and every ~defib~ / ~defil~
-   implicit button type defined further down — is dead while it is off.  When
-   a ref like ~"path/file.py:L42"~ suddenly stops being clickable, check
-   ~hyperbole-mode~ *first*; ~M-RET is undefined~ in the echo area is the tell.
-
-   The usual way it gets switched off by accident: in the Hyperbole minibuffer
-   menu (~C-h h~), ~X~ is *not* "eXit the menu" — it is ~hui:menu-exit-hyperbole~,
-   which runs ~(hyperbole-mode 0)~ and disables Hyperbole globally for the rest
-   of the session.  Use ~Q~ to quit the menu.  Recover with ~M-x hyperbole-mode~.
-
-   Note that ~(hyperbole-mode)~ called from Lisp always *enables* (it only
-   toggles when called interactively), so re-evaluating this block is a safe
-   way to switch it back on.
-
-   #+begin_src emacs-lisp
-   (use-package hyperbole)
-   (hyperbole-mode)
-   #+end_src
-
-   #+RESULTS:
-   : t
-
 ** Choose/Change font
 
    I wrote function to choose font using Helm.
@@ -2952,58 +3063,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+end_src
 
    #+RESULTS:
-
-** Hydra
-
-   https://github.com/abo-abo/hydra - make Emacs bindings that stick around
-
-   This is a package for GNU Emacs that can be used to tie related commands into a family of short bindings with a common prefix - a Hydra.
-
-   #+begin_src emacs-lisp
-   (use-package hydra)
-   #+end_src
-
-   And now some various hydras
-
-*** M-s
-
-    Hydra for highlights.
-
-    #+begin_src emacs-lisp
-    (defun copy-current-buffer-name()
-      (interactive)
-      (kill-new (buffer-name))
-      )
-    (defun my-copy-current-filename()
-      (interactive)
-      (kill-new buffer-file-name)
-      )
-    (defun my-copy-current-directory()
-      (interactive)
-      (kill-new default-directory)
-      )
-    (defhydra alt_s_hydras_menu (:columns 2 :exit t)
-      "M-s menu"
-
-      ("." isearch-forward-symbol-at-point "Isearch symbol at point")
-      ("_" isearch-forward-symbol "Do incremental search forward for a symbol")
-      ("o" occur "Show occurencies")
-      ("f" copy-current-buffer-name "Remember current buffer name")
-      ("c" my-copy-current-filename "Copy current filename")
-      ("d" my-copy-current-directory "Copy current directory")
-      ("m" copy-markdown-as-markup "Copy Markdown region/buffer as rich markup")
-      ("t" copy-markdown-as-text "Copy Markdown region/buffer as rendered text")
-      ("w" isearch-forward-word "Isearch forward word")
-      ("h." highlight-symbol-at-point "Highlight symbol at point")
-      ("hl" highlight-lines-matching-regexp "Highlight lines matcing RegExp")
-      ("hp" highlight-phrase "Highlight phrase")
-      ("hr" highlight-regexp "Highlight RegExp")
-      ("hu" unhighlight-regexp "Unhighlight RegExp")
-      ("hw" hi-lock-write-interactive-patterns "Write interactive patterns")
-      ("M-w" eww-search-words "Search the web for the text")
-      )
-    (global-set-key "\M-s" 'alt_s_hydras_menu/body)
-    #+end_src
 
 ** Backups
 
@@ -4109,61 +4168,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (require 'moldable-emacs)
    (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
    (me-setup-molds))
- #+end_src
-
-** COMMENT Hydra + smerge
-
- /I found it less useful and it often prevents me from doing right thing. I prefer ediff/
-
- This configuration automatically activates a helpful ~smerge-mode~ hydra when a file containing merge conflicts is visited from a Magit diff section.  You can manually activate the hydra with the command ~unpackaged/smerge-hydra/body~.  (Inspired by [[https://github.com/kaushalmodi/.emacs.d/blob/master/setup-files/setup-diff.el][Kaushal Modi's Emacs config]].)
-
- *Requires*:
- +  [[https://github.com/abo-abo/hydra][hydra]]
- +  [[https://magit.vc/][Magit]]
-
- https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
-
- #+begin_src emacs-lisp
-   (require 'hydra)
-
-   (use-package smerge-mode
-     :config
-     (defhydra unpackaged/smerge-hydra
-       (:color pink :hint nil :post (smerge-auto-leave))
-       "
-   ^Move^       ^Keep^               ^Diff^                 ^Other^
-   ^^-----------^^-------------------^^---------------------^^-------
-   _n_ext       _b_ase               _<_: upper/base        _C_ombine
-   _p_rev       _u_pper              _=_: upper/lower       _r_esolve
-   ^^           _l_ower              _>_: base/lower        _k_ill current
-   ^^           _a_ll                _R_efine
-   ^^           _RET_: current       _E_diff
-   "
-       ("n" smerge-next)
-       ("p" smerge-prev)
-       ("b" smerge-keep-base)
-       ("u" smerge-keep-upper)
-       ("l" smerge-keep-lower)
-       ("a" smerge-keep-all)
-       ("RET" smerge-keep-current)
-       ("\C-m" smerge-keep-current)
-       ("<" smerge-diff-base-upper)
-       ("=" smerge-diff-upper-lower)
-       (">" smerge-diff-base-lower)
-       ("R" smerge-refine)
-       ("E" smerge-ediff)
-       ("C" smerge-combine-with-next)
-       ("r" smerge-resolve)
-       ("k" smerge-kill-current)
-       ("ZZ" (lambda ()
-               (interactive)
-               (save-buffer)
-               (bury-buffer))
-        "Save and bury buffer" :color blue)
-       ("q" nil "cancel" :color blue))
-     :hook (magit-diff-visit-file . (lambda ()
-                                      (when smerge-mode
-                                        (unpackaged/smerge-hydra/body)))))
  #+end_src
 
 ** shells
