@@ -5119,38 +5119,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+RESULTS:
    : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
 
-* Core settings
+* Development
 
-  Settings that lived only in Customize until October 2026 and have no package section of
-  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
-  overrides the ~:custom~ value set here (Customize's user theme has priority over the
-  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
-  time to time.
-
-** Indentation and interpreters of built-in programming modes
-
-   #+begin_src emacs-lisp
-   (use-package python
-     :ensure nil
-     :defer t
-     :custom
-     (python-shell-interpreter "python3"))
-   (use-package css-mode
-     :ensure nil
-     :defer t
-     :custom
-     (css-indent-offset 2))
-   (use-package sh-script
-     :ensure nil
-     :defer t
-     :custom
-     (sh-basic-offset 2))
-   (use-package typescript-ts-mode
-     :ensure nil
-     :defer t
-     :custom
-     (typescript-ts-mode-indent-offset 2))
-   #+end_src
+  Version control, language servers, linters, formatters, debuggers and infrastructure tools.
 
 ** Packages without a section of their own yet
 
@@ -5164,7 +5135,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (pyvenv-tracking-mode 1))
    #+end_src
 
-* Emacs tools and minor modes
 ** verb
 
    #+begin_src emacs-lisp
@@ -5208,20 +5178,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;;                    :major-modes '(rst-mode)
    ;;                    :server-id 'rst-ls))
 
-   #+end_src
-
-** COMMENT elfeed
-
-   #+begin_src emacs-lisp
-     (defalias 'elfeed-mark-read
-       (kmacro "<return> q"))
-
-     (use-package elfeed
-       :bind (:map elfeed-search-mode-map
-		   ("r" . elfeed-mark-read)
-		   ("`" . elfeed-mark-read)
-		   )
-       )
    #+end_src
 
 ** docker support
@@ -5337,31 +5293,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        (define-key code-review-mode-map (kbd "C-c C-p") 'code-review-comment-jump-previous))
      #+end_src
 
-** ledger
-   #+begin_src emacs-lisp
-     (use-package ledger-mode
-       :init
-       (magit-todos-mode)
-       )
-   #+end_src
-
-** pdf-tools
-
-   #+begin_src emacs-lisp
-     (use-package pdf-tools
-       :custom
-       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
-       :config
-       (pdf-tools-install)
-       )
-   #+end_src
-
-** pass
-
-   #+begin_src emacs-lisp
-   (use-package pass)
-   #+end_src
-
 ** COMMENT pylookup
    I don't use it anymore as LSP has great documentation support.
 
@@ -5373,205 +5304,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (setq pylookup-program "~/.emacs.d/pylookup.py")
      (setq pylookup-db-file "~/var/pylookup/pylookup.db")
      (global-set-key [(control shift menu)] 'pylookup-lookup)
-   #+end_src
-
-** Email support
-
-*** smtpmail
-
-    #+begin_src emacs-lisp
-      (use-package smtpmail-multi)
-    #+end_src
-
-*** notmuch
-    Email setup
-
-    #+begin_src emacs-lisp :results output replace
-      (use-package notmuch
-        :init
-        (progn
-          ;; (require 'org-notmuch)
-          (require 'org-notmuch)
-          (require 'notmuch-address)
-          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
-          )
-        :bind (
-               ("C-z z" . notmuch)
-               ("C-c C-o" . browse-url-at-point)
-               )
-        :config
-
-        (defun notmuch-show-tag-spam ()
-          "mark message as spam"
-          (interactive)
-          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-          (next-line)
-          )
-        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-        (defun notmuch-show-tag-deleted ()
-          "mark message as deleted"
-          (interactive)
-          (notmuch-search-tag '("+deleted" "-inbox")))
-
-        (defun notmuch-show-tag-read ()
-          "mark message as read"
-          (interactive)
-          (notmuch-search-tag '("-unread"))
-          (next-line)
-          )
-
-        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
-        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
-        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
-        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
-
-        )
-
-      (defun mg-notmuch-display-email-in-xwidget ()
-        "Display the HTML email content in xwidget-webkit.
-      This function requires the current MIME part to be of type
-      text/html. If the content is not HTML, it falls back to calling
-      `notmuch-show-view-part'.  Similarly, if xwidget support is
-      unavailable in the current Emacs build, it fallbacks to
-      `notmuch-show-view-part'."
-          (interactive)
-          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
-                    (is-html-mime (equal (caadr mime-part) "text/html"))
-                    (has-xwidget (featurep 'xwidget-internal)))
-                  (notmuch-show-apply-to-current-part-handle
-                   (lambda (handle)
-                       (let ((tempf (make-temp-file "notmuch"
-                                                    nil
-                                                    ".html"
-                                                    (with-current-buffer (car handle)
-                                                        (buffer-string)))))
-                           (xwidget-webkit-browse-url (concat "file://" tempf))
-                           (run-with-idle-timer 3 nil #'delete-file tempf))))
-              (notmuch-show-view-part)))
-
-
-
-
-
-      (defun notmuch-show-tag-spam ()
-        "mark message as spam"
-        (interactive)
-        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-        (next-line)
-        )
-      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-
-      (defun notmuch-show-tag-deleted ()
-        "mark message as deleted"
-        (interactive)
-        (notmuch-search-tag '("+deleted" "-inbox")))
-
-      (defun notmuch-show-tag-read ()
-        "mark message as read"
-        (interactive)
-        (notmuch-search-tag '("-unread"))
-        (next-line)
-
-        ;; Sign messages by default.
-        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
-
-        (custom-set-variables
-         '(notmuch-search-oldest-first nil)
-         '(notmuch-crypto-process-mime t)
-         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
-         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
-        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
-
-        (defun expand-only-unread-hook ()
-          "eexpand only recent unreads"
-          (interactive)
-          (let ((unread nil)
-                (open (notmuch-show-get-message-ids-for-open-messages)))
-            (notmuch-show-mapc (lambda ()
-        		         (when (member "unread" (notmuch-show-get-tags))
-        			   (setq unread t))))
-            (when unread
-              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
-                (notmuch-show-filter-thread "tag:unread")))))
-
-
-    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
-
-        )
-
-
-    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
-    #+end_src
-
-    #+RESULTS:
-
-
-     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
-     notmuch don't have this functionality by default, so I've monkey patched it here:
-
-     #+begin_src emacs-lisp
-       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
-         (let ((sender (notmuch-mua-prompt-for-sender)))
-	   ad-do-it))
-       (ad-activate 'notmuch-mua-reply)
-     #+end_src
-
-***** xwidget
-      :LOGBOOK:
-      - State "TODO"       from              [2025-08-18 Mon 11:35]
-      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
-      :END:
-
-      #+begin_src emacs-lisp
-
-      #+end_src
-
-      #+RESULTS:
-      : mg-notmuch-display-email-in-xwidget
-
-**** settings for notmuch-show
-
-     #+begin_src emacs-lisp
-     (defun my-notmuch-show-local-bindings ()
-       (interactive)
-       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
-
-     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
-     #+end_src
-
-** COMMENT lastpass
-
-   #+begin_src emacs-lisp
-   (use-package lastpass
-     :init
-     (setq lastpass-multifactor-use-passcode t)
-     :config
-     ;; Set lastpass user
-     ;; Enable lastpass custom auth-source
-     (lastpass-auth-source-enable))
-   #+end_src
-
-** ztree
-
-   #+begin_src emacs-lisp
-     (use-package ztree)
-     (defun ztree-do-dired ()
-       (interactive)
-       "Jump to dired in specified place of ZTree-dir"
-       (let* ((line (line-number-at-pos))
-	      (node (ztree-find-node-in-line line)))
-	 (when node
-	   (dired node))
-	 )
-       )
-     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
-					     ; (global-set-key [f5] 'ztree-dir)
-     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
-     (global-set-key (kbd "<C-f3>") 'ztree-side)
-     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
-
-     (fset 'ztree-side
-	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
    #+end_src
 
 ** realgud
@@ -5623,104 +5355,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
    (me-setup-molds))
  #+end_src
-
-** shells
-
-   #+begin_src emacs-lisp
-                                           ; various shells
-   (require 'python)
-   (add-hook 'shell-output-filter-functions
-             '(lambda () ""
-                (when (shell-interactive-process)
-                  (python-pdbtrack-set-tracked-buffer
-                   (buffer-substring (shell-beginning-of-output) shell-last-output-end)))))
-
-   (global-unset-key (kbd "s-s"))
-   (defun switch-to-shell(n) ()
-          (interactive)
-          (if (get-buffer (concat "*shell*<" n ">"))
-              (switch-to-buffer (concat "*shell*<" n ">"))
-            (shell (concat "*shell*<" n ">")))
-          )
-
-   (global-set-key (kbd "C-z C-1") (lambda () (interactive) (switch-to-shell "1")))
-   (global-set-key (kbd "C-z C-2") (lambda () (interactive) (switch-to-shell "2")))
-   (global-set-key (kbd "C-z C-3") (lambda () (interactive) (switch-to-shell "3")))
-   (global-set-key (kbd "C-z C-4") (lambda () (interactive) (switch-to-shell "4")))
-   (global-set-key (kbd "C-z C-5") (lambda () (interactive) (switch-to-shell "5")))
-   (global-set-key (kbd "C-z C-6") (lambda () (interactive) (switch-to-shell "6")))
-   (global-set-key (kbd "C-z C-7") (lambda () (interactive) (switch-to-shell "7")))
-   (global-set-key (kbd "C-z C-8") (lambda () (interactive) (switch-to-shell "8")))
-   (global-set-key (kbd "C-z C-9") (lambda () (interactive) (switch-to-shell "9")))
-   (global-set-key (kbd "C-z C-0") 'shell)
-   (global-set-key (kbd "C-z C-e") 'eshell)
-
-   (global-set-key (kbd "C-z x 1") (lambda () (interactive) (switch-to-shell "1")))
-   (global-set-key (kbd "C-z x 2") (lambda () (interactive) (switch-to-shell "2")))
-   (global-set-key (kbd "C-z x 3") (lambda () (interactive) (switch-to-shell "3")))
-   (global-set-key (kbd "C-z x 4") (lambda () (interactive) (switch-to-shell "4")))
-   (global-set-key (kbd "C-z x 5") (lambda () (interactive) (switch-to-shell "5")))
-   (global-set-key (kbd "C-z x 6") (lambda () (interactive) (switch-to-shell "6")))
-   (global-set-key (kbd "C-z x 7") (lambda () (interactive) (switch-to-shell "7")))
-   (global-set-key (kbd "C-z x 8") (lambda () (interactive) (switch-to-shell "8")))
-   (global-set-key (kbd "C-z x 9") (lambda () (interactive) (switch-to-shell "9")))
-   (global-set-key (kbd "C-z x 0") 'shell)
-
-
-                                           ; ansi-term
-   (global-set-key (kbd "s-s t") '(lambda ()
-                                    (interactive)
-                                    (call-process "kitty" nil 0 nil)))
-
-   (fset 'myshells
-         [?\M-x ?i ?b ?u ?f ?f ?e ?r return ?/ ?/ ?/ ?m ?s ?h ?e ?l ?l ?- ?m ?o ?d ?e return ?s ?f])
-
-   (global-set-key (kbd "s-s l") 'myshells)
-
-   (defun my-shell-mode-hook ()
-     (hide-trailing-whitespace)
-     ;; (company-mode)
-     )
-
-   (add-hook 'shell-mode-hook 'my-shell-mode-hook)
-   (add-hook 'term-mode-hook 'my-shell-mode-hook)
-
-   ;; from http://stackoverflow.com/questions/13185729/npm-dont-display-prompt-correctly-under-emacs-eshell
-   ;; to filter out npm special chars
-   (add-to-list
-    'comint-preoutput-filter-functions
-    (lambda (output)
-      (replace-regexp-in-string "\033\[[0-9]+[AGK]" "" output)))
-
-   (defun ansible-highlight()
-     "Hightlight ok, failed, changed lines"
-     (interactive)
-     (highlight-lines-matching-regexp "^ok:" 'hi-green-b)
-     (highlight-phrase "failed:" 'flycheck-error)
-     (highlight-phrase "FAILED\!" 'flycheck-error)
-     (highlight-lines-matching-regexp "changed:" 'font-lock-warning-face)
-     )
-
-   (defun sql-highlight()
-     "SQL updates, inserts"
-     (interactive)
-     (highlight-lines-matching-regexp "INSERT\sINTO\s" 'hi-pink)
-     (highlight-lines-matching-regexp "DELETE\sFROM\s" 'hi-red-b)
-     (highlight-lines-matching-regexp "UPDATE\s" 'hi-yellow)
-     )
-   #+end_src
-
-   #+RESULTS:
-   : sql-highlight
-
-*** shell comint input history
-
-    #+begin_src emacs-lisp
-    (add-hook 'shell-mode-hook 'my-shell-mode-hook2)
-    (defun my-shell-mode-hook2 ()
-      (setq comint-input-ring-file-name "~/.histfile")
-      (comint-read-input-ring t))
-    #+end_src
 
 ** dap mode
 
@@ -6030,6 +5664,565 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      )
    #+end_src
 
+** COMMENT pgmacs
+   https://github.com/emarsden/pgmacs.git
+
+   #+begin_src emacs-lisp
+   (use-package pgmacs
+     :load-path "~/.emacs.d/lisp/pgmacs/"
+     :init
+     (unless (package-installed-p 'pg)
+       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
+     (unless (package-installed-p 'pgmacs)
+       (package-vc-install "https://github.com/emarsden/pgmacs"))
+     (require 'pgmacs))
+   #+end_src
+
+** nvm
+
+   #+begin_src emacs-lisp
+   (use-package nvm)
+   #+end_src
+
+   #+RESULTS:
+
+** Ruff
+
+   #+begin_src emacs-lisp
+      (use-package lazy-ruff
+        :ensure t
+        :bind (("C-<f4>" . lazy-ruff-lint-format-dwim)) ;; keybinding
+        :config
+        ;; (lazy-ruff-mode-global-toggle t)
+        )
+   #+end_src
+
+   #+RESULTS:
+   : lazy-ruff-lint-format-dwim
+
+   https://github.com/flycheck/flycheck/issues/1974
+
+   #+begin_src emacs-lisp
+   ;; (require 'flycheck-ruff)
+
+   #+end_src
+
+   #+RESULTS:
+   : flycheck-ruff
+
+** COMMENT flyover
+
+   https://github.com/konrad1977/flyover
+   #+begin_src emacs-lisp
+   (require 'flyover)
+   ;; Enable flyover-mode globally
+   (add-hook 'flycheck-mode-hook #'flyover-mode)
+
+   ;; Configure which error levels to display
+   ;; Possible values: error, warning, info
+   (setq flyover-levels '(error warning info))  ; Show all levels
+   ;; (setq flyover-levels '(error warning))    ; Show only errors and warnings
+   ;; (setq flyover-levels '(error))            ; Show only errors
+
+
+   ;; Use theme colors for error/warning/info faces
+   (setq flyover-use-theme-colors t)
+
+   ;; Adjust background lightness (lower values = darker)
+   ;;(setq flyover-background-lightness 45)
+
+   ;; Make icon background darker than foreground
+   ;;(setq flyover-percent-darker 40)
+
+   ;;(setq flyover-text-tint 'lighter) ;; or 'darker or nil
+
+   ;; "Percentage to lighten or darken the text when tinting is enabled."
+   ;;(setq flyover-text-tint-percent 50)
+
+   ;; Choose which checkers to use (flycheck, flymake, or both)
+   (setq flyover-checkers '(flycheck flymake))
+
+   #+end_src
+
+   #+RESULTS:
+   | flycheck | flymake |
+
+** k8s
+
+*** COMMENT kele
+
+    #+begin_src emacs-lisp
+      (use-package kele
+    :config
+    (kele-mode 1)
+    (bind-key (kbd "s-k") kele-command-map kele-mode-map))
+    #+end_src
+
+    #+RESULTS:
+    : t
+
+** COMMENT kubernetes
+
+   Built into Tramp since Emacs 29 (=tramp-container.el=). It registers a
+   full ~kubernetes~ method — no external package and no manual
+   ~tramp-methods~ push required. It supersedes ~kubernetes-tramp~.
+
+   Path syntax:
+   - =/kubernetes:POD:/path= — shell into POD.
+   - =/kubernetes:CONTAINER.POD:/path= — pick a specific container.
+
+   #+begin_src emacs-lisp
+
+   1. [@1]  ~tramp-kubernetes-namespace~ defaults to ="default"=, and Tramp
+      then forces =--namespace=default= onto every ~kubectl exec=,
+      overriding the namespace baked into the current context. With our
+      context (=oleksii.koval-rgk8s-prod-eu=) already pointing at the right
+      namespace, that override made pods "not found" and the connection
+      failed. Setting the variable to nil makes Tramp omit =--namespace= and
+      defer to the context — matching how the old bare ~kubectl~ method
+      behaved.
+
+   2. [@2]  The ~%x~ (context + namespace) argument is expanded via a
+      connection-local variable (~tramp-extra-expand-args~) carried by
+      ~tramp-kubernetes-connection-local-default-profile~. Tramp registers
+      this profile at startup, but something later in our init rebuilds the
+      connection-local alists and drops it, giving =Invalid format character
+      '%x'= — but *only* on a fresh start; re-evaluating the two
+      ~connection-local-set-*~ forms makes it work. The offending rebuild
+      isn't in our own files (nothing here touches
+      ~connection-local-criteria-alist~ / ~connection-local-profile-alist~;
+      the stray ~<host>-vars~ profiles are created by Emacs/Tramp at
+      runtime), so instead of chasing it we re-assert the profile from
+      ~emacs-startup-hook~, which fires after the whole init — the same
+      point a manual re-eval would. Registering it inline does *not*
+      survive; the hook does.
+
+   #+begin_src emacs-lisp
+   (require 'tramp-container)
+
+   ;; (1) Don't force --namespace=default; defer to the current kube context.
+   (setq tramp-kubernetes-namespace nil)
+
+   ;; (2) Re-assert the kubernetes connection-local profile that teaches
+   ;; Tramp to expand %x / %a / %h. Tramp registers it at startup, but
+   ;; something later in our init rebuilds the connection-local alists and
+   ;; drops it — symptom: "Invalid format character '%x'" only on a FRESH
+   ;; start, and it goes away as soon as the two forms below are re-eval'ed.
+   ;; So we register from `emacs-startup-hook', which runs AFTER the whole
+   ;; init (org-babel-load-file, custom, everything that clobbers it), the
+   ;; same moment a manual re-eval would happen. Running it inline here does
+   ;; NOT survive; the hook is what makes it stick across restarts.
+   (defun my-tramp-register-kubernetes-profile ()
+     "(Re)register the tramp-container kubernetes connection-local profile."
+     (connection-local-set-profile-variables
+      'tramp-kubernetes-connection-local-default-profile
+      '((tramp-config-check . tramp-kubernetes--current-context-data)
+        (tramp-extra-expand-args
+         . (?a (tramp-kubernetes--container       (car tramp-current-connection))
+            ?h (tramp-kubernetes--pod             (car tramp-current-connection))
+            ?x (tramp-kubernetes--context-namespace (car tramp-current-connection))))))
+     (connection-local-set-profiles
+      '(:application tramp :protocol "kubernetes")
+      'tramp-kubernetes-connection-local-default-profile))
+
+   (add-hook 'emacs-startup-hook #'my-tramp-register-kubernetes-profile)
+   #+end_src
+
+** kubernetes (old — kubernetes-tramp, obsoleted)
+
+   Superseded by the built-in ~tramp-container~ ~kubernetes~ method (see
+   the section below). ~kubernetes-tramp~ has been obsoleted upstream, and
+   the hand-pushed ~kubectl~ method is redundant now that Tramp ships a
+   richer one.
+
+   #+begin_src emacs-lisp
+   (use-package kubernetes-tramp)
+
+   (push
+    (cons
+     "kubectl"
+     '((tramp-login-program "kubectl")
+       (tramp-login-args (("exec" "-it") ("-u" "%u") ("%h") ("--") ("sh")))
+       (tramp-remote-shell "/bin/sh")
+       (tramp-remote-shell-args ("-i" "-c"))))
+    tramp-methods)
+
+   (message "loaded")
+   #+end_src
+
+   #+RESULTS:
+   : loaded
+
+* Core settings
+
+  Settings that lived only in Customize until October 2026 and have no package section of
+  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
+  overrides the ~:custom~ value set here (Customize's user theme has priority over the
+  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
+  time to time.
+
+** Indentation and interpreters of built-in programming modes
+
+   #+begin_src emacs-lisp
+   (use-package python
+     :ensure nil
+     :defer t
+     :custom
+     (python-shell-interpreter "python3"))
+   (use-package css-mode
+     :ensure nil
+     :defer t
+     :custom
+     (css-indent-offset 2))
+   (use-package sh-script
+     :ensure nil
+     :defer t
+     :custom
+     (sh-basic-offset 2))
+   (use-package typescript-ts-mode
+     :ensure nil
+     :defer t
+     :custom
+     (typescript-ts-mode-indent-offset 2))
+   #+end_src
+
+* Emacs tools and minor modes
+** COMMENT elfeed
+
+   #+begin_src emacs-lisp
+     (defalias 'elfeed-mark-read
+       (kmacro "<return> q"))
+
+     (use-package elfeed
+       :bind (:map elfeed-search-mode-map
+		   ("r" . elfeed-mark-read)
+		   ("`" . elfeed-mark-read)
+		   )
+       )
+   #+end_src
+
+** ledger
+   #+begin_src emacs-lisp
+     (use-package ledger-mode
+       :init
+       (magit-todos-mode)
+       )
+   #+end_src
+
+** pdf-tools
+
+   #+begin_src emacs-lisp
+     (use-package pdf-tools
+       :custom
+       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
+       :config
+       (pdf-tools-install)
+       )
+   #+end_src
+
+** pass
+
+   #+begin_src emacs-lisp
+   (use-package pass)
+   #+end_src
+
+** Email support
+
+*** smtpmail
+
+    #+begin_src emacs-lisp
+      (use-package smtpmail-multi)
+    #+end_src
+
+*** notmuch
+    Email setup
+
+    #+begin_src emacs-lisp :results output replace
+      (use-package notmuch
+        :init
+        (progn
+          ;; (require 'org-notmuch)
+          (require 'org-notmuch)
+          (require 'notmuch-address)
+          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
+          )
+        :bind (
+               ("C-z z" . notmuch)
+               ("C-c C-o" . browse-url-at-point)
+               )
+        :config
+
+        (defun notmuch-show-tag-spam ()
+          "mark message as spam"
+          (interactive)
+          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+          (next-line)
+          )
+        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+        (defun notmuch-show-tag-deleted ()
+          "mark message as deleted"
+          (interactive)
+          (notmuch-search-tag '("+deleted" "-inbox")))
+
+        (defun notmuch-show-tag-read ()
+          "mark message as read"
+          (interactive)
+          (notmuch-search-tag '("-unread"))
+          (next-line)
+          )
+
+        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
+        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
+        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
+        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
+
+        )
+
+      (defun mg-notmuch-display-email-in-xwidget ()
+        "Display the HTML email content in xwidget-webkit.
+      This function requires the current MIME part to be of type
+      text/html. If the content is not HTML, it falls back to calling
+      `notmuch-show-view-part'.  Similarly, if xwidget support is
+      unavailable in the current Emacs build, it fallbacks to
+      `notmuch-show-view-part'."
+          (interactive)
+          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
+                    (is-html-mime (equal (caadr mime-part) "text/html"))
+                    (has-xwidget (featurep 'xwidget-internal)))
+                  (notmuch-show-apply-to-current-part-handle
+                   (lambda (handle)
+                       (let ((tempf (make-temp-file "notmuch"
+                                                    nil
+                                                    ".html"
+                                                    (with-current-buffer (car handle)
+                                                        (buffer-string)))))
+                           (xwidget-webkit-browse-url (concat "file://" tempf))
+                           (run-with-idle-timer 3 nil #'delete-file tempf))))
+              (notmuch-show-view-part)))
+
+
+
+
+
+      (defun notmuch-show-tag-spam ()
+        "mark message as spam"
+        (interactive)
+        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+        (next-line)
+        )
+      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+
+      (defun notmuch-show-tag-deleted ()
+        "mark message as deleted"
+        (interactive)
+        (notmuch-search-tag '("+deleted" "-inbox")))
+
+      (defun notmuch-show-tag-read ()
+        "mark message as read"
+        (interactive)
+        (notmuch-search-tag '("-unread"))
+        (next-line)
+
+        ;; Sign messages by default.
+        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
+
+        (custom-set-variables
+         '(notmuch-search-oldest-first nil)
+         '(notmuch-crypto-process-mime t)
+         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
+         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
+        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
+
+        (defun expand-only-unread-hook ()
+          "eexpand only recent unreads"
+          (interactive)
+          (let ((unread nil)
+                (open (notmuch-show-get-message-ids-for-open-messages)))
+            (notmuch-show-mapc (lambda ()
+        		         (when (member "unread" (notmuch-show-get-tags))
+        			   (setq unread t))))
+            (when unread
+              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
+                (notmuch-show-filter-thread "tag:unread")))))
+
+
+    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
+
+        )
+
+
+    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
+    #+end_src
+
+    #+RESULTS:
+
+
+     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
+     notmuch don't have this functionality by default, so I've monkey patched it here:
+
+     #+begin_src emacs-lisp
+       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
+         (let ((sender (notmuch-mua-prompt-for-sender)))
+	   ad-do-it))
+       (ad-activate 'notmuch-mua-reply)
+     #+end_src
+
+***** xwidget
+      :LOGBOOK:
+      - State "TODO"       from              [2025-08-18 Mon 11:35]
+      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
+      :END:
+
+      #+begin_src emacs-lisp
+
+      #+end_src
+
+      #+RESULTS:
+      : mg-notmuch-display-email-in-xwidget
+
+**** settings for notmuch-show
+
+     #+begin_src emacs-lisp
+     (defun my-notmuch-show-local-bindings ()
+       (interactive)
+       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
+
+     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
+     #+end_src
+
+** COMMENT lastpass
+
+   #+begin_src emacs-lisp
+   (use-package lastpass
+     :init
+     (setq lastpass-multifactor-use-passcode t)
+     :config
+     ;; Set lastpass user
+     ;; Enable lastpass custom auth-source
+     (lastpass-auth-source-enable))
+   #+end_src
+
+** ztree
+
+   #+begin_src emacs-lisp
+     (use-package ztree)
+     (defun ztree-do-dired ()
+       (interactive)
+       "Jump to dired in specified place of ZTree-dir"
+       (let* ((line (line-number-at-pos))
+	      (node (ztree-find-node-in-line line)))
+	 (when node
+	   (dired node))
+	 )
+       )
+     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
+					     ; (global-set-key [f5] 'ztree-dir)
+     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
+     (global-set-key (kbd "<C-f3>") 'ztree-side)
+     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
+
+     (fset 'ztree-side
+	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
+   #+end_src
+
+** shells
+
+   #+begin_src emacs-lisp
+                                           ; various shells
+   (require 'python)
+   (add-hook 'shell-output-filter-functions
+             '(lambda () ""
+                (when (shell-interactive-process)
+                  (python-pdbtrack-set-tracked-buffer
+                   (buffer-substring (shell-beginning-of-output) shell-last-output-end)))))
+
+   (global-unset-key (kbd "s-s"))
+   (defun switch-to-shell(n) ()
+          (interactive)
+          (if (get-buffer (concat "*shell*<" n ">"))
+              (switch-to-buffer (concat "*shell*<" n ">"))
+            (shell (concat "*shell*<" n ">")))
+          )
+
+   (global-set-key (kbd "C-z C-1") (lambda () (interactive) (switch-to-shell "1")))
+   (global-set-key (kbd "C-z C-2") (lambda () (interactive) (switch-to-shell "2")))
+   (global-set-key (kbd "C-z C-3") (lambda () (interactive) (switch-to-shell "3")))
+   (global-set-key (kbd "C-z C-4") (lambda () (interactive) (switch-to-shell "4")))
+   (global-set-key (kbd "C-z C-5") (lambda () (interactive) (switch-to-shell "5")))
+   (global-set-key (kbd "C-z C-6") (lambda () (interactive) (switch-to-shell "6")))
+   (global-set-key (kbd "C-z C-7") (lambda () (interactive) (switch-to-shell "7")))
+   (global-set-key (kbd "C-z C-8") (lambda () (interactive) (switch-to-shell "8")))
+   (global-set-key (kbd "C-z C-9") (lambda () (interactive) (switch-to-shell "9")))
+   (global-set-key (kbd "C-z C-0") 'shell)
+   (global-set-key (kbd "C-z C-e") 'eshell)
+
+   (global-set-key (kbd "C-z x 1") (lambda () (interactive) (switch-to-shell "1")))
+   (global-set-key (kbd "C-z x 2") (lambda () (interactive) (switch-to-shell "2")))
+   (global-set-key (kbd "C-z x 3") (lambda () (interactive) (switch-to-shell "3")))
+   (global-set-key (kbd "C-z x 4") (lambda () (interactive) (switch-to-shell "4")))
+   (global-set-key (kbd "C-z x 5") (lambda () (interactive) (switch-to-shell "5")))
+   (global-set-key (kbd "C-z x 6") (lambda () (interactive) (switch-to-shell "6")))
+   (global-set-key (kbd "C-z x 7") (lambda () (interactive) (switch-to-shell "7")))
+   (global-set-key (kbd "C-z x 8") (lambda () (interactive) (switch-to-shell "8")))
+   (global-set-key (kbd "C-z x 9") (lambda () (interactive) (switch-to-shell "9")))
+   (global-set-key (kbd "C-z x 0") 'shell)
+
+
+                                           ; ansi-term
+   (global-set-key (kbd "s-s t") '(lambda ()
+                                    (interactive)
+                                    (call-process "kitty" nil 0 nil)))
+
+   (fset 'myshells
+         [?\M-x ?i ?b ?u ?f ?f ?e ?r return ?/ ?/ ?/ ?m ?s ?h ?e ?l ?l ?- ?m ?o ?d ?e return ?s ?f])
+
+   (global-set-key (kbd "s-s l") 'myshells)
+
+   (defun my-shell-mode-hook ()
+     (hide-trailing-whitespace)
+     ;; (company-mode)
+     )
+
+   (add-hook 'shell-mode-hook 'my-shell-mode-hook)
+   (add-hook 'term-mode-hook 'my-shell-mode-hook)
+
+   ;; from http://stackoverflow.com/questions/13185729/npm-dont-display-prompt-correctly-under-emacs-eshell
+   ;; to filter out npm special chars
+   (add-to-list
+    'comint-preoutput-filter-functions
+    (lambda (output)
+      (replace-regexp-in-string "\033\[[0-9]+[AGK]" "" output)))
+
+   (defun ansible-highlight()
+     "Hightlight ok, failed, changed lines"
+     (interactive)
+     (highlight-lines-matching-regexp "^ok:" 'hi-green-b)
+     (highlight-phrase "failed:" 'flycheck-error)
+     (highlight-phrase "FAILED\!" 'flycheck-error)
+     (highlight-lines-matching-regexp "changed:" 'font-lock-warning-face)
+     )
+
+   (defun sql-highlight()
+     "SQL updates, inserts"
+     (interactive)
+     (highlight-lines-matching-regexp "INSERT\sINTO\s" 'hi-pink)
+     (highlight-lines-matching-regexp "DELETE\sFROM\s" 'hi-red-b)
+     (highlight-lines-matching-regexp "UPDATE\s" 'hi-yellow)
+     )
+   #+end_src
+
+   #+RESULTS:
+   : sql-highlight
+
+*** shell comint input history
+
+    #+begin_src emacs-lisp
+    (add-hook 'shell-mode-hook 'my-shell-mode-hook2)
+    (defun my-shell-mode-hook2 ()
+      (setq comint-input-ring-file-name "~/.histfile")
+      (comint-read-input-ring t))
+    #+end_src
+
 ** gptel
 
 #+begin_src emacs-lisp
@@ -6058,20 +6251,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
    (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
    (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
-   #+end_src
-
-** COMMENT pgmacs
-   https://github.com/emarsden/pgmacs.git
-
-   #+begin_src emacs-lisp
-   (use-package pgmacs
-     :load-path "~/.emacs.d/lisp/pgmacs/"
-     :init
-     (unless (package-installed-p 'pg)
-       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
-     (unless (package-installed-p 'pgmacs)
-       (package-vc-install "https://github.com/emarsden/pgmacs"))
-     (require 'pgmacs))
    #+end_src
 
 ** eat?
@@ -6117,14 +6296,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
   (openwith-mode t)
   (setq openwith-associations '(("\\.mp4\\'" "mpv" (file))))
   #+end_src
-
-** nvm
-
-   #+begin_src emacs-lisp
-   (use-package nvm)
-   #+end_src
-
-   #+RESULTS:
 
 ** Copy file name to clipboard
 
@@ -6304,30 +6475,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : aidermacs-transient-menu
-
-** Ruff
-
-   #+begin_src emacs-lisp
-      (use-package lazy-ruff
-        :ensure t
-        :bind (("C-<f4>" . lazy-ruff-lint-format-dwim)) ;; keybinding
-        :config
-        ;; (lazy-ruff-mode-global-toggle t)
-        )
-   #+end_src
-
-   #+RESULTS:
-   : lazy-ruff-lint-format-dwim
-
-   https://github.com/flycheck/flycheck/issues/1974
-
-   #+begin_src emacs-lisp
-   ;; (require 'flycheck-ruff)
-
-   #+end_src
-
-   #+RESULTS:
-   : flycheck-ruff
 
 ** COMMENT Hubstaff
 
@@ -6559,43 +6706,6 @@ Format: \"/full/path/file.el:L42\"."
      :bind ("C-M-;" . greger))
    (require 'greger)
    #+end_src
-
-** COMMENT flyover
-
-   https://github.com/konrad1977/flyover
-   #+begin_src emacs-lisp
-   (require 'flyover)
-   ;; Enable flyover-mode globally
-   (add-hook 'flycheck-mode-hook #'flyover-mode)
-
-   ;; Configure which error levels to display
-   ;; Possible values: error, warning, info
-   (setq flyover-levels '(error warning info))  ; Show all levels
-   ;; (setq flyover-levels '(error warning))    ; Show only errors and warnings
-   ;; (setq flyover-levels '(error))            ; Show only errors
-
-
-   ;; Use theme colors for error/warning/info faces
-   (setq flyover-use-theme-colors t)
-
-   ;; Adjust background lightness (lower values = darker)
-   ;;(setq flyover-background-lightness 45)
-
-   ;; Make icon background darker than foreground
-   ;;(setq flyover-percent-darker 40)
-
-   ;;(setq flyover-text-tint 'lighter) ;; or 'darker or nil
-
-   ;; "Percentage to lighten or darken the text when tinting is enabled."
-   ;;(setq flyover-text-tint-percent 50)
-
-   ;; Choose which checkers to use (flycheck, flymake, or both)
-   (setq flyover-checkers '(flycheck flymake))
-
-   #+end_src
-
-   #+RESULTS:
-   | flycheck | flymake |
 
 ** ghostel — keep C-z an Emacs prefix, never a suspend key
 
@@ -6911,20 +7021,6 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    : claude-code-cycle-mode
 
-** k8s
-
-*** COMMENT kele
-
-    #+begin_src emacs-lisp
-      (use-package kele
-    :config
-    (kele-mode 1)
-    (bind-key (kbd "s-k") kele-command-map kele-mode-map))
-    #+end_src
-
-    #+RESULTS:
-    : t
-
 ** po-mode
 
    Problem: it prevents conflict resolution as it turns ON po mode with ReadOnly flag set on a buffer.
@@ -6938,98 +7034,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : po-subedit-abort
-
-** COMMENT kubernetes
-
-   Built into Tramp since Emacs 29 (=tramp-container.el=). It registers a
-   full ~kubernetes~ method — no external package and no manual
-   ~tramp-methods~ push required. It supersedes ~kubernetes-tramp~.
-
-   Path syntax:
-   - =/kubernetes:POD:/path= — shell into POD.
-   - =/kubernetes:CONTAINER.POD:/path= — pick a specific container.
-
-   #+begin_src emacs-lisp
-
-   1. [@1]  ~tramp-kubernetes-namespace~ defaults to ="default"=, and Tramp
-      then forces =--namespace=default= onto every ~kubectl exec=,
-      overriding the namespace baked into the current context. With our
-      context (=oleksii.koval-rgk8s-prod-eu=) already pointing at the right
-      namespace, that override made pods "not found" and the connection
-      failed. Setting the variable to nil makes Tramp omit =--namespace= and
-      defer to the context — matching how the old bare ~kubectl~ method
-      behaved.
-
-   2. [@2]  The ~%x~ (context + namespace) argument is expanded via a
-      connection-local variable (~tramp-extra-expand-args~) carried by
-      ~tramp-kubernetes-connection-local-default-profile~. Tramp registers
-      this profile at startup, but something later in our init rebuilds the
-      connection-local alists and drops it, giving =Invalid format character
-      '%x'= — but *only* on a fresh start; re-evaluating the two
-      ~connection-local-set-*~ forms makes it work. The offending rebuild
-      isn't in our own files (nothing here touches
-      ~connection-local-criteria-alist~ / ~connection-local-profile-alist~;
-      the stray ~<host>-vars~ profiles are created by Emacs/Tramp at
-      runtime), so instead of chasing it we re-assert the profile from
-      ~emacs-startup-hook~, which fires after the whole init — the same
-      point a manual re-eval would. Registering it inline does *not*
-      survive; the hook does.
-
-   #+begin_src emacs-lisp
-   (require 'tramp-container)
-
-   ;; (1) Don't force --namespace=default; defer to the current kube context.
-   (setq tramp-kubernetes-namespace nil)
-
-   ;; (2) Re-assert the kubernetes connection-local profile that teaches
-   ;; Tramp to expand %x / %a / %h. Tramp registers it at startup, but
-   ;; something later in our init rebuilds the connection-local alists and
-   ;; drops it — symptom: "Invalid format character '%x'" only on a FRESH
-   ;; start, and it goes away as soon as the two forms below are re-eval'ed.
-   ;; So we register from `emacs-startup-hook', which runs AFTER the whole
-   ;; init (org-babel-load-file, custom, everything that clobbers it), the
-   ;; same moment a manual re-eval would happen. Running it inline here does
-   ;; NOT survive; the hook is what makes it stick across restarts.
-   (defun my-tramp-register-kubernetes-profile ()
-     "(Re)register the tramp-container kubernetes connection-local profile."
-     (connection-local-set-profile-variables
-      'tramp-kubernetes-connection-local-default-profile
-      '((tramp-config-check . tramp-kubernetes--current-context-data)
-        (tramp-extra-expand-args
-         . (?a (tramp-kubernetes--container       (car tramp-current-connection))
-            ?h (tramp-kubernetes--pod             (car tramp-current-connection))
-            ?x (tramp-kubernetes--context-namespace (car tramp-current-connection))))))
-     (connection-local-set-profiles
-      '(:application tramp :protocol "kubernetes")
-      'tramp-kubernetes-connection-local-default-profile))
-
-   (add-hook 'emacs-startup-hook #'my-tramp-register-kubernetes-profile)
-   #+end_src
-
-** kubernetes (old — kubernetes-tramp, obsoleted)
-
-   Superseded by the built-in ~tramp-container~ ~kubernetes~ method (see
-   the section below). ~kubernetes-tramp~ has been obsoleted upstream, and
-   the hand-pushed ~kubectl~ method is redundant now that Tramp ships a
-   richer one.
-
-   #+begin_src emacs-lisp
-   (use-package kubernetes-tramp)
-
-   (push
-    (cons
-     "kubectl"
-     '((tramp-login-program "kubectl")
-       (tramp-login-args (("exec" "-it") ("-u" "%u") ("%h") ("--") ("sh")))
-       (tramp-remote-shell "/bin/sh")
-       (tramp-remote-shell-args ("-i" "-c"))))
-    tramp-methods)
-
-   (message "loaded")
-   #+end_src
-
-   #+RESULTS:
-   : loaded
 
 * Emacs file editing modes (major modes)
   :LOGBOOK:
