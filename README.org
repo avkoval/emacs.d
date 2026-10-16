@@ -6162,6 +6162,7 @@ Format: \"/full/path/file.el:L42\"."
      ;; hand so an accidental `C-c M-d' cannot silently re-arm the suspend.
      (define-key ghostel-char-mode-map (kbd "C-z") #'my-ghostel-C-z-prefix))
 
+   (setq ghostel-module-auto-install 'download)
    #+end_src
 
 ** claude-code-ide
