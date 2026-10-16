@@ -1,0 +1,3 @@
+#+begin_src d2 :file diagram.svg :flags --layout elk
+food -> bar: read
+#+end_src

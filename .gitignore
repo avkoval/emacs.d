@@ -49,7 +49,6 @@ elpa.26
 /emojis/
 forge-database*
 /image-dired/
-/org-gtasks/
 /org-roam.db
 /quelpa/
 /tutorial/
@@ -57,7 +56,6 @@ forge-database*
 /lisp/intuitive-tab-line-mode/
 /lisp/lsp-bridge/
 /lisp/org-cv/
-/lisp/org-gtasks/
 /lisp/moldable-emacs/
 .aider*
 .stfolder
@@ -75,7 +73,6 @@ forge-database*
 /lisp/lsp-bridge.gitinfo
 /lisp/moldable-emacs.gitinfo
 /lisp/org-cv.gitinfo
-/lisp/org-gtasks.gitinfo
 /lisp/pgmacs/
 /basic.ics
 /plantuml-1.2025.2.jar
@@ -91,3 +88,4 @@ plantuml-1.2026.6.jar
 okorg2slides/
 org-qa-walk/
 org2docx/
+org-browser-run/

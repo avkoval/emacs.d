@@ -610,6 +610,76 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      :config (auto-compile-on-load-mode))
    #+END_SRC
 
+** Own packages (github.com/avkoval)
+
+   My packages live as git checkouts in =~/.emacs.d/<name>=, where I also develop and push them:
+   [[https://github.com/avkoval/ok-gtasks][ok-gtasks]], [[https://github.com/avkoval/okorg2slides][okorg2slides]],
+   [[https://github.com/avkoval/org-qa-walk][org-qa-walk]], [[https://github.com/avkoval/org-browser-run][org-browser-run]],
+   [[https://github.com/avkoval/org2docx][org2docx]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
+   (checked out as =youtrack/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
+   machine needs nothing but this file.  The clone fetches over HTTPS (no key needed) and pushes over SSH.
+
+   ~M-x my/own-packages-update~ runs ~git pull --ff-only~ in every checkout and reports the result per package.  A
+   checkout with local commits or edits that conflict is left as it is; re-evaluate the package's section (or restart)
+   to load the new code.
+
+   #+begin_src emacs-lisp :results output none
+   (defvar my/own-packages
+     '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx"
+       ("youtrack" . "emacs-org-mode-youtrack"))
+     "My packages, kept as git checkouts in `user-emacs-directory'.
+   Each entry is a folder name that equals the GitHub repo name under
+   github.com/avkoval, or (FOLDER . REPO) when they differ.")
+
+   (defun my/own-package--repo (name)
+     "GitHub repo name of the package checked out in folder NAME."
+     (or (cdr (assoc name (seq-filter #'consp my/own-packages))) name))
+
+   (defun my/own-package--git (dir &rest args)
+     "Run git ARGS in DIR; return (EXIT-CODE . OUTPUT)."
+     (with-temp-buffer
+       (let ((default-directory dir))
+         (cons (apply #'call-process "git" nil t nil args)
+               (string-trim (buffer-string))))))
+
+   (defun my/own-package (name)
+     "Return the checkout directory of my package NAME.
+   Clone it from GitHub first when it is missing."
+     (let ((dir (expand-file-name name user-emacs-directory)))
+       (unless (file-directory-p dir)
+         (message "Cloning %s from GitHub…" name)
+         (let ((res (my/own-package--git user-emacs-directory "clone"
+                                         (format "https://github.com/avkoval/%s.git"
+                                                 (my/own-package--repo name))
+                                         dir)))
+           (if (zerop (car res))
+               (my/own-package--git dir "remote" "set-url" "--push" "origin"
+                                    (format "git@github.com:avkoval/%s.git"
+                                            (my/own-package--repo name)))
+             (display-warning 'my/own-package (format "git clone %s failed:\n%s" name (cdr res))))))
+       dir))
+
+   (defun my/own-packages-update ()
+     "Clone missing checkouts of `my/own-packages' and fast-forward the others."
+     (interactive)
+     (let ((lines
+            (mapcar (lambda (name)
+                      (let ((dir (expand-file-name name user-emacs-directory)))
+                        (if (not (file-directory-p dir))
+                            (progn (my/own-package name)
+                                   (format "%-16s cloned" name))
+                          (let ((res (my/own-package--git dir "pull" "--ff-only")))
+                            (format "%-16s %s %s" name (if (zerop (car res)) "ok    " "FAILED")
+                                    (car (last (split-string (cdr res) "\n" t))))))))
+                    (mapcar (lambda (p) (if (consp p) (car p) p)) my/own-packages))))
+       (with-current-buffer (get-buffer-create "*my-own-packages*")
+         (let ((inhibit-read-only t))
+           (erase-buffer)
+           (insert (string-join lines "\n") "\n\nRe-evaluate a package's section or restart Emacs to load new code.\n"))
+         (special-mode)
+         (display-buffer (current-buffer)))))
+   #+end_src
+
 ** COMMENT Straight
 
    #+begin_src emacs-lisp :results output none
@@ -1031,6 +1101,57 @@ Pastes cleanly into LibreOffice Calc / Google Sheets."
 
 #+RESULTS:
 : my/org-table-copy-as-tsv
+
+*** Copy org as rich text (Slack, Gmail, Google Docs)
+
+The Org counterpart of [[file:~/bin/clip2slack]] / [[file:~/bin/md2slack]]: puts the region into the clipboard as
+=text/html= *and* =text/plain= in one ~copyq~ call, so ~Ctrl+V~ in Slack keeps bold, italics, links, lists and code.
+A clipboard holding only =text/html= is ignored by Slack, hence ~copyq~ and not ~xclip~.
+
+The HTML comes from Org's own exporter (not pandoc), so =#+OPTIONS=, =#+LINK= abbreviations and macros of the
+buffer apply; the plain-text part is the Markdown export.
+
+| ~C-z S~         | region if active, otherwise the subtree at point |
+| ~C-u C-z S~     | the whole buffer                                 |
+
+Slack does not render tables (the rows run together); the command warns when the exported text has one.
+
+#+begin_src emacs-lisp :results output none
+(require 'ox-html)
+(require 'ox-md)
+
+(defvar my/org-copy-rich-export-options
+  '(:with-toc nil :section-numbers nil :with-title nil :with-author nil :with-date nil
+    :with-sub-superscript nil :with-smart-quotes nil :html-postamble nil)
+  "Export options for `my/org-copy-as-rich-text'.")
+
+(defun my/org-copy-as-rich-text (whole-buffer)
+  "Copy the region as HTML + plain text for pasting with formatting.
+Without an active region copy the subtree at point; with prefix
+argument WHOLE-BUFFER copy the whole buffer.  Pastes into Slack,
+Gmail, YouTrack comments and Google Docs."
+  (interactive "P")
+  (unless (derived-mode-p 'org-mode) (user-error "Not in an Org buffer"))
+  (unless (executable-find "copyq") (user-error "copyq not found: sudo pacman -S copyq"))
+  (let* ((subtreep (not (or whole-buffer (use-region-p))))
+         (scope (cond (whole-buffer "buffer") ((use-region-p) "region") (t "subtree")))
+         (export (lambda (backend)
+                   (save-excursion
+                     (when whole-buffer (deactivate-mark))
+                     (org-export-as backend subtreep nil t my/org-copy-rich-export-options))))
+         (html (string-trim (funcall export 'html)))
+         (text (string-trim (funcall export 'md))))
+    (when (string-empty-p text) (user-error "Nothing to copy"))
+    (unless (zerop (call-process "copyq" nil nil nil "write" "text/html" html "text/plain" text))
+      (user-error "copyq failed; is the server running? (copyq --start-server)"))
+    (call-process "copyq" nil nil nil "select" "0")
+    (deactivate-mark)
+    (message "Copied %s: HTML %d B + text %d B%s" scope (string-bytes html) (string-bytes text)
+             (if (string-match-p "<table" html) " — has a table, Slack will not render it" ""))))
+
+(with-eval-after-load 'org
+  (define-key org-mode-map (kbd "C-z S") #'my/org-copy-as-rich-text))
+#+end_src
 
 *** markdown / plantuml
 
@@ -1710,7 +1831,10 @@ With prefix ARG, replace the converted text in place instead of copying it."
 *** org-qa-walk
 
 #+begin_src emacs-lisp
-(load "~/.emacs.d/org-qa-walk/org-qa-walk.el")
+(use-package org-qa-walk
+  :ensure nil
+  :load-path (lambda () (my/own-package "org-qa-walk"))
+  :demand t)
 #+end_src
 
 #+RESULTS:
@@ -1721,7 +1845,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 #+begin_src emacs-lisp
 (use-package okorg2slides
   :ensure nil
-  :load-path "~/.emacs.d/okorg2slides"
+  :load-path (lambda () (my/own-package "okorg2slides"))
   :after org
   :demand t)
 #+end_src
@@ -1737,10 +1861,48 @@ With prefix ARG, replace the converted text in place instead of copying it."
    #+begin_src emacs-lisp :results output none
    (use-package org2docx
      :ensure nil
-     :load-path "~/.emacs.d/org2docx"
+     :load-path (lambda () (my/own-package "org2docx"))
      :after org
      :demand t
+     ;; System Python explicitly: a project venv first on PATH has no LibreOffice `uno',
+     ;; and without it the table of contents stays empty.
+     :custom (org2docx-python "/usr/bin/python")
      :commands (org2docx-export my/org2docx-export))
+   #+end_src
+
+*** org-browser-run (run an org heading as a task in the browser)
+
+   Runs the heading at point as a browser task: the subtree goes to a headless ~claude -p~ whose only tools are
+   chrome-devtools-mcp attached to Google Chrome on CDP port 9222; the agent finds the open tab whose URL matches the
+   ~BROWSER_URL~ property and replies to a comment thread or applies a «Шукати/Було/Стало» edit there.
+   Code: [[file:org-browser-run/org-browser-run.el][org-browser-run/org-browser-run.el]], agent instructions:
+   [[file:org-browser-run/agent-prompt.md][org-browser-run/agent-prompt.md]], skill notes:
+   [[file:~/.claude/skills/org-browser-run/SKILL.md][~/.claude/skills/org-browser-run/SKILL.md]].
+
+   - ~C-c n c~ starts Google Chrome with remote debugging and a dedicated profile =~/.cache/org-browser-run/profile=
+     (Chromium 136+ refuses remote debugging on the default profile); log into Google there once.
+   - ~C-c n l~ /locate/: only finds the place (opens the comment thread or highlights the text), types nothing.
+   - ~C-c n s~ /stage/: prepares the action and stops before the final click (reply typed but not sent, Find and
+     Replace filled but nothing replaced).
+   - ~C-c n S~ /submit/: same, including the final click; asks for confirmation.
+   - ~C-c n k~ stops the run.  Progress: buffer =*org-browser-run*=; outcome: =:BROWSER_STATUS:= and a
+     =:BROWSER_LOG:= drawer in the heading.
+   - In the org file: =#+PROPERTY: BROWSER_URL https://docs.google.com/document/d/<ID>/edit=; per-heading extra
+     instruction in =:BROWSER_NOTE:=; the key for finding the place in =:BROWSER_LOCATOR:=
+     (a quote from the customer's comment, or the exact text to change).
+
+   #+begin_src emacs-lisp :results output none
+   ;; `load', not `require': re-evaluating this block always picks up the current code.
+   (load (expand-file-name "org-browser-run.el" (my/own-package "org-browser-run")))
+   (setq org-browser-run-dir "~/.emacs.d/org-browser-run/"
+         org-browser-run-chrome-program "google-chrome-stable"
+         org-browser-run-model "sonnet")
+   (with-eval-after-load 'org
+     (define-key org-mode-map (kbd "C-c n c") #'org-browser-run-start-chrome)
+     (define-key org-mode-map (kbd "C-c n l") #'org-browser-run-locate)
+     (define-key org-mode-map (kbd "C-c n s") #'org-browser-run-stage)
+     (define-key org-mode-map (kbd "C-c n S") #'org-browser-run-submit)
+     (define-key org-mode-map (kbd "C-c n k") #'org-browser-run-kill))
    #+end_src
 
 *** ob-mongo
@@ -2293,22 +2455,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 #+RESULTS:
 
-*** COMMENT org-gtasks
-
-    #+begin_src emacs-lisp :results output none
-    (add-to-list 'load-path "~/.emacs.d/lisp/org-gtasks/")
-    (use-package request-deferred)
-    (require 'org-gtasks)
-     #+end_src
-
-     #+RESULTS:
-     : org-gtasks
-
- ;; (org-gtasks-get-refresh-token (org-gtasks-find-account-by-name "avkoval"))
-
 *** ok-gtasks
     #+begin_src emacs-lisp
-    (add-to-list 'load-path "~/.emacs.d/ok-gtasks/")
+    (add-to-list 'load-path (my/own-package "ok-gtasks"))
     (require 'ok-gtasks)
 
     (global-set-key (kbd "C-c s-f") 'ok-gtasks-pull)
@@ -4906,7 +5055,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+begin_src emacs-lisp :results output none
    (setq auth-sources '("~/.authinfo.gpg"))
    (setq youtrack-host "youtrack.example.com")
-   (load "~/.emacs.d/youtrack/youtrack.el")
+   (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
    (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
    (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
    (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
@@ -5252,6 +5401,57 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      (global-set-key (kbd "C-z D i") #'my/drawio-insert-org-link)
    #+end_src
 
+** d2
+
+   [[https://d2lang.com][D2]] is a text diagram language (like PlantUML, with automatic layout). Two packages:
+
+   - [[https://github.com/chaploud/d2-ts-mode][d2-ts-mode]]: tree-sitter major mode for =.d2= files (Emacs 30+). Replaces the older
+     regex-based ~d2-mode~, which is therefore not installed.
+   - [[https://github.com/xcapaldi/ob-d2][ob-d2]]: ~#+begin_src d2 :file diagram.svg~ blocks in Org.
+
+   Prerequisite: the ~d2~ CLI. The tree-sitter grammar ([[https://github.com/ravsii/tree-sitter-d2][ravsii/tree-sitter-d2]]) is
+   built automatically the first time a =.d2= file is opened (needs a C compiler); rebuild with
+   ~M-x d2-ts-mode-reinstall-grammar~.
+
+   #+begin_src sh :eval no
+     sudo pacman -S d2
+   #+end_src
+
+   Keys in a =.d2= buffer:
+
+   | ~C-c C-c~ | compile the file to SVG/PNG/PDF (~d2-ts-mode-output-format~) |
+   | ~C-c C-b~ | compile the buffer                                         |
+   | ~C-c C-r~ | compile the region                                         |
+   | ~C-c C-p~ | image preview in a side window, refreshed on save          |
+   | ~C-c C-w~ | ~d2 --watch~ live reload; ~C-c C-q~ stops it                |
+
+   In Org:
+
+   #+begin_src org :eval no
+     ,#+begin_src d2 :file images/flow.svg :flags --layout elk
+     user -> api: request
+     api -> db: query
+     ,#+end_src
+   #+end_src
+
+   ~C-c C-c~ on the block renders it; ~C-c '~ edits it in ~d2-ts-mode~ (via ~org-src-lang-modes~).
+
+   #+begin_src emacs-lisp :results output none
+   (use-package d2-ts-mode
+     :mode "\\.d2\\'"
+     :custom
+     (d2-ts-mode-output-format "svg"))
+
+   (use-package ob-d2
+     :after org
+     :config
+     (setq ob-d2-command "d2")
+     (setq d2-flags (list "--layout" "elk" "--theme" "200"))
+     (add-to-list 'org-src-lang-modes '("d2" . d2-ts))
+     (org-babel-do-load-languages 'org-babel-load-languages
+                                  (append org-babel-load-languages '((d2 . t)))))
+   #+end_src
+
 ** el-search
 
    #+begin_src emacs-lisp
@@ -5535,22 +5735,28 @@ Format: \"/full/path/file.el:L42\"."
      expression over the characters ~:digt~ and matches zero of them, so it never
      constrained anything.)
 
+     The path is tried relative to the current buffer's directory first, then to the projectile root.
+
+     In *org files* do not use this form for evidence: write org links with a line number instead,
+     =[[file:refs/my-project/addons/x.py::42][addons/x.py:L42]]= (a number after =::= is an exact line, text there would be
+     a content search).  They are relative to the org file, open with =C-c C-o=, and export as links.  Sources outside
+     the project live in a =refs/= folder next to the org file: symlinks to the checkouts
+     (=ln -sfn /abs/checkout refs/<repo>=) plus =.docx= sources converted once with =pandoc -t plain --wrap=none= so
+     cited line numbers stay fixed.  The ="path:LNN"= form below stays for code comments, Markdown and chat.
+     Write-up: [[file:org-browser-run/README.md]], section "Evidence references".
+
      #+begin_src emacs-lisp
      (defun my-open-projectile-file-on-line-n (locator)
-       ;; (interactive)
-        (let* ((project-root (expand-file-name (projectile-project-root)))
-               (filename (car (split-string locator ":L")))
-               (line-no (car (cdr (split-string locator ":L"))))
-               (full-filename (concat project-root filename))
-               )
-          (message (concat "Project root: " project-root))
-          (message (concat "Filename: " filename " line " line-no))
-          (message (concat "Filename: " full-filename))
-          (find-file full-filename)
-          (goto-char (point-min)) (forward-line (- (string-to-number line-no) 1))
-        )
-
-       )
+       (let* ((parts (split-string locator ":L"))
+              (filename (car parts))
+              (line-no (string-to-number (cadr parts)))
+              (local (expand-file-name filename default-directory))
+              (full-filename (if (or (file-exists-p local) (not (projectile-project-root)))
+                                 local
+                               (expand-file-name filename (projectile-project-root)))))
+         (find-file full-filename)
+         (goto-char (point-min))
+         (forward-line (1- line-no))))
      ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
      (defil my-projectile-file-locator "\"" "\"" "\\`[^/].*?:L[[:digit:]]+\\'" 'my-open-projectile-file-on-line-n)
      #+end_src
