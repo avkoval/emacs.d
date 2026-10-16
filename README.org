@@ -7773,7 +7773,10 @@ on Linux the stock =browse-url= default is kept.
         browse-url-generic-args '("-a" "Vivaldi")))
 #+end_src
 
-* Small emacs functions of mine
+* My functions
+
+  Small helper commands.
+
 ** execute thunar here
 
    #+begin_src emacs-lisp
