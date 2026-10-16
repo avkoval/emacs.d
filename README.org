@@ -7114,7 +7114,10 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
  #+end_src
 
-* Emacs tools and minor modes
+* Integrations
+
+  Mail, passwords, PDFs, issue tracking, Hyperbole links and other external tools.
+
 ** COMMENT elfeed
 
    #+begin_src emacs-lisp
@@ -7756,6 +7759,20 @@ Format: \"/full/path/file.el:L42\"."
 
   #+RESULTS:
 
+** External browser
+
+Links opened from Emacs always go to Vivaldi, regardless of the macOS default
+browser.  The system default has to be flipped to Safari for the VPN tunnel
+(=defbrowser= toggles it), and Emacs should not follow it there.  macOS only —
+on Linux the stock =browse-url= default is kept.
+
+#+begin_src emacs-lisp
+(when (eq system-type 'darwin)
+  (setq browse-url-browser-function #'browse-url-generic
+        browse-url-generic-program "open"
+        browse-url-generic-args '("-a" "Vivaldi")))
+#+end_src
+
 * Small emacs functions of mine
 ** execute thunar here
 
@@ -7792,17 +7809,3 @@ Format: \"/full/path/file.el:L42\"."
 
 #+RESULTS:
 : bc-on-region
-
-* External browser
-
-Links opened from Emacs always go to Vivaldi, regardless of the macOS default
-browser.  The system default has to be flipped to Safari for the VPN tunnel
-(=defbrowser= toggles it), and Emacs should not follow it there.  macOS only —
-on Linux the stock =browse-url= default is kept.
-
-#+begin_src emacs-lisp
-(when (eq system-type 'darwin)
-  (setq browse-url-browser-function #'browse-url-generic
-        browse-url-generic-program "open"
-        browse-url-generic-args '("-a" "Vivaldi")))
-#+end_src
