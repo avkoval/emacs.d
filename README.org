@@ -2667,6 +2667,305 @@ moving through the list — the chosen theme is applied only on RET."
    #+RESULTS:
    : my-theme-looper-pick
 
+* Editing
+
+  Text manipulation, snippets, bookmarks and annotations.
+
+** camel case
+
+   #+begin_src emacs-lisp
+   (use-package string-inflection)
+   (global-set-key (kbd "C-c _") 'string-inflection-cycle)
+   ;; (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
+   ;; (global-set-key (kbd "C-c L") 'string-inflection-lower-camelcase)  ;; Force to lowerCamelCase
+   ;; (global-set-key (kbd "C-c J") 'string-inflection-java-style-cycle) ;; Cycl
+   #+end_src
+
+   #+RESULTS:
+   : string-inflection-cycle
+
+** annotate-mode
+   #+begin_src emacs-lisp
+     (use-package annotate
+       :defer t
+       :custom
+       (annotate-diff-export-options "-c")
+       :bind (
+	      ("\C-cma" . annotate-mode)
+	      ))
+   #+end_src
+
+** expand-region
+
+   Expand region.
+
+   #+begin_src emacs-lisp
+     (use-package expand-region
+       :bind (
+	      ("C-;" . er/expand-region)
+	      ("C-'" . er/mark-inside-quotes)
+	      ))
+
+     (defun tree-sitter-mark-bigger-node ()
+       (interactive)
+       (let* ((p (point))
+	      (m (or (mark) p))
+	      (beg (min p m))
+	      (end (max p m))
+	      (root (ts-root-node tree-sitter-tree))
+	      (node (ts-get-descendant-for-position-range root beg end))
+	      (node-beg (ts-node-start-position node))
+	      (node-end (ts-node-end-position node)))
+	 ;; Node fits the region exactly. Try its parent node instead.
+	 (when (and (= beg node-beg) (= end node-end))
+	   (when-let ((node (ts-get-parent node)))
+	     (setq node-beg (ts-node-start-position node)
+		   node-end (ts-node-end-position node))))
+	 (set-mark node-end)
+	 (goto-char node-beg)))
+
+     ;; FIXME
+     ;; (setq er/try-expand-list (append er/try-expand-list
+     ;; 				 '(tree-sitter-mark-bigger-node)))
+   #+end_src
+
+** multiple-cursors
+   #+begin_src emacs-lisp
+
+   (use-package multiple-cursors
+     ;; :bind (
+     ;; ("C-z c e" . mc/edit-lines)
+     ;; ("C-z c *" . mc/mark-all-like-this)
+     ;; ("s-." . mc/mark-next-like-this)
+     ;; ("s-," . mc/mark-previous-like-this)
+     ;; )
+     )
+   (global-set-key (kbd "C-z c e") 'mc/edit-lines)
+   (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
+   (global-set-key (kbd "C-s-.") 'mc/mark-next-like-this)
+   (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
+   #+end_src
+
+** hl-todo
+   :LOGBOOK:
+   - State "TODO"       from "TODO"       [2026-10-04 Sun 15:45]
+   - State "TODO"       from              [2026-10-04 Sun 15:45]
+   :END:
+
+   Highlight TODO, FIXME, etc faces
+
+   #+begin_src emacs-lisp
+   (use-package hl-todo
+     :custom
+     (hl-todo-keyword-faces
+      '(("TODO" . "#dc752f") ("NEXT" . "#dc752f") ("THEM" . "#2d9574")
+        ("PROG" . "#3a81c3") ("OKAY" . "#3a81c3") ("DONT" . "#f2241f")
+        ("FAIL" . "#f2241f") ("DONE" . "#42ae2c") ("NOTE" . "#b1951d")
+        ("KLUDGE" . "#b1951d") ("HACK" . "#b1951d") ("TEMP" . "#b1951d")
+        ("FIXME" . "#dc752f") ("XXX+" . "#dc752f")
+        ("\\?\\?\\?+" . "#dc752f")))
+     :config
+     (global-hl-todo-mode)
+     )
+   (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
+   #+end_src
+
+** shrink-whitespace
+   #+begin_src emacs-lisp
+     (use-package shrink-whitespace
+       :bind (
+	      ("M-\\" . shrink-whitespace)
+	      ))
+   #+end_src
+
+** yasnippet
+
+   Snippets for various languages
+   #+begin_src emacs-lisp
+     (use-package yasnippet)
+     (yas-global-mode 1)
+   #+end_src
+
+** Duplicate line
+   I like this variation from
+   http://stackoverflow.com/questions/88399/how-do-i-duplicate-a-whole-line-in-emacs
+   because: it does not uses kill ring
+   #+begin_src emacs-lisp
+     (defun jr-duplicate-line ()
+       "EASY"
+       (interactive)
+       (save-excursion
+	 (let ((line-text (buffer-substring-no-properties
+			   (line-beginning-position)
+			   (line-end-position))))
+	   (move-end-of-line 1)
+	   (newline)
+	   (insert line-text))))
+
+     (global-set-key [(control =)] 'jr-duplicate-line) ;; Ctrl+
+   #+end_src
+
+** easy-kill
+
+ #+begin_src emacs-lisp
+ (use-package easy-kill
+   :ensure t
+   :config
+   (global-set-key [remap kill-ring-save] #'easy-kill)
+   (global-set-key [remap mark-sexp] #'easy-mark))
+ #+end_src
+
+** bm - bookmarks
+   #+begin_src emacs-lisp
+   (use-package bm
+   :custom
+   (bm-cycle-all-buffers t)
+   :bind (
+   ("C-z b" . bm-toggle)
+   ("C-z <up>" . bm-previous)
+   ("C-z C-p" . bm-previous)
+   ("C-z <down>" . bm-next)
+   ("C-z C-n" . bm-next)
+   ("C-z / 1" . my-bm-save-first-as-org-link)
+   ("C-z / /" . my-bm-save-next-as-org-link)
+   ("C-z / `" . my-bm-restore-bm)
+   ;; ([M-f1] . bm-show-all)
+   ("C-z <SPC>" . bm-show-all)
+   )
+   ;; :config
+   ;; (setq-default bm-buffer-persistence t)
+   )
+   #+end_src
+
+** ident space
+
+   also read: https://stackoverflow.com/questions/27731433/setting-per-project-indent-variables-in-emacs
+
+   #+begin_src emacs-lisp
+   (setq-default indent-tabs-mode nil)
+   #+end_src
+
+** move-text
+
+   #+begin_src emacs-lisp
+       (use-package move-text
+         :ensure t
+         :bind (
+                ("M-<up>" . move-text-up)
+                ("M-<down>" . move-text-down)
+                )
+         )
+
+   #+end_src
+
+** COMMENT combobulate
+
+   #+begin_src emacs-lisp
+   (use-package combobulate
+       :preface
+       ;; You can customize Combobulate's key prefix here.
+       ;; Note that you may have to restart Emacs for this to take effect!
+       (setq combobulate-key-prefix "C-z .")
+
+       ;; Optional, but recommended.
+       ;;
+       ;; You can manually enable Combobulate with `M-x
+       ;; combobulate-mode'.
+       :hook
+         ((python-ts-mode . combobulate-mode)
+          (js-ts-mode . combobulate-mode)
+          (html-ts-mode . combobulate-mode)
+          (css-ts-mode . combobulate-mode)
+          (yaml-ts-mode . combobulate-mode)
+          (typescript-ts-mode . combobulate-mode)
+          (json-ts-mode . combobulate-mode)
+          (tsx-ts-mode . combobulate-mode))
+       ;; Amend this to the directory where you keep Combobulate's source
+       ;; code.
+       :load-path "~/.emacs.d/lisp/combobulate/"
+       )
+   #+end_src
+
+** COMMENT outline-ident
+
+   #+begin_src emacs-lisp
+   (use-package outline-indent
+     :ensure t
+     :straight (outline-indent
+                :type git
+                :host github
+                :repo "jamescherti/outline-indent.el")
+     :custom
+     (outline-indent-ellipsis " ▼ "))
+   #+end_src
+
+** ident-tools
+
+
+
+   #+begin_src emacs-lisp
+     (use-package indent-tools
+           :bind (
+              ("C-z ." . indent-tools-hydra/body)
+       ))
+   #+end_src
+
+   #+RESULTS:
+   : indent-tools-hydra/body
+
+** COMMENT grammarly
+
+   #+begin_src emacs-lisp
+       (use-package grammarly
+         )
+       (grammarly-load-from-authinfo)
+
+     (use-package lsp-grammarly
+       :ensure t
+       :hook (text-mode . (lambda ()
+                            (require 'lsp-grammarly)
+                            (lsp))))  ; or lsp-deferred
+
+
+   #+end_src
+
+
+   #+RESULTS:
+
+** yank with indent
+
+   Often needed, especially in org mode.
+   https://emacs.stackexchange.com/questions/31646/how-to-paste-with-indent
+
+   #+begin_src emacs-lisp
+   (defun yank-with-indent ()
+     (interactive)
+     (let ((indent
+            (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+       (message indent)
+       (yank)
+       (save-excursion
+         (save-restriction
+           (narrow-to-region (mark t) (point))
+           (pop-to-mark-command)
+           (replace-string "\n" (concat "\n" indent))
+           (widen)))))
+
+   (global-set-key (kbd "C-z C-y") 'yank-with-indent)
+   #+end_src
+
+   #+RESULTS:
+   : yank-with-indent
+
+** uniline (draw unicode)
+
+   https://github.com/tbanel/uniline/blob/main/README.org
+   #+begin_src emacs-lisp
+   (use-package uniline)
+   #+end_src
+
+   #+RESULTS:
+
 * Core settings
 
   Settings that lived only in Customize until October 2026 and have no package section of
@@ -2754,19 +3053,6 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 
 * Emacs tools and minor modes
-** camel case
-
-   #+begin_src emacs-lisp
-   (use-package string-inflection)
-   (global-set-key (kbd "C-c _") 'string-inflection-cycle)
-   ;; (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
-   ;; (global-set-key (kbd "C-c L") 'string-inflection-lower-camelcase)  ;; Force to lowerCamelCase
-   ;; (global-set-key (kbd "C-c J") 'string-inflection-java-style-cycle) ;; Cycl
-   #+end_src
-
-   #+RESULTS:
-   : string-inflection-cycle
-
 ** org-mode
 *** org-bullets
     #+begin_src emacs-lisp
@@ -4411,17 +4697,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+end_src
 
-** annotate-mode
-   #+begin_src emacs-lisp
-     (use-package annotate
-       :defer t
-       :custom
-       (annotate-diff-export-options "-c")
-       :bind (
-	      ("\C-cma" . annotate-mode)
-	      ))
-   #+end_src
-
 ** COMMENT elfeed
 
    #+begin_src emacs-lisp
@@ -4452,40 +4727,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+begin_src emacs-lisp
      (use-package poetry
        :ensure t)
-   #+end_src
-
-** expand-region
-
-   Expand region.
-
-   #+begin_src emacs-lisp
-     (use-package expand-region
-       :bind (
-	      ("C-;" . er/expand-region)
-	      ("C-'" . er/mark-inside-quotes)
-	      ))
-
-     (defun tree-sitter-mark-bigger-node ()
-       (interactive)
-       (let* ((p (point))
-	      (m (or (mark) p))
-	      (beg (min p m))
-	      (end (max p m))
-	      (root (ts-root-node tree-sitter-tree))
-	      (node (ts-get-descendant-for-position-range root beg end))
-	      (node-beg (ts-node-start-position node))
-	      (node-end (ts-node-end-position node)))
-	 ;; Node fits the region exactly. Try its parent node instead.
-	 (when (and (= beg node-beg) (= end node-end))
-	   (when-let ((node (ts-get-parent node)))
-	     (setq node-beg (ts-node-start-position node)
-		   node-end (ts-node-end-position node))))
-	 (set-mark node-end)
-	 (goto-char node-beg)))
-
-     ;; FIXME
-     ;; (setq er/try-expand-list (append er/try-expand-list
-     ;; 				 '(tree-sitter-mark-bigger-node)))
    #+end_src
 
 ** git & magit & github
@@ -4582,47 +4823,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        (define-key code-review-mode-map (kbd "C-c C-n") 'code-review-comment-jump-next)
        (define-key code-review-mode-map (kbd "C-c C-p") 'code-review-comment-jump-previous))
      #+end_src
-
-** multiple-cursors
-   #+begin_src emacs-lisp
-
-   (use-package multiple-cursors
-     ;; :bind (
-     ;; ("C-z c e" . mc/edit-lines)
-     ;; ("C-z c *" . mc/mark-all-like-this)
-     ;; ("s-." . mc/mark-next-like-this)
-     ;; ("s-," . mc/mark-previous-like-this)
-     ;; )
-     )
-   (global-set-key (kbd "C-z c e") 'mc/edit-lines)
-   (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
-   (global-set-key (kbd "C-s-.") 'mc/mark-next-like-this)
-   (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
-   #+end_src
-
-** hl-todo
-   :LOGBOOK:
-   - State "TODO"       from "TODO"       [2026-10-04 Sun 15:45]
-   - State "TODO"       from              [2026-10-04 Sun 15:45]
-   :END:
-
-   Highlight TODO, FIXME, etc faces
-
-   #+begin_src emacs-lisp
-   (use-package hl-todo
-     :custom
-     (hl-todo-keyword-faces
-      '(("TODO" . "#dc752f") ("NEXT" . "#dc752f") ("THEM" . "#2d9574")
-        ("PROG" . "#3a81c3") ("OKAY" . "#3a81c3") ("DONT" . "#f2241f")
-        ("FAIL" . "#f2241f") ("DONE" . "#42ae2c") ("NOTE" . "#b1951d")
-        ("KLUDGE" . "#b1951d") ("HACK" . "#b1951d") ("TEMP" . "#b1951d")
-        ("FIXME" . "#dc752f") ("XXX+" . "#dc752f")
-        ("\\?\\?\\?+" . "#dc752f")))
-     :config
-     (global-hl-todo-mode)
-     )
-   (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
-   #+end_src
 
 ** ledger
    #+begin_src emacs-lisp
@@ -4849,22 +5049,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      ;; Set lastpass user
      ;; Enable lastpass custom auth-source
      (lastpass-auth-source-enable))
-   #+end_src
-
-** shrink-whitespace
-   #+begin_src emacs-lisp
-     (use-package shrink-whitespace
-       :bind (
-	      ("M-\\" . shrink-whitespace)
-	      ))
-   #+end_src
-
-** yasnippet
-
-   Snippets for various languages
-   #+begin_src emacs-lisp
-     (use-package yasnippet)
-     (yas-global-mode 1)
    #+end_src
 
 ** ztree
@@ -5098,25 +5282,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (use-package htmlize)
    #+end_src
 
-** Duplicate line
-   I like this variation from
-   http://stackoverflow.com/questions/88399/how-do-i-duplicate-a-whole-line-in-emacs
-   because: it does not uses kill ring
-   #+begin_src emacs-lisp
-     (defun jr-duplicate-line ()
-       "EASY"
-       (interactive)
-       (save-excursion
-	 (let ((line-text (buffer-substring-no-properties
-			   (line-beginning-position)
-			   (line-end-position))))
-	   (move-end-of-line 1)
-	   (newline)
-	   (insert line-text))))
-
-     (global-set-key [(control =)] 'jr-duplicate-line) ;; Ctrl+
-   #+end_src
-
 ** dap mode
 
    https://github.com/emacs-lsp/dap-mode
@@ -5133,38 +5298,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+begin_src emacs-lisp
 
-   #+end_src
-
-** easy-kill
-
- #+begin_src emacs-lisp
- (use-package easy-kill
-   :ensure t
-   :config
-   (global-set-key [remap kill-ring-save] #'easy-kill)
-   (global-set-key [remap mark-sexp] #'easy-mark))
- #+end_src
-
-** bm - bookmarks
-   #+begin_src emacs-lisp
-   (use-package bm
-   :custom
-   (bm-cycle-all-buffers t)
-   :bind (
-   ("C-z b" . bm-toggle)
-   ("C-z <up>" . bm-previous)
-   ("C-z C-p" . bm-previous)
-   ("C-z <down>" . bm-next)
-   ("C-z C-n" . bm-next)
-   ("C-z / 1" . my-bm-save-first-as-org-link)
-   ("C-z / /" . my-bm-save-next-as-org-link)
-   ("C-z / `" . my-bm-restore-bm)
-   ;; ([M-f1] . bm-show-all)
-   ("C-z <SPC>" . bm-show-all)
-   )
-   ;; :config
-   ;; (setq-default bm-buffer-persistence t)
-   )
    #+end_src
 
 ** COMMENT lsp-bridge
@@ -5395,14 +5528,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+end_src
 
-** ident space
-
-   also read: https://stackoverflow.com/questions/27731433/setting-per-project-indent-variables-in-emacs
-
-   #+begin_src emacs-lisp
-   (setq-default indent-tabs-mode nil)
-   #+end_src
-
 ** COMMENT python auto virtualenv for python-ts-mode
 
    #+begin_src emacs-lisp
@@ -5483,47 +5608,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      ;;    :url "https://github.com/positron-solutions/dslide.git"))
    #+end_src
 
-** move-text
-
-   #+begin_src emacs-lisp
-       (use-package move-text
-         :ensure t
-         :bind (
-                ("M-<up>" . move-text-up)
-                ("M-<down>" . move-text-down)
-                )
-         )
-
-   #+end_src
-
-** COMMENT combobulate
-
-   #+begin_src emacs-lisp
-   (use-package combobulate
-       :preface
-       ;; You can customize Combobulate's key prefix here.
-       ;; Note that you may have to restart Emacs for this to take effect!
-       (setq combobulate-key-prefix "C-z .")
-
-       ;; Optional, but recommended.
-       ;;
-       ;; You can manually enable Combobulate with `M-x
-       ;; combobulate-mode'.
-       :hook
-         ((python-ts-mode . combobulate-mode)
-          (js-ts-mode . combobulate-mode)
-          (html-ts-mode . combobulate-mode)
-          (css-ts-mode . combobulate-mode)
-          (yaml-ts-mode . combobulate-mode)
-          (typescript-ts-mode . combobulate-mode)
-          (json-ts-mode . combobulate-mode)
-          (tsx-ts-mode . combobulate-mode))
-       ;; Amend this to the directory where you keep Combobulate's source
-       ;; code.
-       :load-path "~/.emacs.d/lisp/combobulate/"
-       )
-   #+end_src
-
 ** gptel
 
 #+begin_src emacs-lisp
@@ -5552,19 +5636,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
    (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
    (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
-   #+end_src
-
-** COMMENT outline-ident
-
-   #+begin_src emacs-lisp
-   (use-package outline-indent
-     :ensure t
-     :straight (outline-indent
-                :type git
-                :host github
-                :repo "jamescherti/outline-indent.el")
-     :custom
-     (outline-indent-ellipsis " ▼ "))
    #+end_src
 
 ** org-pdftools
@@ -5983,64 +6054,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 
    #+RESULTS:
-
-** ident-tools
-
-
-
-   #+begin_src emacs-lisp
-     (use-package indent-tools
-           :bind (
-              ("C-z ." . indent-tools-hydra/body)
-       ))
-   #+end_src
-
-   #+RESULTS:
-   : indent-tools-hydra/body
-
-** COMMENT grammarly
-
-   #+begin_src emacs-lisp
-       (use-package grammarly
-         )
-       (grammarly-load-from-authinfo)
-
-     (use-package lsp-grammarly
-       :ensure t
-       :hook (text-mode . (lambda ()
-                            (require 'lsp-grammarly)
-                            (lsp))))  ; or lsp-deferred
-
-
-   #+end_src
-
-
-   #+RESULTS:
-
-** yank with indent
-
-   Often needed, especially in org mode.
-   https://emacs.stackexchange.com/questions/31646/how-to-paste-with-indent
-
-   #+begin_src emacs-lisp
-   (defun yank-with-indent ()
-     (interactive)
-     (let ((indent
-            (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
-       (message indent)
-       (yank)
-       (save-excursion
-         (save-restriction
-           (narrow-to-region (mark t) (point))
-           (pop-to-mark-command)
-           (replace-string "\n" (concat "\n" indent))
-           (widen)))))
-
-   (global-set-key (kbd "C-z C-y") 'yank-with-indent)
-   #+end_src
-
-   #+RESULTS:
-   : yank-with-indent
 
 ** openwith
 
@@ -6485,15 +6498,6 @@ Format: \"/full/path/file.el:L42\"."
   #+end_src
 
   #+RESULTS:
-
-** uniline (draw unicode)
-
-   https://github.com/tbanel/uniline/blob/main/README.org
-   #+begin_src emacs-lisp
-   (use-package uniline)
-   #+end_src
-
-   #+RESULTS:
 
 ** greger
 
