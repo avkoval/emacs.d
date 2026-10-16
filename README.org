@@ -6602,244 +6602,9 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
 
-* Emacs tools and minor modes
-** COMMENT elfeed
+* Terminals and AI tools
 
-   #+begin_src emacs-lisp
-     (defalias 'elfeed-mark-read
-       (kmacro "<return> q"))
-
-     (use-package elfeed
-       :bind (:map elfeed-search-mode-map
-		   ("r" . elfeed-mark-read)
-		   ("`" . elfeed-mark-read)
-		   )
-       )
-   #+end_src
-
-** ledger
-   #+begin_src emacs-lisp
-     (use-package ledger-mode
-       :init
-       (magit-todos-mode)
-       )
-   #+end_src
-
-** pdf-tools
-
-   #+begin_src emacs-lisp
-     (use-package pdf-tools
-       :custom
-       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
-       :config
-       (pdf-tools-install)
-       )
-   #+end_src
-
-** pass
-
-   #+begin_src emacs-lisp
-   (use-package pass)
-   #+end_src
-
-** Email support
-
-*** smtpmail
-
-    #+begin_src emacs-lisp
-      (use-package smtpmail-multi)
-    #+end_src
-
-*** notmuch
-    Email setup
-
-    #+begin_src emacs-lisp :results output replace
-      (use-package notmuch
-        :init
-        (progn
-          ;; (require 'org-notmuch)
-          (require 'org-notmuch)
-          (require 'notmuch-address)
-          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
-          )
-        :bind (
-               ("C-z z" . notmuch)
-               ("C-c C-o" . browse-url-at-point)
-               )
-        :config
-
-        (defun notmuch-show-tag-spam ()
-          "mark message as spam"
-          (interactive)
-          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-          (next-line)
-          )
-        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-        (defun notmuch-show-tag-deleted ()
-          "mark message as deleted"
-          (interactive)
-          (notmuch-search-tag '("+deleted" "-inbox")))
-
-        (defun notmuch-show-tag-read ()
-          "mark message as read"
-          (interactive)
-          (notmuch-search-tag '("-unread"))
-          (next-line)
-          )
-
-        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
-        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
-        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
-        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
-
-        )
-
-      (defun mg-notmuch-display-email-in-xwidget ()
-        "Display the HTML email content in xwidget-webkit.
-      This function requires the current MIME part to be of type
-      text/html. If the content is not HTML, it falls back to calling
-      `notmuch-show-view-part'.  Similarly, if xwidget support is
-      unavailable in the current Emacs build, it fallbacks to
-      `notmuch-show-view-part'."
-          (interactive)
-          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
-                    (is-html-mime (equal (caadr mime-part) "text/html"))
-                    (has-xwidget (featurep 'xwidget-internal)))
-                  (notmuch-show-apply-to-current-part-handle
-                   (lambda (handle)
-                       (let ((tempf (make-temp-file "notmuch"
-                                                    nil
-                                                    ".html"
-                                                    (with-current-buffer (car handle)
-                                                        (buffer-string)))))
-                           (xwidget-webkit-browse-url (concat "file://" tempf))
-                           (run-with-idle-timer 3 nil #'delete-file tempf))))
-              (notmuch-show-view-part)))
-
-
-
-
-
-      (defun notmuch-show-tag-spam ()
-        "mark message as spam"
-        (interactive)
-        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-        (next-line)
-        )
-      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-
-      (defun notmuch-show-tag-deleted ()
-        "mark message as deleted"
-        (interactive)
-        (notmuch-search-tag '("+deleted" "-inbox")))
-
-      (defun notmuch-show-tag-read ()
-        "mark message as read"
-        (interactive)
-        (notmuch-search-tag '("-unread"))
-        (next-line)
-
-        ;; Sign messages by default.
-        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
-
-        (custom-set-variables
-         '(notmuch-search-oldest-first nil)
-         '(notmuch-crypto-process-mime t)
-         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
-         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
-        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
-
-        (defun expand-only-unread-hook ()
-          "eexpand only recent unreads"
-          (interactive)
-          (let ((unread nil)
-                (open (notmuch-show-get-message-ids-for-open-messages)))
-            (notmuch-show-mapc (lambda ()
-        		         (when (member "unread" (notmuch-show-get-tags))
-        			   (setq unread t))))
-            (when unread
-              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
-                (notmuch-show-filter-thread "tag:unread")))))
-
-
-    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
-
-        )
-
-
-    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
-    #+end_src
-
-    #+RESULTS:
-
-
-     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
-     notmuch don't have this functionality by default, so I've monkey patched it here:
-
-     #+begin_src emacs-lisp
-       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
-         (let ((sender (notmuch-mua-prompt-for-sender)))
-	   ad-do-it))
-       (ad-activate 'notmuch-mua-reply)
-     #+end_src
-
-***** xwidget
-      :LOGBOOK:
-      - State "TODO"       from              [2025-08-18 Mon 11:35]
-      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
-      :END:
-
-      #+begin_src emacs-lisp
-
-      #+end_src
-
-      #+RESULTS:
-      : mg-notmuch-display-email-in-xwidget
-
-**** settings for notmuch-show
-
-     #+begin_src emacs-lisp
-     (defun my-notmuch-show-local-bindings ()
-       (interactive)
-       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
-
-     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
-     #+end_src
-
-** COMMENT lastpass
-
-   #+begin_src emacs-lisp
-   (use-package lastpass
-     :init
-     (setq lastpass-multifactor-use-passcode t)
-     :config
-     ;; Set lastpass user
-     ;; Enable lastpass custom auth-source
-     (lastpass-auth-source-enable))
-   #+end_src
-
-** ztree
-
-   #+begin_src emacs-lisp
-     (use-package ztree)
-     (defun ztree-do-dired ()
-       (interactive)
-       "Jump to dired in specified place of ZTree-dir"
-       (let* ((line (line-number-at-pos))
-	      (node (ztree-find-node-in-line line)))
-	 (when node
-	   (dired node))
-	 )
-       )
-     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
-					     ; (global-set-key [f5] 'ztree-dir)
-     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
-     (global-set-key (kbd "<C-f3>") 'ztree-side)
-     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
-
-     (fset 'ztree-side
-	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
-   #+end_src
+  Shells and terminal emulators, and the AI coding assistants that run in them.
 
 ** shells
 
@@ -6955,20 +6720,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
                         :key 'gptel-api-key-from-auth-source)))
 #+end_src
 
-** YouTrack
-
-   Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
-   submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
-
-   #+begin_src emacs-lisp
-   (setq youtrack-host "youtrack.example.com")
-   (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
-   (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
-   (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
-   (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
-   (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
-   #+end_src
-
 ** eat?
 
    #+begin_src emacs-lisp
@@ -7002,173 +6753,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
 
-** openwith
-
-  https://stackoverflow.com/questions/51006855/open-mp4-files-from-orgmode
-
-  #+begin_src emacs-lisp
-  (use-package openwith)
-  ;; (require 'openwith)
-  (openwith-mode t)
-  (setq openwith-associations '(("\\.mp4\\'" "mpv" (file))))
-  #+end_src
-
-** Copy file name to clipboard
-
-   #+begin_src emacs-lisp
-   (defun copy-file-name-to-clipboard ()
-     "Copy the current buffer file name to the clipboard."
-     (interactive)
-     (let ((filename (if (equal major-mode 'dired-mode)
-                         default-directory
-                       (buffer-file-name))))
-       (when filename
-         (kill-new filename)
-         (message "Copied buffer file name '%s' to the clipboard." filename))))
-
-   (defun my-insert-projectile-hyperbole-link ()
-     "Copy project-relative file name with line number to the clipboard.
-Format: \"relative/path/file.el:L42\"."
-     (interactive)
-     (let* ((project-root (expand-file-name (projectile-project-root)))
-            (current-realpath (shell-command-to-string (concat "realpath " (expand-file-name (buffer-file-name (window-buffer (minibuffer-selected-window)))))))
-            (project-relative-filename (string-trim-right (string-replace project-root "" current-realpath)))
-            (current-line-number (format-mode-line "%l"))
-            (result (concat "\"" project-relative-filename ":L" current-line-number "\"")))
-       (message (concat "Project file name: " result))
-       (kill-new result)))
-
-   (defun copy-file-name-with-line-to-clipboard ()
-     "Copy absolute file name with line number to the clipboard.
-Format: \"/full/path/file.el:L42\"."
-     (interactive)
-     (let ((filename (if (equal major-mode 'dired-mode)
-                         default-directory
-                       (buffer-file-name))))
-       (when filename
-         (let ((result (format "\"%s:L%d\"" filename (line-number-at-pos))))
-           (kill-new result)
-           (message "Copied '%s' to the clipboard." result)))))
-
-   (defun my-dired-copy-file-path ()
-     "Copy the absolute path of the file at point in dired to the clipboard."
-     (interactive)
-     (let ((filename (dired-get-filename nil t)))
-       (when filename
-         (kill-new filename)
-         (message "Copied '%s' to the clipboard." filename))))
-
-   (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
-   ;; was C-x <f2>, moved to free up f2 for `my-codex-list-sessions'
-   (global-set-key (kbd "C-x <f5>")  'my-insert-projectile-hyperbole-link)
-   (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
-   (with-eval-after-load 'dired
-     (define-key dired-mode-map (kbd "W") 'my-dired-copy-file-path))
-   #+end_src
-
-   #+RESULTS:
-   : my-dired-copy-file-path
-
-*** Hyperbole support
-
-    Now, that we are defined ~project filename pattern~ above, I want to quickly open it. Moreover, the following makes sense:
-
-**** Support for Django templates "some/path.html" ~->~ must link find template file among projectile files list
-     - [X] Standard ~FILE~ link with "folder/filename.ext:LXX" should work
-     - [X]
-
-     Looking at  https://www.youtube.com/watch?v=TQ_fG7b1iHI ...
-     Reading ~describe-function~ for ~defil.
-
-     #+begin_src emacs-lisp
-     (defalias 'my-open-template-file
-       (kmacro "M-x p r o j e c t i l e - f i n d - f i l e <return> C-y <tab>"))
-
-     (defun my-projectile-open-template-file (string)
-       (interactive)
-       (message string)
-       (kill-new string)
-       (my-open-template-file)
-       )
-
-     (defil my-projectile-template-file "\"" "\"" ".*?\.html" 'my-projectile-open-template-file)
-     (defil my-projectile-template-file2 "'" "'" ".*?\.html" 'my-projectile-open-template-file)
-     #+end_src
-
-     #+RESULTS:
-     : ibtypes::my-projectile-template-file2
-
-**** Standard ~FILE~ link with "folder/filename.ext:LXX" should work
-
-     Both this type and the absolute one below share the same ~"~ … ~"~
-     delimiters, so the TEXT-REGEXP is the only thing telling them apart — and
-     ~defil~ matches it with a plain ~string-match~, i.e. *unanchored*, against the
-     text between the delimiters.  An unanchored ~"/.*?:L…"~ therefore matches the
-     ~/~ *inside* ~folder/filename.ext:LXX~, so the absolute type (which comes
-     first in ~(htype:names 'ibtypes)~) swallowed every project-relative ref with
-     a directory component and passed it to ~find-file~ against the current
-     buffer's ~default-directory~ instead of the projectile root.
-
-     Hence ~\\`~ … ~\\'~ on both regexps: relative must *not* start with ~/~,
-     absolute must.  (~[[:digit:]]+~, not ~[:digit:]*~ — the latter is a bracket
-     expression over the characters ~:digt~ and matches zero of them, so it never
-     constrained anything.)
-
-     The path is tried relative to the current buffer's directory first, then to the projectile root.
-
-     In *org files* do not use this form for evidence: write org links with a line number instead,
-     =[[file:refs/my-project/addons/x.py::42][addons/x.py:L42]]= (a number after =::= is an exact line, text there would be
-     a content search).  They are relative to the org file, open with =C-c C-o=, and export as links.  Sources outside
-     the project live in a =refs/= folder next to the org file: symlinks to the checkouts
-     (=ln -sfn /abs/checkout refs/<repo>=) plus =.docx= sources converted once with =pandoc -t plain --wrap=none= so
-     cited line numbers stay fixed.  The ="path:LNN"= form below stays for code comments, Markdown and chat.
-     Write-up: [[file:org-browser-run/README.md]], section "Evidence references".
-
-     #+begin_src emacs-lisp
-     (defun my-open-projectile-file-on-line-n (locator)
-       (let* ((parts (split-string locator ":L"))
-              (filename (car parts))
-              (line-no (string-to-number (cadr parts)))
-              (local (expand-file-name filename default-directory))
-              (full-filename (if (or (file-exists-p local) (not (projectile-project-root)))
-                                 local
-                               (expand-file-name filename (projectile-project-root)))))
-         (find-file full-filename)
-         (goto-char (point-min))
-         (forward-line (1- line-no))))
-     ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
-     (defil my-projectile-file-locator "\"" "\"" "\\`[^/].*?:L[[:digit:]]+\\'" 'my-open-projectile-file-on-line-n)
-     #+end_src
-
-
-
-     #+RESULTS:
-     : ibtypes::my-projectile-file-locator
-
-**** Absolute file link with "/path/to/file.ext:LXX"
-     #+begin_src emacs-lisp
-     (defun my-open-absolute-file-on-line-n (locator)
-       (let* ((filename (car (split-string locator ":L")))
-              (line-no (car (cdr (split-string locator ":L")))))
-         (find-file filename)
-         (goto-char (point-min))
-         (forward-line (- (string-to-number line-no) 1))))
-
-     (defil my-absolute-file-locator "\"" "\"" "\\`/.*?:L[[:digit:]]+\\'" 'my-open-absolute-file-on-line-n)
-     #+end_src
-
-     #+RESULTS:
-     : ibtypes::my-absolute-file-locator
-
-**** TODO Support for [XX-NNNNN] Jira
-     :LOGBOOK:
-     - State "TODO"       from              [2025-03-11 Tue 19:15]
-     :END:
-
-     #+begin_src emacs-lisp
-
-     #+end_src
-
 ** Aidermacs
    https://github.com/MatthewZMD/aidermacs
 
@@ -7191,228 +6775,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : aidermacs-transient-menu
-
-** COMMENT Hubstaff
-
- #+begin_src emacs-lisp
-  (setq hubstaff-cli "~/Hubstaff/HubstaffCLI.bin.x86_64")
-  (setq hubstaff-project "218656")
-  (setq hubstaff-jira-task-regexps '("\\(FH-[[:digit:]]+\\)" "\\(MD-[[:digit:]]+\\)"))
-
-  (defun my/hubstaff-get-tasks-list (project-id)
-    (let* ((cmd (concat hubstaff-cli " tasks "  project-id)))
-      (message "%s" cmd)
-      (json-parse-string (shell-command-to-string cmd))
-      ))
-  ;; (my-hubstaff-get-tasks-list hubstaff-project)
-
-  (defun my/org-clock-current-jira-task-id ()
-    (let* ((my-org-clock-subject (prin1-to-string (org-clock-get-clock-string))))
-      (seq-some (lambda (jira-task-regex)
-                    (when (string-match jira-task-regex my-org-clock-subject)
-                      (substring my-org-clock-subject (match-beginning 1) (match-end 1))))
-                  hubstaff-jira-task-regexps)
-    ))
-  ;; (my/org-clock-current-jira-task-id)
-
-  (defun my/strip-text-properties(txt)
-    (set-text-properties 0 (length txt) nil txt)
-    txt)
-
-  (defun my/org-clock-current-jira-task-title ()
-    (my/strip-text-properties (org-clock-get-clock-string))
-    )
-  ;; (my/org-clock-current-jira-task-title)
-
-  (defun my/find-hubstaff-task-id-by-org-task-title (current-org-task-title)
-    (seq-some (lambda (hubstaff-task)
-                  (when (cl-search (gethash "summary" hubstaff-task) current-org-task-title)
-                    (gethash "id" hubstaff-task)))
-                (gethash "tasks" (my/hubstaff-get-tasks-list hubstaff-project)))
-    )
-  ;; (my/find-hubstaff-task-id-by-org-task-title (my/org-clock-current-jira-task-title))
-
-  (defun my/hubstaff-start-work-on (hubstaff-task-id)
-    (let* ((cmd (concat hubstaff-cli " start_task "  hubstaff-task-id)))
-      (message "%s" cmd)
-      (message "%s" (shell-command-to-string cmd))
-      ))
-
-  (defun my/org-get-current-property (property &optional inherit)
-    "Return the value of PROPERTY on the current Org heading.
-  PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
-  If INHERIT is non-nil, look up the property in parent headings."
-    (let* ((prop (if (symbolp property)
-                     (symbol-name property)
-                   property))
-           ;; passing nil for POM means “use (point)”
-           (value (org-entry-get nil prop inherit)))
-      ;; trim surrounding whitespace if you like
-      (and value (string-trim value))))
-
-  (defun my/get-current-hubstaff-task-id ()
-    (let* ((hubstaff-task-id (my/org-get-current-property 'HUBSTAFF_TASK_ID t)))
-      (if hubstaff-task-id
-          (string-to-number hubstaff-task-id)
-        nil
-        )
-    ))
-
- (defmacro when-not (condition &rest body)
-   "Execute BODY forms when CONDITION is nil."
-   `(when (not ,condition)
-      ,@body))
-
-  (defun my/maybe-start-hubstaff ()
-    "Start hubstaff if task title matches any of hubstaff"
-    (let* ((my-current-org-task-title (my/org-clock-current-jira-task-title))
-           (hubstaff-task-id-from-property (my/get-current-hubstaff-task-id))
-           (hubstaff-task-id (or hubstaff-task-id-from-property (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title))))
-      (if hubstaff-task-id
-          (progn
-            (when-not hubstaff-task-id-from-property (org-set-property "HUBSTAFF_TASK_ID" (number-to-string hubstaff-task-id)))
-            (my/hubstaff-start-work-on (number-to-string hubstaff-task-id)))
-        (message "Hubstaff task not found"))
-      )
-    )
-  ;; (my/maybe-start-hubstaff)
-
-  (defun my/hubstaff-stop ()
-    "Stop HubStaff timer"
-    (let* ((cmd (concat hubstaff-cli " stop")))
-        (message "%s" cmd)
-        (message "%s" (shell-command-to-string cmd))
-      ))
-  ;; (my/hubstaff-stop)
- #+end_src
-
- #+RESULTS:
- : my/hubstaff-stop
-
- #+end_src
-
- #+RESULTS:
-
-*** DONE COMMENT WIP on properties task id
-    CLOSED: [2025-05-03 Sat 15:30]
-     :PROPERTIES:
-     :HUBSTAFF_TASK_ID: 148067676
-     :END:
-     :LOGBOOK:
-     - State "DONE"       from              [2025-05-03 Sat 15:30]
-     CLOCK: [2025-05-03 Sat 15:02]--[2025-05-03 Sat 15:13] =>  0:11
-     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
-     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
-     :END:
-
-     #+begin_src emacs-lisp
-     (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title)
-     #+end_src
-
-**** DONE Idea (partly finished, enough for my work for next month)
-     CLOSED: [2025-05-03 Sat 15:30]
-     :LOGBOOK:
-     - State "DONE"       from              [2025-05-03 Sat 15:30]
-     CLOCK: [2025-05-03 Sat 14:38]--[2025-05-03 Sat 15:00] =>  0:22
-     :END:
-
- - [ ] +Get Jira tasks list from Hubstaff, show list choiice: add via helm or omni+
-   - [ ] +function to run hubstaff client and get tasks list+
-   - [ ] +function to show as a choice+
- - [ ] Find corresponding task from Jira and may be add feature/task id into title
-   - [ ] query jira fn
- - [X] Add hubstaff task id, jira task id as properties
- - [ ] Make functions to fetch property of current task to use with git/
- - [X] Use property when
-
-**** Helpers
- #+begin_src emacs-lisp
- (defun my/org-get-current-property (property &optional inherit)
-   "Return the value of PROPERTY on the current Org heading.
- PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
- If INHERIT is non-nil, look up the property in parent headings."
-   (let* ((prop (if (symbolp property)
-                    (symbol-name property)
-                  property))
-          ;; passing nil for POM means “use (point)”
-          (value (org-entry-get nil prop inherit)))
-     ;; trim surrounding whitespace if you like
-     (and value (string-trim value))))
- #+end_src
-
- #+RESULTS:
- : my/org-get-current-property
-
- Usage examples:
-
- - To get a non-inherited value of “STATUS” on the current headline:
- #+begin_src emacs-lisp
- (my/org-get-current-property "STATUS")
- #+end_src
-
- - To fall back to an inherited value if it’s not set locally:
- #+begin_src emacs-lisp
- (my/org-get-current-property 'HUBSTAFF_TASK_ID t)
- #+end_src
-
- #+RESULTS:
- : 148067676
-
- If you need /all/ properties as an alist, you can use =org-entry-properties=:
-
- #+begin_src emacs-lisp
- (defun my/org-get-all-current-properties (&optional inherit)
-   "Return an alist of all properties on the current heading.
- If INHERIT is non-nil, include inherited properties too."
-   (org-entry-properties nil inherit))
- #+end_src
-
- Then look up your key:
-
- #+begin_src emacs-lisp
- ;; returns the value of \"FOO\" or nil
- (cdr (assoc "FOO" (my/org-get-all-current-properties)))
- #+end_src
-
-*** ~defadvice~ to start timer
-
-  #+begin_src emacs-lisp
-     (defun my-custom-clock-in-advice (orig-fun &rest args)
-       "Custom advice for `org-clock-in."
-       ;; You can add custom code here before or after calling the original function
-       (message "Custom behavior before clocking out")
-
-       ;; Call the original function
-       (apply orig-fun args)
-
-       ;; Additional behavior after calling the original function
-       (message "Custom behavior after clocking in")
-       (my/maybe-start-hubstaff)
-       )
-     (advice-add 'org-clock-in :around #'my-custom-clock-in-advice)
-  #+end_src
-
-  #+RESULTS:
-
-*** ~defadvice~ to stop timer
-
-  #+begin_src emacs-lisp
-  (defun my-custom-clock-out-advice (orig-fun &rest args)
-    "Custom advice for `org-clock-out'."
-    ;; You can add custom code here before or after calling the original function
-    (message "Custom behavior before clocking out")
-
-    ;; Call the original function
-    (apply orig-fun args)
-
-    ;; Additional behavior after calling the original function
-    (message "Custom behavior after clocking out")
-    (my/hubstaff-stop)
-    )
-  (advice-add 'org-clock-out :around #'my-custom-clock-out-advice)
-  #+end_src
-
-  #+RESULTS:
 
 ** greger
 
@@ -7737,10 +7099,6 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    : claude-code-cycle-mode
 
-* Emacs file editing modes (major modes)
-  :LOGBOOK:
-  CLOCK: [2025-05-03 Sat 15:14]--[2025-05-03 Sat 15:14] =>  0:00
-  :END:
 ** vterm
 
  #+begin_src emacs-lisp
@@ -7755,6 +7113,648 @@ Format: \"/full/path/file.el:L42\"."
 
 
  #+end_src
+
+* Emacs tools and minor modes
+** COMMENT elfeed
+
+   #+begin_src emacs-lisp
+     (defalias 'elfeed-mark-read
+       (kmacro "<return> q"))
+
+     (use-package elfeed
+       :bind (:map elfeed-search-mode-map
+		   ("r" . elfeed-mark-read)
+		   ("`" . elfeed-mark-read)
+		   )
+       )
+   #+end_src
+
+** ledger
+   #+begin_src emacs-lisp
+     (use-package ledger-mode
+       :init
+       (magit-todos-mode)
+       )
+   #+end_src
+
+** pdf-tools
+
+   #+begin_src emacs-lisp
+     (use-package pdf-tools
+       :custom
+       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
+       :config
+       (pdf-tools-install)
+       )
+   #+end_src
+
+** pass
+
+   #+begin_src emacs-lisp
+   (use-package pass)
+   #+end_src
+
+** Email support
+
+*** smtpmail
+
+    #+begin_src emacs-lisp
+      (use-package smtpmail-multi)
+    #+end_src
+
+*** notmuch
+    Email setup
+
+    #+begin_src emacs-lisp :results output replace
+      (use-package notmuch
+        :init
+        (progn
+          ;; (require 'org-notmuch)
+          (require 'org-notmuch)
+          (require 'notmuch-address)
+          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
+          )
+        :bind (
+               ("C-z z" . notmuch)
+               ("C-c C-o" . browse-url-at-point)
+               )
+        :config
+
+        (defun notmuch-show-tag-spam ()
+          "mark message as spam"
+          (interactive)
+          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+          (next-line)
+          )
+        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+        (defun notmuch-show-tag-deleted ()
+          "mark message as deleted"
+          (interactive)
+          (notmuch-search-tag '("+deleted" "-inbox")))
+
+        (defun notmuch-show-tag-read ()
+          "mark message as read"
+          (interactive)
+          (notmuch-search-tag '("-unread"))
+          (next-line)
+          )
+
+        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
+        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
+        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
+        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
+
+        )
+
+      (defun mg-notmuch-display-email-in-xwidget ()
+        "Display the HTML email content in xwidget-webkit.
+      This function requires the current MIME part to be of type
+      text/html. If the content is not HTML, it falls back to calling
+      `notmuch-show-view-part'.  Similarly, if xwidget support is
+      unavailable in the current Emacs build, it fallbacks to
+      `notmuch-show-view-part'."
+          (interactive)
+          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
+                    (is-html-mime (equal (caadr mime-part) "text/html"))
+                    (has-xwidget (featurep 'xwidget-internal)))
+                  (notmuch-show-apply-to-current-part-handle
+                   (lambda (handle)
+                       (let ((tempf (make-temp-file "notmuch"
+                                                    nil
+                                                    ".html"
+                                                    (with-current-buffer (car handle)
+                                                        (buffer-string)))))
+                           (xwidget-webkit-browse-url (concat "file://" tempf))
+                           (run-with-idle-timer 3 nil #'delete-file tempf))))
+              (notmuch-show-view-part)))
+
+
+
+
+
+      (defun notmuch-show-tag-spam ()
+        "mark message as spam"
+        (interactive)
+        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+        (next-line)
+        )
+      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+
+      (defun notmuch-show-tag-deleted ()
+        "mark message as deleted"
+        (interactive)
+        (notmuch-search-tag '("+deleted" "-inbox")))
+
+      (defun notmuch-show-tag-read ()
+        "mark message as read"
+        (interactive)
+        (notmuch-search-tag '("-unread"))
+        (next-line)
+
+        ;; Sign messages by default.
+        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
+
+        (custom-set-variables
+         '(notmuch-search-oldest-first nil)
+         '(notmuch-crypto-process-mime t)
+         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
+         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
+        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
+
+        (defun expand-only-unread-hook ()
+          "eexpand only recent unreads"
+          (interactive)
+          (let ((unread nil)
+                (open (notmuch-show-get-message-ids-for-open-messages)))
+            (notmuch-show-mapc (lambda ()
+        		         (when (member "unread" (notmuch-show-get-tags))
+        			   (setq unread t))))
+            (when unread
+              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
+                (notmuch-show-filter-thread "tag:unread")))))
+
+
+    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
+
+        )
+
+
+    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
+    #+end_src
+
+    #+RESULTS:
+
+
+     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
+     notmuch don't have this functionality by default, so I've monkey patched it here:
+
+     #+begin_src emacs-lisp
+       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
+         (let ((sender (notmuch-mua-prompt-for-sender)))
+	   ad-do-it))
+       (ad-activate 'notmuch-mua-reply)
+     #+end_src
+
+***** xwidget
+      :LOGBOOK:
+      - State "TODO"       from              [2025-08-18 Mon 11:35]
+      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
+      :END:
+
+      #+begin_src emacs-lisp
+
+      #+end_src
+
+      #+RESULTS:
+      : mg-notmuch-display-email-in-xwidget
+
+**** settings for notmuch-show
+
+     #+begin_src emacs-lisp
+     (defun my-notmuch-show-local-bindings ()
+       (interactive)
+       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
+
+     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
+     #+end_src
+
+** COMMENT lastpass
+
+   #+begin_src emacs-lisp
+   (use-package lastpass
+     :init
+     (setq lastpass-multifactor-use-passcode t)
+     :config
+     ;; Set lastpass user
+     ;; Enable lastpass custom auth-source
+     (lastpass-auth-source-enable))
+   #+end_src
+
+** ztree
+
+   #+begin_src emacs-lisp
+     (use-package ztree)
+     (defun ztree-do-dired ()
+       (interactive)
+       "Jump to dired in specified place of ZTree-dir"
+       (let* ((line (line-number-at-pos))
+	      (node (ztree-find-node-in-line line)))
+	 (when node
+	   (dired node))
+	 )
+       )
+     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
+					     ; (global-set-key [f5] 'ztree-dir)
+     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
+     (global-set-key (kbd "<C-f3>") 'ztree-side)
+     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
+
+     (fset 'ztree-side
+	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
+   #+end_src
+
+** YouTrack
+
+   Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
+   submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
+
+   #+begin_src emacs-lisp
+   (setq youtrack-host "youtrack.example.com")
+   (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
+   (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
+   (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
+   (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
+   (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
+   #+end_src
+
+** openwith
+
+  https://stackoverflow.com/questions/51006855/open-mp4-files-from-orgmode
+
+  #+begin_src emacs-lisp
+  (use-package openwith)
+  ;; (require 'openwith)
+  (openwith-mode t)
+  (setq openwith-associations '(("\\.mp4\\'" "mpv" (file))))
+  #+end_src
+
+** Copy file name to clipboard
+
+   #+begin_src emacs-lisp
+   (defun copy-file-name-to-clipboard ()
+     "Copy the current buffer file name to the clipboard."
+     (interactive)
+     (let ((filename (if (equal major-mode 'dired-mode)
+                         default-directory
+                       (buffer-file-name))))
+       (when filename
+         (kill-new filename)
+         (message "Copied buffer file name '%s' to the clipboard." filename))))
+
+   (defun my-insert-projectile-hyperbole-link ()
+     "Copy project-relative file name with line number to the clipboard.
+Format: \"relative/path/file.el:L42\"."
+     (interactive)
+     (let* ((project-root (expand-file-name (projectile-project-root)))
+            (current-realpath (shell-command-to-string (concat "realpath " (expand-file-name (buffer-file-name (window-buffer (minibuffer-selected-window)))))))
+            (project-relative-filename (string-trim-right (string-replace project-root "" current-realpath)))
+            (current-line-number (format-mode-line "%l"))
+            (result (concat "\"" project-relative-filename ":L" current-line-number "\"")))
+       (message (concat "Project file name: " result))
+       (kill-new result)))
+
+   (defun copy-file-name-with-line-to-clipboard ()
+     "Copy absolute file name with line number to the clipboard.
+Format: \"/full/path/file.el:L42\"."
+     (interactive)
+     (let ((filename (if (equal major-mode 'dired-mode)
+                         default-directory
+                       (buffer-file-name))))
+       (when filename
+         (let ((result (format "\"%s:L%d\"" filename (line-number-at-pos))))
+           (kill-new result)
+           (message "Copied '%s' to the clipboard." result)))))
+
+   (defun my-dired-copy-file-path ()
+     "Copy the absolute path of the file at point in dired to the clipboard."
+     (interactive)
+     (let ((filename (dired-get-filename nil t)))
+       (when filename
+         (kill-new filename)
+         (message "Copied '%s' to the clipboard." filename))))
+
+   (global-set-key (kbd "C-c F") 'copy-file-name-to-clipboard)
+   ;; was C-x <f2>, moved to free up f2 for `my-codex-list-sessions'
+   (global-set-key (kbd "C-x <f5>")  'my-insert-projectile-hyperbole-link)
+   (global-set-key (kbd "C-c C")  'copy-file-name-with-line-to-clipboard)
+   (with-eval-after-load 'dired
+     (define-key dired-mode-map (kbd "W") 'my-dired-copy-file-path))
+   #+end_src
+
+   #+RESULTS:
+   : my-dired-copy-file-path
+
+*** Hyperbole support
+
+    Now, that we are defined ~project filename pattern~ above, I want to quickly open it. Moreover, the following makes sense:
+
+**** Support for Django templates "some/path.html" ~->~ must link find template file among projectile files list
+     - [X] Standard ~FILE~ link with "folder/filename.ext:LXX" should work
+     - [X]
+
+     Looking at  https://www.youtube.com/watch?v=TQ_fG7b1iHI ...
+     Reading ~describe-function~ for ~defil.
+
+     #+begin_src emacs-lisp
+     (defalias 'my-open-template-file
+       (kmacro "M-x p r o j e c t i l e - f i n d - f i l e <return> C-y <tab>"))
+
+     (defun my-projectile-open-template-file (string)
+       (interactive)
+       (message string)
+       (kill-new string)
+       (my-open-template-file)
+       )
+
+     (defil my-projectile-template-file "\"" "\"" ".*?\.html" 'my-projectile-open-template-file)
+     (defil my-projectile-template-file2 "'" "'" ".*?\.html" 'my-projectile-open-template-file)
+     #+end_src
+
+     #+RESULTS:
+     : ibtypes::my-projectile-template-file2
+
+**** Standard ~FILE~ link with "folder/filename.ext:LXX" should work
+
+     Both this type and the absolute one below share the same ~"~ … ~"~
+     delimiters, so the TEXT-REGEXP is the only thing telling them apart — and
+     ~defil~ matches it with a plain ~string-match~, i.e. *unanchored*, against the
+     text between the delimiters.  An unanchored ~"/.*?:L…"~ therefore matches the
+     ~/~ *inside* ~folder/filename.ext:LXX~, so the absolute type (which comes
+     first in ~(htype:names 'ibtypes)~) swallowed every project-relative ref with
+     a directory component and passed it to ~find-file~ against the current
+     buffer's ~default-directory~ instead of the projectile root.
+
+     Hence ~\\`~ … ~\\'~ on both regexps: relative must *not* start with ~/~,
+     absolute must.  (~[[:digit:]]+~, not ~[:digit:]*~ — the latter is a bracket
+     expression over the characters ~:digt~ and matches zero of them, so it never
+     constrained anything.)
+
+     The path is tried relative to the current buffer's directory first, then to the projectile root.
+
+     In *org files* do not use this form for evidence: write org links with a line number instead,
+     =[[file:refs/my-project/addons/x.py::42][addons/x.py:L42]]= (a number after =::= is an exact line, text there would be
+     a content search).  They are relative to the org file, open with =C-c C-o=, and export as links.  Sources outside
+     the project live in a =refs/= folder next to the org file: symlinks to the checkouts
+     (=ln -sfn /abs/checkout refs/<repo>=) plus =.docx= sources converted once with =pandoc -t plain --wrap=none= so
+     cited line numbers stay fixed.  The ="path:LNN"= form below stays for code comments, Markdown and chat.
+     Write-up: [[file:org-browser-run/README.md]], section "Evidence references".
+
+     #+begin_src emacs-lisp
+     (defun my-open-projectile-file-on-line-n (locator)
+       (let* ((parts (split-string locator ":L"))
+              (filename (car parts))
+              (line-no (string-to-number (cadr parts)))
+              (local (expand-file-name filename default-directory))
+              (full-filename (if (or (file-exists-p local) (not (projectile-project-root)))
+                                 local
+                               (expand-file-name filename (projectile-project-root)))))
+         (find-file full-filename)
+         (goto-char (point-min))
+         (forward-line (1- line-no))))
+     ;; (my-open-projectile-file-on-line-n "my-red-cursor-theme.el:L6")
+     (defil my-projectile-file-locator "\"" "\"" "\\`[^/].*?:L[[:digit:]]+\\'" 'my-open-projectile-file-on-line-n)
+     #+end_src
+
+
+
+     #+RESULTS:
+     : ibtypes::my-projectile-file-locator
+
+**** Absolute file link with "/path/to/file.ext:LXX"
+     #+begin_src emacs-lisp
+     (defun my-open-absolute-file-on-line-n (locator)
+       (let* ((filename (car (split-string locator ":L")))
+              (line-no (car (cdr (split-string locator ":L")))))
+         (find-file filename)
+         (goto-char (point-min))
+         (forward-line (- (string-to-number line-no) 1))))
+
+     (defil my-absolute-file-locator "\"" "\"" "\\`/.*?:L[[:digit:]]+\\'" 'my-open-absolute-file-on-line-n)
+     #+end_src
+
+     #+RESULTS:
+     : ibtypes::my-absolute-file-locator
+
+**** TODO Support for [XX-NNNNN] Jira
+     :LOGBOOK:
+     - State "TODO"       from              [2025-03-11 Tue 19:15]
+     :END:
+
+     #+begin_src emacs-lisp
+
+     #+end_src
+
+** COMMENT Hubstaff
+
+ #+begin_src emacs-lisp
+  (setq hubstaff-cli "~/Hubstaff/HubstaffCLI.bin.x86_64")
+  (setq hubstaff-project "218656")
+  (setq hubstaff-jira-task-regexps '("\\(FH-[[:digit:]]+\\)" "\\(MD-[[:digit:]]+\\)"))
+
+  (defun my/hubstaff-get-tasks-list (project-id)
+    (let* ((cmd (concat hubstaff-cli " tasks "  project-id)))
+      (message "%s" cmd)
+      (json-parse-string (shell-command-to-string cmd))
+      ))
+  ;; (my-hubstaff-get-tasks-list hubstaff-project)
+
+  (defun my/org-clock-current-jira-task-id ()
+    (let* ((my-org-clock-subject (prin1-to-string (org-clock-get-clock-string))))
+      (seq-some (lambda (jira-task-regex)
+                    (when (string-match jira-task-regex my-org-clock-subject)
+                      (substring my-org-clock-subject (match-beginning 1) (match-end 1))))
+                  hubstaff-jira-task-regexps)
+    ))
+  ;; (my/org-clock-current-jira-task-id)
+
+  (defun my/strip-text-properties(txt)
+    (set-text-properties 0 (length txt) nil txt)
+    txt)
+
+  (defun my/org-clock-current-jira-task-title ()
+    (my/strip-text-properties (org-clock-get-clock-string))
+    )
+  ;; (my/org-clock-current-jira-task-title)
+
+  (defun my/find-hubstaff-task-id-by-org-task-title (current-org-task-title)
+    (seq-some (lambda (hubstaff-task)
+                  (when (cl-search (gethash "summary" hubstaff-task) current-org-task-title)
+                    (gethash "id" hubstaff-task)))
+                (gethash "tasks" (my/hubstaff-get-tasks-list hubstaff-project)))
+    )
+  ;; (my/find-hubstaff-task-id-by-org-task-title (my/org-clock-current-jira-task-title))
+
+  (defun my/hubstaff-start-work-on (hubstaff-task-id)
+    (let* ((cmd (concat hubstaff-cli " start_task "  hubstaff-task-id)))
+      (message "%s" cmd)
+      (message "%s" (shell-command-to-string cmd))
+      ))
+
+  (defun my/org-get-current-property (property &optional inherit)
+    "Return the value of PROPERTY on the current Org heading.
+  PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
+  If INHERIT is non-nil, look up the property in parent headings."
+    (let* ((prop (if (symbolp property)
+                     (symbol-name property)
+                   property))
+           ;; passing nil for POM means “use (point)”
+           (value (org-entry-get nil prop inherit)))
+      ;; trim surrounding whitespace if you like
+      (and value (string-trim value))))
+
+  (defun my/get-current-hubstaff-task-id ()
+    (let* ((hubstaff-task-id (my/org-get-current-property 'HUBSTAFF_TASK_ID t)))
+      (if hubstaff-task-id
+          (string-to-number hubstaff-task-id)
+        nil
+        )
+    ))
+
+ (defmacro when-not (condition &rest body)
+   "Execute BODY forms when CONDITION is nil."
+   `(when (not ,condition)
+      ,@body))
+
+  (defun my/maybe-start-hubstaff ()
+    "Start hubstaff if task title matches any of hubstaff"
+    (let* ((my-current-org-task-title (my/org-clock-current-jira-task-title))
+           (hubstaff-task-id-from-property (my/get-current-hubstaff-task-id))
+           (hubstaff-task-id (or hubstaff-task-id-from-property (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title))))
+      (if hubstaff-task-id
+          (progn
+            (when-not hubstaff-task-id-from-property (org-set-property "HUBSTAFF_TASK_ID" (number-to-string hubstaff-task-id)))
+            (my/hubstaff-start-work-on (number-to-string hubstaff-task-id)))
+        (message "Hubstaff task not found"))
+      )
+    )
+  ;; (my/maybe-start-hubstaff)
+
+  (defun my/hubstaff-stop ()
+    "Stop HubStaff timer"
+    (let* ((cmd (concat hubstaff-cli " stop")))
+        (message "%s" cmd)
+        (message "%s" (shell-command-to-string cmd))
+      ))
+  ;; (my/hubstaff-stop)
+ #+end_src
+
+ #+RESULTS:
+ : my/hubstaff-stop
+
+ #+end_src
+
+ #+RESULTS:
+
+*** DONE COMMENT WIP on properties task id
+    CLOSED: [2025-05-03 Sat 15:30]
+     :PROPERTIES:
+     :HUBSTAFF_TASK_ID: 148067676
+     :END:
+     :LOGBOOK:
+     - State "DONE"       from              [2025-05-03 Sat 15:30]
+     CLOCK: [2025-05-03 Sat 15:02]--[2025-05-03 Sat 15:13] =>  0:11
+     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
+     CLOCK: [2025-05-03 Sat 15:00]--[2025-05-03 Sat 15:00] =>  0:00
+     :END:
+
+     #+begin_src emacs-lisp
+     (my/find-hubstaff-task-id-by-org-task-title my-current-org-task-title)
+     #+end_src
+
+**** DONE Idea (partly finished, enough for my work for next month)
+     CLOSED: [2025-05-03 Sat 15:30]
+     :LOGBOOK:
+     - State "DONE"       from              [2025-05-03 Sat 15:30]
+     CLOCK: [2025-05-03 Sat 14:38]--[2025-05-03 Sat 15:00] =>  0:22
+     :END:
+
+ - [ ] +Get Jira tasks list from Hubstaff, show list choiice: add via helm or omni+
+   - [ ] +function to run hubstaff client and get tasks list+
+   - [ ] +function to show as a choice+
+ - [ ] Find corresponding task from Jira and may be add feature/task id into title
+   - [ ] query jira fn
+ - [X] Add hubstaff task id, jira task id as properties
+ - [ ] Make functions to fetch property of current task to use with git/
+ - [X] Use property when
+
+**** Helpers
+ #+begin_src emacs-lisp
+ (defun my/org-get-current-property (property &optional inherit)
+   "Return the value of PROPERTY on the current Org heading.
+ PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
+ If INHERIT is non-nil, look up the property in parent headings."
+   (let* ((prop (if (symbolp property)
+                    (symbol-name property)
+                  property))
+          ;; passing nil for POM means “use (point)”
+          (value (org-entry-get nil prop inherit)))
+     ;; trim surrounding whitespace if you like
+     (and value (string-trim value))))
+ #+end_src
+
+ #+RESULTS:
+ : my/org-get-current-property
+
+ Usage examples:
+
+ - To get a non-inherited value of “STATUS” on the current headline:
+ #+begin_src emacs-lisp
+ (my/org-get-current-property "STATUS")
+ #+end_src
+
+ - To fall back to an inherited value if it’s not set locally:
+ #+begin_src emacs-lisp
+ (my/org-get-current-property 'HUBSTAFF_TASK_ID t)
+ #+end_src
+
+ #+RESULTS:
+ : 148067676
+
+ If you need /all/ properties as an alist, you can use =org-entry-properties=:
+
+ #+begin_src emacs-lisp
+ (defun my/org-get-all-current-properties (&optional inherit)
+   "Return an alist of all properties on the current heading.
+ If INHERIT is non-nil, include inherited properties too."
+   (org-entry-properties nil inherit))
+ #+end_src
+
+ Then look up your key:
+
+ #+begin_src emacs-lisp
+ ;; returns the value of \"FOO\" or nil
+ (cdr (assoc "FOO" (my/org-get-all-current-properties)))
+ #+end_src
+
+*** ~defadvice~ to start timer
+
+  #+begin_src emacs-lisp
+     (defun my-custom-clock-in-advice (orig-fun &rest args)
+       "Custom advice for `org-clock-in."
+       ;; You can add custom code here before or after calling the original function
+       (message "Custom behavior before clocking out")
+
+       ;; Call the original function
+       (apply orig-fun args)
+
+       ;; Additional behavior after calling the original function
+       (message "Custom behavior after clocking in")
+       (my/maybe-start-hubstaff)
+       )
+     (advice-add 'org-clock-in :around #'my-custom-clock-in-advice)
+  #+end_src
+
+  #+RESULTS:
+
+*** ~defadvice~ to stop timer
+
+  #+begin_src emacs-lisp
+  (defun my-custom-clock-out-advice (orig-fun &rest args)
+    "Custom advice for `org-clock-out'."
+    ;; You can add custom code here before or after calling the original function
+    (message "Custom behavior before clocking out")
+
+    ;; Call the original function
+    (apply orig-fun args)
+
+    ;; Additional behavior after calling the original function
+    (message "Custom behavior after clocking out")
+    (my/hubstaff-stop)
+    )
+  (advice-add 'org-clock-out :around #'my-custom-clock-out-advice)
+  #+end_src
+
+  #+RESULTS:
 
 * Small emacs functions of mine
 ** execute thunar here
