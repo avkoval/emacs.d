@@ -1402,93 +1402,10 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    #+RESULTS:
    : 1
 
-* Core settings
+* Completion and search
 
-  Settings that lived only in Customize until October 2026 and have no package section of
-  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
-  overrides the ~:custom~ value set here (Customize's user theme has priority over the
-  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
-  time to time.
+  Minibuffer completion, in-buffer completion, search and project navigation.
 
-** Indentation and interpreters of built-in programming modes
-
-   #+begin_src emacs-lisp
-   (use-package python
-     :ensure nil
-     :defer t
-     :custom
-     (python-shell-interpreter "python3"))
-   (use-package css-mode
-     :ensure nil
-     :defer t
-     :custom
-     (css-indent-offset 2))
-   (use-package sh-script
-     :ensure nil
-     :defer t
-     :custom
-     (sh-basic-offset 2))
-   (use-package typescript-ts-mode
-     :ensure nil
-     :defer t
-     :custom
-     (typescript-ts-mode-indent-offset 2))
-   #+end_src
-
-** Org: general settings that used to live in Customize
-
-   #+begin_src emacs-lisp
-   (use-package org
-     :ensure nil
-     :custom
-     ;; Agenda, logging, priorities
-     (org-deadline-warning-days 7)
-     (org-log-into-drawer t)
-     (org-log-done 'time)
-     (org-log-redeadline 'time)
-     (org-priority-default 67)
-     (org-priority-lowest 68)
-     (org-timestamp-rounding-minutes '(5 5))
-     (org-clock-mode-line-total 'today)
-     (org-refile-targets '((org-agenda-files . t)))
-     (org-habit-completed-glyph 10003)
-     (org-habit-graph-column 95)
-     ;; Display
-     (org-startup-folded t)
-     (org-adapt-indentation t)
-     (org-fontify-whole-heading-line t)
-     (org-fontify-quote-and-verse-blocks t)
-     ;; Modules, babel, export
-     (org-modules
-      '(org-bbdb org-bibtex org-docview org-gnus org-info org-irc org-mhe
-                 org-rmail org-w3m))
-     (org-babel-python-command "python")
-     (org-latex-default-packages-alist
-      '(("utf8x" "inputenc" t ("pdflatex"))
-        ("T2A" "fontenc" t ("pdflatex"))
-        ("russian,english" "babel" nil nil) ("" "graphicx" t nil)
-        ("" "longtable" nil nil) ("" "wrapfig" nil nil)
-        ("" "rotating" nil nil) ("normalem" "ulem" t nil)
-        ("" "amsmath" t nil) ("" "amssymb" t nil) ("" "capt-of" nil nil)
-        ("unicode" "hyperref" nil nil)))
-     (org-latex-hyperref-template
-      "\\hypersetup{\n  pdfauthor={%a},\n  pdftitle={%t},\n  pdfkeywords={%k},\n  colorlinks=true,\n  linkcolor=blue,\n  pdfsubject={%d},\n  pdfcreator={%c}, \n  pdflang={%L}}\n ")
-     (org-taskjuggler-default-global-properties "\n "))
-   #+end_src
-
-** Packages without a section of their own yet
-
-   #+begin_src emacs-lisp
-   (use-package treemacs
-     :defer t
-     :custom
-     (treemacs-follow-mode t))
-   (use-package pyvenv
-     :config
-     (pyvenv-tracking-mode 1))
-   #+end_src
-
-* Emacs tools and minor modes
 ** Helm
 
    [[https://emacs-helm.github.io/helm/][Helm]] is one of the shining packages of Emacs - it does one thing, and does it well - it allows you to choose something
@@ -1764,6 +1681,679 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
     (global-set-key (kbd "C-C f r ") 'helm-org-roam)
     #+end_src
 
+** ace, avy, councel
+
+  Jumping between frames, windows, lines, etc.
+
+ #+begin_src emacs-lisp
+   (use-package ace-window
+     :bind (
+            ("\M-[" . ace-window)
+            )
+     )
+   (global-set-key "\M-[" 'ace-window)
+   (global-set-key "\M-]" 'avy-goto-char-timer)
+ #+end_src
+
+** vertico
+
+ https://github.com/minad/vertico
+ #+begin_src emacs-lisp
+ ;; Enable vertico
+ (use-package vertico
+   :init
+   (vertico-mode)
+
+   ;; Different scroll margin
+   ;; (setq vertico-scroll-margin 0)
+
+   ;; Show more candidates
+   ;; (setq vertico-count 20)
+
+   ;; Grow and shrink the Vertico minibuffer
+   ;; (setq vertico-resize t)
+
+   ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
+   ;; (setq vertico-cycle t)
+ :bind (
+        ;; ("C-c C-r" . ivy-resume)
+        ([C-f12] . vertico-mode)
+        ([s-f12] . vertico-mode)
+        )
+
+   )
+
+ ;; Persist history over Emacs restarts. Vertico sorts by history position.
+ (use-package savehist
+   :init
+   (savehist-mode))
+
+ ;; A few more useful configurations...
+ (use-package emacs
+   :init
+   ;; Add prompt indicator to `completing-read-multiple'.
+   ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
+   (defun crm-indicator (args)
+     (cons (format "[CRM%s] %s"
+                   (replace-regexp-in-string
+                    "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
+                    crm-separator)
+                   (car args))
+           (cdr args)))
+   (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+
+   ;; Do not allow the cursor in the minibuffer prompt
+   (setq minibuffer-prompt-properties
+         '(read-only t cursor-intangible t face minibuffer-prompt))
+   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+
+   ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
+   ;; Vertico commands are hidden in normal buffers.
+   ;; (setq read-extended-command-predicate
+   ;;       #'command-completion-default-include-p)
+
+   ;; Enable recursive minibuffers
+   (setq enable-recursive-minibuffers t))
+
+ ;; https://github.com/minad/vertico
+ ;; Similar to org-refile, the commands org-agenda-filter and org-tags-view do not make use of completion boundaries.
+ (defun org-enforce-basic-completion (&rest args)
+   (minibuffer-with-setup-hook
+       (:append
+        (lambda ()
+          (let ((map (make-sparse-keymap)))
+            (define-key map [tab] #'minibuffer-complete)
+            (use-local-map (make-composed-keymap (list map) (current-local-map))))
+          (setq-local completion-styles (cons 'basic completion-styles)
+                      vertico-preselect 'prompt)))
+     (apply args)))
+ (advice-add #'org-make-tags-matcher :around #'org-enforce-basic-completion)
+ (advice-add #'org-agenda-filter :around #'org-enforce-basic-completion)
+ #+end_src
+
+** COMMENT ivy
+
+ #+begin_src emacs-lisp
+ ;; (use-package counsel
+ ;;   :after ivy
+ ;;   :config (counsel-mode))
+
+ (use-package ivy
+   :defer 0.3
+   :diminish
+   :bind (
+          ;; ("C-c C-r" . ivy-resume)
+          ("C-x B" . ivy-switch-buffer-other-window)
+          ("C-c m i" . ivy-mode)
+	  ([C-f12] . ivy-mode)
+	  )
+   :custom
+   (ivy-count-format "(%d/%d) ")
+   (ivy-use-virtual-buffers t)
+   :config (ivy-mode nil))
+
+ #+end_src
+
+** COMMENT icomplete
+
+ #+begin_src emacs-lisp
+ (global-set-key [s-f11] 'icomplete-mode)
+ (icomplete-mode nil)
+ #+end_src
+
+** deadgrep
+
+   Another method to search
+
+   #+begin_src emacs-lisp
+   (defalias 'my-deadgrep-current
+    (kmacro "C-; C-; M-w C-c d C-y <return>"))
+
+   (use-package deadgrep
+     :bind (
+            (
+             ("C-c d" . deadgrep)
+             ("C-x / d" . my-deadgrep-current)
+             )
+            ))
+   #+end_src
+
+** Phi-search
+
+   #+begin_src emacs-lisp
+     (use-package phi-search
+       :bind (
+	      ("C-c C-s" . phi-search)
+	      ("C-c C-r" . phi-search-backward)
+	      ))
+   #+end_src
+
+** imenu
+   #+begin_src emacs-lisp
+     (use-package imenu-list)
+   #+end_src
+
+** projectile
+
+ Easy way to select file in your project.
+
+  #+begin_src emacs-lisp
+  (use-package projectile)
+  (use-package helm-projectile
+    :init
+    ;; (projectile-global-mode)
+    (setq projectile-enable-caching t)
+    :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
+           ([(C-tab)] . helm-buffers-list)
+           ("M-<f2>" . helm-buffers-list)
+           ("C-z C-z" . helm-projectile-switch-to-buffer)
+           ("C-x C-<tab>" . helm-projectile-switch-to-buffer)
+           ("C-c h p p" . helm-projectile)
+           ("<f5>" . helm-projectile-find-file)
+           ("C-c h p f" . helm-projectile-find-file)
+           ("C-c h p s" . helm-projectile-switch-project)
+           ("C-c p s" . projectile-switch-open-project)
+           ("C-c h p r" . helm-projectile-recentf)
+           ("C-c h p g" . helm-projectile-grep)
+           ("C-c h p d" . helm-projectile-rg)
+           ("M-<f5>" . projectile-find-file)
+           ("s-<f5>" . projectile-switch-project)
+           ("C-c s" . helm-projectile-ag)
+           )
+    )
+
+  ;; --- TRAMP slowdown fix --------------------------------------------------
+  ;; Projectile probes the filesystem (looking for .git, .projectile, etc.)
+  ;; on every find-file and on every mode-line update.  Over TRAMP those
+  ;; probes turn into round-trips to the remote host and a single keystroke
+  ;; can stall Emacs for many seconds.  We go nuclear: globally disable
+  ;; `projectile-mode' the instant we open ANY TRAMP path.  Re-enable later
+  ;; with `M-x my/projectile-toggle-global' (or just `M-x projectile-mode').
+  ;;
+  ;; NOTE: this MUST live outside `helm-projectile' :config — that package
+  ;; is autoloaded via :bind and its :config is deferred until you press one
+  ;; of the bound keys, which is too late for the first TRAMP open.  Putting
+  ;; the hook inside `with-eval-after-load 'projectile' guarantees it is
+  ;; registered at startup, because :init force-loads projectile via
+  ;; `projectile-global-mode'.
+  (with-eval-after-load 'projectile
+    (defun my/projectile-off-on-tramp-find-file (filename &rest _)
+      "Disable `projectile-mode' BEFORE opening any TRAMP file."
+      (when (and (stringp filename)
+                 (file-remote-p filename)
+                 (bound-and-true-p projectile-mode))
+        (projectile-mode -1)
+        (message "projectile-mode auto-disabled (TRAMP)")))
+    (advice-add 'find-file :before #'my/projectile-off-on-tramp-find-file)
+
+    (defun my/projectile-off-on-tramp-buffer ()
+      "Belt-and-braces: also disable on any TRAMP buffer (dired etc.)."
+      (when (and (file-remote-p default-directory)
+                 (bound-and-true-p projectile-mode))
+        (projectile-mode -1)
+        (message "projectile-mode auto-disabled (TRAMP buffer)")))
+    (add-hook 'find-file-hook  #'my/projectile-off-on-tramp-buffer)
+    (add-hook 'dired-mode-hook #'my/projectile-off-on-tramp-buffer)
+
+    (defun my/projectile-toggle-global ()
+      "Toggle `projectile-mode' globally — workaround for TRAMP freezes."
+      (interactive)
+      (if (bound-and-true-p projectile-mode)
+          (progn (projectile-mode -1)
+                 (message "projectile-mode OFF (TRAMP-safe)"))
+        (projectile-mode +1)
+        (message "projectile-mode ON"))))
+  ;; ------------------------------------------------------------------------
+  #+end_src
+
+** company mode
+
+   While its in conflict with lsp-bridge, this mode is still very useful in some cases, e.g. shell etc
+
+#+begin_src emacs-lisp
+(use-package company
+  :bind
+  ("s-/" . company-complete)
+  :config
+  (setq company-minimum-prefix-length 1))
+#+end_src
+
+** marginalia & embark
+
+   Marginalia adds annotations to minibuffer candidates; Embark adds actions on the thing at
+   point or the current candidate (=C-.=).  Deviations from the upstream sample config:
+
+   - =C-;= stays on ~er/expand-region~; ~embark-dwim~ is left unbound (=RET= inside
+     ~embark-act~ runs the default action anyway).
+   - ~prefix-help-command~ is not replaced with Embark's.  At runtime it is
+     ~which-key-C-h-dispatch~ (installed by ~which-key-mode~, which also overrides the
+     ~repeated-prefix-help-command~ set in "persistent keymap").
+   - ~marginalia-mode~ used to be enabled only through Customize (='(marginalia-mode t)=);
+     it is now activated here, so that Custom entry can be dropped.
+
+   #+begin_src emacs-lisp
+   (use-package marginalia
+     :bind (:map minibuffer-local-map
+            ("M-A" . marginalia-cycle))
+     ;; Activate in :init so annotations are present from the first minibuffer.
+     :init
+     (marginalia-mode 1))
+
+   (use-package embark
+     :bind (("C-." . embark-act)
+            ("C-h B" . embark-bindings))
+     :config
+     ;; Hide the mode line of the Embark live/completions buffers.
+     (add-to-list 'display-buffer-alist
+                  '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                    nil
+                    (window-parameters (mode-line-format . none)))))
+
+   ;; Loaded by embark once consult is present; previews candidates in Embark Collect buffers.
+   (use-package embark-consult
+     :after (embark consult)
+     :hook (embark-collect-mode . consult-preview-at-point-mode))
+   #+end_src
+
+** helm-systemd
+
+   #+begin_src emacs-lisp
+   (use-package helm-systemd)
+   #+end_src
+
+** COMMENT consult imenu
+
+   #+begin_src emacs-lisp
+   (global-set-key [M-f2] 'consult-imenu)
+   (add-to-list 'consult-imenu-config
+                '(python-mode
+                  :toplevel "Function"
+                  :types
+                  ((?f "Function" font-lock-function-name-face)
+                   (?m "Method" font-lock-function-name-face)
+                   (?c "Class" font-lock-property-use-face)
+                   (?M "Module" font-lock-builtin-face)
+                   (?F "Field" font-lock-regexp-face)
+                   (?v "Variable" font-lock-constant-face))))
+
+   (global-set-key [M-f7] 'consult-ripgrep)
+   #+end_src
+
+** counsel-ag
+
+   #+begin_src emacs-lisp
+   (use-package counsel-ag-popup
+     :ensure t
+     :bind ("C-c M-c" . 'counsel-ag))
+   #+end_src
+
+** consult
+
+   #+begin_src emacs-lisp
+   (use-package consult
+     :pin gnu
+     :custom
+     (consult-narrow-key "<")
+     )
+   #+end_src
+
+** COMMENT consult-omni
+
+   #+begin_src emacs-lisp
+     (global-unset-key (kbd "C-x /"))
+     (use-package browser-hist)
+     (use-package consult-omni
+       :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
+       :after consult
+       :bind (
+              ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p r y" . consult-omni-rg-yourtrack-task)
+              ("C-x / p r t" . consult-omni-rg-yourtrack-task)
+              ;;("C-x / p f f" . consult-omni-example)
+              ;;("C-x / p f j" . consult-omni-example-jira-task)
+              ;;("C-x / p f b" . consult-omni-example-bitbucket-prs)
+              ("C-x / p u t" . consult-omni-ua2web-redmine-task)
+              ("C-x / s g" . consult-omni-my-global-search)
+              )
+       ;;:custom
+       ;; General settings that apply to all sources
+       ;;(consult-omni-show-preview t) ;;; show previews
+       ;;(consult-omni-preview-key "C-o") ;;; set the preview key to C-o
+       ;; :config
+       )
+     ;; Load Sources Core code
+     (require 'consult-omni-sources)
+     (require 'consult-omni-apps)
+     (require 'consult-omni-browser-history)
+     (require 'consult-omni-buffer)
+     (require 'consult-omni-calc)
+     (require 'consult-omni-grep)
+     (require 'consult-omni-gptel)
+     (require 'consult-omni-elfeed)
+     (require 'consult-omni-ripgrep)
+     (require 'consult-omni-notmuch)
+     (require 'consult-omni-org-agenda)
+     (require 'consult-omni-google)
+
+     (consult-omni-define-source "Example Jira task"
+                                 :type 'sync
+                                 :request
+                                 #'my-fh-jira-task-results)
+
+     (defun my-fh-jira-task-results (input &rest args)
+       "return jira task link"
+       (let ((jira_url (concat "https://example.atlassian.net/browse/" input))
+             (bitbucket_search_url (concat "https://bitbucket.org/example/repo/pull-requests/?state=OPEN&query=" input))
+             )
+         (list
+          (propertize (format "Jira %s" jira_url) :url jira_url :source "Task References")  ;; first result - link to Jira task itself
+          (propertize (format "Bitbucket search %s" bitbucket_search_url) :url bitbucket_search_url :source "Task References")
+          )
+         )
+       )
+
+      (consult-omni-define-source "Example Bitbucket PRs"
+                                  :type 'async
+                                  :request
+                                  #'my-fh-open-bitbucket-prs)
+
+      (defun my-fh-open-bitbucket-prs (input &rest args)
+        "bitbucket PR"
+            (let ((url-request-method "GET")
+                (url-request-extra-headers (list (cons "Authorization" example-basic-auth)))
+                (url "https://api.bitbucket.org/2.0/repositories/example/repo/pullrequests"))
+            (with-current-buffer (url-retrieve-synchronously url)
+              (goto-char (point-min))
+              (re-search-forward "\n\n" nil 'noerror)
+              (delete-region (point-min) (point))
+              (let* ((json-result (lsp-json-read-buffer))
+                     (values (gethash "values" json-result))
+                     (titles (delq nil (mapcar (lambda (val) (let* ((title (gethash "title" val))
+                                                                    (links (gethash "links" val))
+                                                                    (html_link (gethash "href" (gethash "html" links)))
+                                                                    ) (if (string-match (concat ".*" input ".*") title) (propertize title :url html_link :source "BB Pull Request") nil))) values)))
+                     )
+                titles
+                )))
+            )
+
+   ;; (consult-omni-define-source "fh-bb2"
+   ;;                             :type 'async
+   ;;                             :require-match nil
+   ;;                             :face 'consult-omni-engine-title-face
+   ;;                             :request #'my-fh-open-bitbucket-prs
+   ;;                             )
+
+
+
+     (consult-omni-define-source "Example Jira Tickets"
+                                  :type 'async
+                                  :request
+                                  #'my-fh-jira-search)
+
+         (defun my-fh-jira-search (input &rest args)
+             "search jira tickets"
+                 (let ((url-request-method "GET")
+                     (url-request-extra-headers (list (cons "Authorization" fielhub-jira-basic-auth)))
+                     (url (concat "https://example.atlassian.net/rest/api/2/issue/picker?query=" input)))
+                 (with-current-buffer (url-retrieve-synchronously url)
+                   (goto-char (point-min))
+                   (re-search-forward "\n\n" nil 'noerror)
+                   (delete-region (point-min) (point))
+                   (let* ((json-result (lsp-json-read-buffer))
+                          (sections (gethash "sections" json-result))
+                          (issues (gethash "issues" (aref sections 0)))
+                           (titles (mapcar (lambda (val) (let* ((key (gethash "key" val))
+                                                                (summaryText (concat key " - " (gethash "summaryText" val)))
+                                                                (url (concat "https://example.atlassian.net/browse/" key)))
+                                                           (message summaryText)
+                                                          (propertize summaryText :url url :source "Jira"))) issues))
+                     )
+                     titles
+                     ))
+                 ))
+
+
+     (defun consult-omni-example (&optional initial
+                                             al no-callback &rest args)
+       "My omni"
+       (interactive "P")
+       (let ((consult-async-split-style 'comma))
+         (consult-omni-multi initial "Example 🌍:" '("notmuch" "Example Jira Tickets" "Example Bitbucket PRs") no-callback args)))
+
+
+      (consult-omni-define-source "UA2WEB Redmine task"
+                                  :type 'sync
+                                  :request
+                                  #'my-ua2web-redmine-task)
+
+
+     (defun my-ua2web-redmine-task (input &rest args)
+       "return UA2WEB task link"
+       (let ((ua2web_redmine_url (concat "https://redmine.example.com/" input))
+             )
+         (list
+          (propertize (format "Ua2Task %s" ua2web_redmine_url) :url ua2web_redmine_url :source "UA2WEB Redmine Task Reference")
+          )
+         )
+       )
+
+      (consult-omni-define-source "My Global Search"
+                                  :type 'sync
+                                  :request
+                                  #'my-global-search)
+
+     (defun my-global-search (input &rest args)
+       "My Global Search"
+       (let ((google_search_url (concat "https://www.google.com/search?q=" input))
+             (duckduckgo_search_url (concat "https://duckduckgo.com/?t=h_&q=" input))
+             )
+         (list
+          (propertize (format "Google Search %s" google_search_url) :url google_search_url :source "global search")
+          (propertize (format "Duck Duck Go Search %s" duckduckgo_search_url) :url duckduckgo_search_url :source "global search")
+          )
+         )
+       )
+
+   ;; RG
+   (consult-omni-define-source "RG DPA Merge Request"
+                               :type 'sync
+                               :request
+                               #'consult-omni-dpa-merge-request-url)
+
+   (consult-omni-define-source "RG DPA YourTrack Task"
+                               :type 'sync
+                               :request
+                               #'rg-dpa-yourtrack-url)
+
+
+   #+end_src
+
+** el-search
+
+   #+begin_src emacs-lisp
+   (use-package el-search)
+   #+end_src
+
+   #+RESULTS:
+
+** consult-denote
+
+   #+begin_src emacs-lisp
+   (use-package consult-denote)
+   (global-set-key (kbd "C-C f r") 'consult-denote-find)
+   (global-set-key (kbd "C-C f g") 'consult-denote-grep)
+   (define-key global-map  "\C-zn"         'denote)
+   #+end_src
+
+   #+RESULTS:
+   : denote
+
+** COMMENT p-search
+
+   #+begin_src emacs-lisp
+   (quelpa '(p-search :repo "zkry/p-search" :fetcher github))
+   (require 'p-search)
+   #+end_src
+
+   #+RESULTS:
+   : p-search
+
+** imenu
+
+   #+begin_src emacs-lisp
+   (setq imenu-sort-function #'imenu--sort-by-position)
+
+    (with-eval-after-load 'imenu
+      (require 'cl-lib)
+      (defun my-imenu-flatten (index)
+        (cl-labels ((walk (alist)
+                          (cl-loop for (k . v) in alist
+                                   if (imenu--subalist-p (cons k v))
+                                   append (walk v)
+                                   else collect (cons k v))))
+          (sort (walk index) (lambda (a b) (< (cdr a) (cdr b))))))
+      (advice-add 'imenu--make-index-alist :filter-return #'my-imenu-flatten))
+
+   (global-set-key "\C-z=" 'imenu-list)
+   #+end_src
+
+   #+RESULTS:
+   : imenu-list
+
+** completion preview mode
+   from: https://protesilaos.com/codelog/2026-08-29-emacs-completion-preview-mode/
+   #+begin_src emacs-lisp
+   
+   (use-package completion-preview
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-preview-active-mode-map
+       ("M-i" . completion-preview-insert-word)
+       ("M-n" . completion-preview-next-candidate)
+       ("M-p" . completion-preview-prev-candidate)
+       ("M-<return>" . completion-preview-insert)
+       ;; With TAB we effectively defer to the *Completions* buffer to
+       ;; show more completion candidates at once.
+       ("<tab>" . completion-preview-complete))
+     :config
+     (setq completion-preview-minimum-symbol-length 2)
+     (with-eval-after-load 'org
+       (add-to-list 'completion-preview-commands #'org-self-insert-command))
+     (global-completion-preview-mode 1))
+
+   ;; I have a more detailed configuration (and explanation) that works
+   ;; with Emacs 31 built-in completion capabilities:
+   ;; https://protesilaos.com/codelog/2026-07-29-emacs-default-minibuffer-completion-overview/.
+   (use-package minibuffer
+     :ensure nil
+     :demand t
+     :bind
+     ( :map completion-in-region-mode-map
+       ("M-i" . minibuffer-choose-completion)
+       ("M-n" . minibuffer-next-completion)
+       ("M-p" . minibuffer-previous-completion))
+     :config
+     (setq completions-format 'one-column)
+     (setq completions-max-height 12)
+     (setq completion-auto-help t)
+     (setq completion-auto-select nil)
+     (setq minibuffer-visible-completions t)
+     (setq completion-eager-update t))
+   #+end_src
+
+   #+RESULTS:
+   : minibuffer-previous-completion
+
+* Core settings
+
+  Settings that lived only in Customize until October 2026 and have no package section of
+  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
+  overrides the ~:custom~ value set here (Customize's user theme has priority over the
+  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
+  time to time.
+
+** Indentation and interpreters of built-in programming modes
+
+   #+begin_src emacs-lisp
+   (use-package python
+     :ensure nil
+     :defer t
+     :custom
+     (python-shell-interpreter "python3"))
+   (use-package css-mode
+     :ensure nil
+     :defer t
+     :custom
+     (css-indent-offset 2))
+   (use-package sh-script
+     :ensure nil
+     :defer t
+     :custom
+     (sh-basic-offset 2))
+   (use-package typescript-ts-mode
+     :ensure nil
+     :defer t
+     :custom
+     (typescript-ts-mode-indent-offset 2))
+   #+end_src
+
+** Org: general settings that used to live in Customize
+
+   #+begin_src emacs-lisp
+   (use-package org
+     :ensure nil
+     :custom
+     ;; Agenda, logging, priorities
+     (org-deadline-warning-days 7)
+     (org-log-into-drawer t)
+     (org-log-done 'time)
+     (org-log-redeadline 'time)
+     (org-priority-default 67)
+     (org-priority-lowest 68)
+     (org-timestamp-rounding-minutes '(5 5))
+     (org-clock-mode-line-total 'today)
+     (org-refile-targets '((org-agenda-files . t)))
+     (org-habit-completed-glyph 10003)
+     (org-habit-graph-column 95)
+     ;; Display
+     (org-startup-folded t)
+     (org-adapt-indentation t)
+     (org-fontify-whole-heading-line t)
+     (org-fontify-quote-and-verse-blocks t)
+     ;; Modules, babel, export
+     (org-modules
+      '(org-bbdb org-bibtex org-docview org-gnus org-info org-irc org-mhe
+                 org-rmail org-w3m))
+     (org-babel-python-command "python")
+     (org-latex-default-packages-alist
+      '(("utf8x" "inputenc" t ("pdflatex"))
+        ("T2A" "fontenc" t ("pdflatex"))
+        ("russian,english" "babel" nil nil) ("" "graphicx" t nil)
+        ("" "longtable" nil nil) ("" "wrapfig" nil nil)
+        ("" "rotating" nil nil) ("normalem" "ulem" t nil)
+        ("" "amsmath" t nil) ("" "amssymb" t nil) ("" "capt-of" nil nil)
+        ("unicode" "hyperref" nil nil)))
+     (org-latex-hyperref-template
+      "\\hypersetup{\n  pdfauthor={%a},\n  pdftitle={%t},\n  pdfkeywords={%k},\n  colorlinks=true,\n  linkcolor=blue,\n  pdfsubject={%d},\n  pdfcreator={%c}, \n  pdflang={%L}}\n ")
+     (org-taskjuggler-default-global-properties "\n "))
+   #+end_src
+
+** Packages without a section of their own yet
+
+   #+begin_src emacs-lisp
+   (use-package treemacs
+     :defer t
+     :custom
+     (treemacs-follow-mode t))
+   (use-package pyvenv
+     :config
+     (pyvenv-tracking-mode 1))
+   #+end_src
+
+* Emacs tools and minor modes
 ** camel case
 
    #+begin_src emacs-lisp
@@ -3519,126 +4109,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+end_src
 
-** ace, avy, councel
-
-  Jumping between frames, windows, lines, etc.
-
- #+begin_src emacs-lisp
-   (use-package ace-window
-     :bind (
-            ("\M-[" . ace-window)
-            )
-     )
-   (global-set-key "\M-[" 'ace-window)
-   (global-set-key "\M-]" 'avy-goto-char-timer)
- #+end_src
-
-** vertico
-
- https://github.com/minad/vertico
- #+begin_src emacs-lisp
- ;; Enable vertico
- (use-package vertico
-   :init
-   (vertico-mode)
-
-   ;; Different scroll margin
-   ;; (setq vertico-scroll-margin 0)
-
-   ;; Show more candidates
-   ;; (setq vertico-count 20)
-
-   ;; Grow and shrink the Vertico minibuffer
-   ;; (setq vertico-resize t)
-
-   ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
-   ;; (setq vertico-cycle t)
- :bind (
-        ;; ("C-c C-r" . ivy-resume)
-        ([C-f12] . vertico-mode)
-        ([s-f12] . vertico-mode)
-        )
-
-   )
-
- ;; Persist history over Emacs restarts. Vertico sorts by history position.
- (use-package savehist
-   :init
-   (savehist-mode))
-
- ;; A few more useful configurations...
- (use-package emacs
-   :init
-   ;; Add prompt indicator to `completing-read-multiple'.
-   ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
-   (defun crm-indicator (args)
-     (cons (format "[CRM%s] %s"
-                   (replace-regexp-in-string
-                    "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
-                    crm-separator)
-                   (car args))
-           (cdr args)))
-   (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
-
-   ;; Do not allow the cursor in the minibuffer prompt
-   (setq minibuffer-prompt-properties
-         '(read-only t cursor-intangible t face minibuffer-prompt))
-   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
-
-   ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
-   ;; Vertico commands are hidden in normal buffers.
-   ;; (setq read-extended-command-predicate
-   ;;       #'command-completion-default-include-p)
-
-   ;; Enable recursive minibuffers
-   (setq enable-recursive-minibuffers t))
-
- ;; https://github.com/minad/vertico
- ;; Similar to org-refile, the commands org-agenda-filter and org-tags-view do not make use of completion boundaries.
- (defun org-enforce-basic-completion (&rest args)
-   (minibuffer-with-setup-hook
-       (:append
-        (lambda ()
-          (let ((map (make-sparse-keymap)))
-            (define-key map [tab] #'minibuffer-complete)
-            (use-local-map (make-composed-keymap (list map) (current-local-map))))
-          (setq-local completion-styles (cons 'basic completion-styles)
-                      vertico-preselect 'prompt)))
-     (apply args)))
- (advice-add #'org-make-tags-matcher :around #'org-enforce-basic-completion)
- (advice-add #'org-agenda-filter :around #'org-enforce-basic-completion)
- #+end_src
-
-** COMMENT ivy
-
- #+begin_src emacs-lisp
- ;; (use-package counsel
- ;;   :after ivy
- ;;   :config (counsel-mode))
-
- (use-package ivy
-   :defer 0.3
-   :diminish
-   :bind (
-          ;; ("C-c C-r" . ivy-resume)
-          ("C-x B" . ivy-switch-buffer-other-window)
-          ("C-c m i" . ivy-mode)
-	  ([C-f12] . ivy-mode)
-	  )
-   :custom
-   (ivy-count-format "(%d/%d) ")
-   (ivy-use-virtual-buffers t)
-   :config (ivy-mode nil))
-
- #+end_src
-
-** COMMENT icomplete
-
- #+begin_src emacs-lisp
- (global-set-key [s-f11] 'icomplete-mode)
- (icomplete-mode nil)
- #+end_src
-
 ** annotate-mode
    #+begin_src emacs-lisp
      (use-package annotate
@@ -3648,23 +4118,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        :bind (
 	      ("\C-cma" . annotate-mode)
 	      ))
-   #+end_src
-
-** deadgrep
-
-   Another method to search
-
-   #+begin_src emacs-lisp
-   (defalias 'my-deadgrep-current
-    (kmacro "C-; C-; M-w C-c d C-y <return>"))
-
-   (use-package deadgrep
-     :bind (
-            (
-             ("C-c d" . deadgrep)
-             ("C-x / d" . my-deadgrep-current)
-             )
-            ))
    #+end_src
 
 ** COMMENT elfeed
@@ -3845,16 +4298,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
    #+end_src
 
-** Phi-search
-
-   #+begin_src emacs-lisp
-     (use-package phi-search
-       :bind (
-	      ("C-c C-s" . phi-search)
-	      ("C-c C-r" . phi-search-backward)
-	      ))
-   #+end_src
-
 ** hl-todo
    :LOGBOOK:
    - State "TODO"       from "TODO"       [2026-10-04 Sun 15:45]
@@ -3877,11 +4320,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (global-hl-todo-mode)
      )
    (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
-   #+end_src
-
-** imenu
-   #+begin_src emacs-lisp
-     (use-package imenu-list)
    #+end_src
 
 ** ledger
@@ -4493,79 +4931,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+end_src
 
-** projectile
-
- Easy way to select file in your project.
-
-  #+begin_src emacs-lisp
-  (use-package projectile)
-  (use-package helm-projectile
-    :init
-    ;; (projectile-global-mode)
-    (setq projectile-enable-caching t)
-    :bind (([(M-s-tab)] . helm-projectile-switch-to-buffer)
-           ([(C-tab)] . helm-buffers-list)
-           ("M-<f2>" . helm-buffers-list)
-           ("C-z C-z" . helm-projectile-switch-to-buffer)
-           ("C-x C-<tab>" . helm-projectile-switch-to-buffer)
-           ("C-c h p p" . helm-projectile)
-           ("<f5>" . helm-projectile-find-file)
-           ("C-c h p f" . helm-projectile-find-file)
-           ("C-c h p s" . helm-projectile-switch-project)
-           ("C-c p s" . projectile-switch-open-project)
-           ("C-c h p r" . helm-projectile-recentf)
-           ("C-c h p g" . helm-projectile-grep)
-           ("C-c h p d" . helm-projectile-rg)
-           ("M-<f5>" . projectile-find-file)
-           ("s-<f5>" . projectile-switch-project)
-           ("C-c s" . helm-projectile-ag)
-           )
-    )
-
-  ;; --- TRAMP slowdown fix --------------------------------------------------
-  ;; Projectile probes the filesystem (looking for .git, .projectile, etc.)
-  ;; on every find-file and on every mode-line update.  Over TRAMP those
-  ;; probes turn into round-trips to the remote host and a single keystroke
-  ;; can stall Emacs for many seconds.  We go nuclear: globally disable
-  ;; `projectile-mode' the instant we open ANY TRAMP path.  Re-enable later
-  ;; with `M-x my/projectile-toggle-global' (or just `M-x projectile-mode').
-  ;;
-  ;; NOTE: this MUST live outside `helm-projectile' :config — that package
-  ;; is autoloaded via :bind and its :config is deferred until you press one
-  ;; of the bound keys, which is too late for the first TRAMP open.  Putting
-  ;; the hook inside `with-eval-after-load 'projectile' guarantees it is
-  ;; registered at startup, because :init force-loads projectile via
-  ;; `projectile-global-mode'.
-  (with-eval-after-load 'projectile
-    (defun my/projectile-off-on-tramp-find-file (filename &rest _)
-      "Disable `projectile-mode' BEFORE opening any TRAMP file."
-      (when (and (stringp filename)
-                 (file-remote-p filename)
-                 (bound-and-true-p projectile-mode))
-        (projectile-mode -1)
-        (message "projectile-mode auto-disabled (TRAMP)")))
-    (advice-add 'find-file :before #'my/projectile-off-on-tramp-find-file)
-
-    (defun my/projectile-off-on-tramp-buffer ()
-      "Belt-and-braces: also disable on any TRAMP buffer (dired etc.)."
-      (when (and (file-remote-p default-directory)
-                 (bound-and-true-p projectile-mode))
-        (projectile-mode -1)
-        (message "projectile-mode auto-disabled (TRAMP buffer)")))
-    (add-hook 'find-file-hook  #'my/projectile-off-on-tramp-buffer)
-    (add-hook 'dired-mode-hook #'my/projectile-off-on-tramp-buffer)
-
-    (defun my/projectile-toggle-global ()
-      "Toggle `projectile-mode' globally — workaround for TRAMP freezes."
-      (interactive)
-      (if (bound-and-true-p projectile-mode)
-          (progn (projectile-mode -1)
-                 (message "projectile-mode OFF (TRAMP-safe)"))
-        (projectile-mode +1)
-        (message "projectile-mode ON"))))
-  ;; ------------------------------------------------------------------------
-  #+end_src
-
 ** easy-kill
 
  #+begin_src emacs-lisp
@@ -4714,18 +5079,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+RESULTS:
    : 3306
-
-** company mode
-
-   While its in conflict with lsp-bridge, this mode is still very useful in some cases, e.g. shell etc
-
-#+begin_src emacs-lisp
-(use-package company
-  :bind
-  ("s-/" . company-complete)
-  :config
-  (setq company-minimum-prefix-length 1))
-#+end_src
 
 ** publish file
 
@@ -4896,43 +5249,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (setq-default indent-tabs-mode nil)
    #+end_src
 
-** marginalia & embark
-
-   Marginalia adds annotations to minibuffer candidates; Embark adds actions on the thing at
-   point or the current candidate (=C-.=).  Deviations from the upstream sample config:
-
-   - =C-;= stays on ~er/expand-region~; ~embark-dwim~ is left unbound (=RET= inside
-     ~embark-act~ runs the default action anyway).
-   - ~prefix-help-command~ is not replaced with Embark's.  At runtime it is
-     ~which-key-C-h-dispatch~ (installed by ~which-key-mode~, which also overrides the
-     ~repeated-prefix-help-command~ set in "persistent keymap").
-   - ~marginalia-mode~ used to be enabled only through Customize (='(marginalia-mode t)=);
-     it is now activated here, so that Custom entry can be dropped.
-
-   #+begin_src emacs-lisp
-   (use-package marginalia
-     :bind (:map minibuffer-local-map
-            ("M-A" . marginalia-cycle))
-     ;; Activate in :init so annotations are present from the first minibuffer.
-     :init
-     (marginalia-mode 1))
-
-   (use-package embark
-     :bind (("C-." . embark-act)
-            ("C-h B" . embark-bindings))
-     :config
-     ;; Hide the mode line of the Embark live/completions buffers.
-     (add-to-list 'display-buffer-alist
-                  '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                    nil
-                    (window-parameters (mode-line-format . none)))))
-
-   ;; Loaded by embark once consult is present; previews candidates in Embark Collect buffers.
-   (use-package embark-consult
-     :after (embark consult)
-     :hook (embark-collect-mode . consult-preview-at-point-mode))
-   #+end_src
-
 ** COMMENT python auto virtualenv for python-ts-mode
 
    #+begin_src emacs-lisp
@@ -4966,12 +5282,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map 
  'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
-
-** helm-systemd
-
-   #+begin_src emacs-lisp
-   (use-package helm-systemd)
-   #+end_src
 
 ** COMMENT theme
 
@@ -5028,24 +5338,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      ;; Projectile users
      (setq dape-cwd-fn 'projectile-project-root)
      )
-   #+end_src
-
-** COMMENT consult imenu
-
-   #+begin_src emacs-lisp
-   (global-set-key [M-f2] 'consult-imenu)
-   (add-to-list 'consult-imenu-config
-                '(python-mode
-                  :toplevel "Function"
-                  :types
-                  ((?f "Function" font-lock-function-name-face)
-                   (?m "Method" font-lock-function-name-face)
-                   (?c "Class" font-lock-property-use-face)
-                   (?M "Module" font-lock-builtin-face)
-                   (?F "Field" font-lock-regexp-face)
-                   (?v "Variable" font-lock-constant-face))))
-
-   (global-set-key [M-f7] 'consult-ripgrep)
    #+end_src
 
 ** COMMENT minimap
@@ -5124,14 +5416,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    ;; (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
    #+end_src
 
-** counsel-ag
-
-   #+begin_src emacs-lisp
-   (use-package counsel-ag-popup
-     :ensure t
-     :bind ("C-c M-c" . 'counsel-ag))
-   #+end_src
-
 ** COMMENT dslide
 
    #+begin_src emacs-lisp
@@ -5197,189 +5481,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
                         :stream t
                         :key 'gptel-api-key-from-auth-source)))
 #+end_src
-
-** consult
-
-   #+begin_src emacs-lisp
-   (use-package consult
-     :pin gnu
-     :custom
-     (consult-narrow-key "<")
-     )
-   #+end_src
-
-** COMMENT consult-omni
-
-   #+begin_src emacs-lisp
-     (global-unset-key (kbd "C-x /"))
-     (use-package browser-hist)
-     (use-package consult-omni
-       :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
-       :after consult
-       :bind (
-              ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
-              ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
-              ("C-x / p r y" . consult-omni-rg-yourtrack-task)
-              ("C-x / p r t" . consult-omni-rg-yourtrack-task)
-              ;;("C-x / p f f" . consult-omni-example)
-              ;;("C-x / p f j" . consult-omni-example-jira-task)
-              ;;("C-x / p f b" . consult-omni-example-bitbucket-prs)
-              ("C-x / p u t" . consult-omni-ua2web-redmine-task)
-              ("C-x / s g" . consult-omni-my-global-search)
-              )
-       ;;:custom
-       ;; General settings that apply to all sources
-       ;;(consult-omni-show-preview t) ;;; show previews
-       ;;(consult-omni-preview-key "C-o") ;;; set the preview key to C-o
-       ;; :config
-       )
-     ;; Load Sources Core code
-     (require 'consult-omni-sources)
-     (require 'consult-omni-apps)
-     (require 'consult-omni-browser-history)
-     (require 'consult-omni-buffer)
-     (require 'consult-omni-calc)
-     (require 'consult-omni-grep)
-     (require 'consult-omni-gptel)
-     (require 'consult-omni-elfeed)
-     (require 'consult-omni-ripgrep)
-     (require 'consult-omni-notmuch)
-     (require 'consult-omni-org-agenda)
-     (require 'consult-omni-google)
-
-     (consult-omni-define-source "Example Jira task"
-                                 :type 'sync
-                                 :request
-                                 #'my-fh-jira-task-results)
-
-     (defun my-fh-jira-task-results (input &rest args)
-       "return jira task link"
-       (let ((jira_url (concat "https://example.atlassian.net/browse/" input))
-             (bitbucket_search_url (concat "https://bitbucket.org/example/repo/pull-requests/?state=OPEN&query=" input))
-             )
-         (list
-          (propertize (format "Jira %s" jira_url) :url jira_url :source "Task References")  ;; first result - link to Jira task itself
-          (propertize (format "Bitbucket search %s" bitbucket_search_url) :url bitbucket_search_url :source "Task References")
-          )
-         )
-       )
-
-      (consult-omni-define-source "Example Bitbucket PRs"
-                                  :type 'async
-                                  :request
-                                  #'my-fh-open-bitbucket-prs)
-
-      (defun my-fh-open-bitbucket-prs (input &rest args)
-        "bitbucket PR"
-            (let ((url-request-method "GET")
-                (url-request-extra-headers (list (cons "Authorization" example-basic-auth)))
-                (url "https://api.bitbucket.org/2.0/repositories/example/repo/pullrequests"))
-            (with-current-buffer (url-retrieve-synchronously url)
-              (goto-char (point-min))
-              (re-search-forward "\n\n" nil 'noerror)
-              (delete-region (point-min) (point))
-              (let* ((json-result (lsp-json-read-buffer))
-                     (values (gethash "values" json-result))
-                     (titles (delq nil (mapcar (lambda (val) (let* ((title (gethash "title" val))
-                                                                    (links (gethash "links" val))
-                                                                    (html_link (gethash "href" (gethash "html" links)))
-                                                                    ) (if (string-match (concat ".*" input ".*") title) (propertize title :url html_link :source "BB Pull Request") nil))) values)))
-                     )
-                titles
-                )))
-            )
-
-   ;; (consult-omni-define-source "fh-bb2"
-   ;;                             :type 'async
-   ;;                             :require-match nil
-   ;;                             :face 'consult-omni-engine-title-face
-   ;;                             :request #'my-fh-open-bitbucket-prs
-   ;;                             )
-
-
-
-     (consult-omni-define-source "Example Jira Tickets"
-                                  :type 'async
-                                  :request
-                                  #'my-fh-jira-search)
-
-         (defun my-fh-jira-search (input &rest args)
-             "search jira tickets"
-                 (let ((url-request-method "GET")
-                     (url-request-extra-headers (list (cons "Authorization" fielhub-jira-basic-auth)))
-                     (url (concat "https://example.atlassian.net/rest/api/2/issue/picker?query=" input)))
-                 (with-current-buffer (url-retrieve-synchronously url)
-                   (goto-char (point-min))
-                   (re-search-forward "\n\n" nil 'noerror)
-                   (delete-region (point-min) (point))
-                   (let* ((json-result (lsp-json-read-buffer))
-                          (sections (gethash "sections" json-result))
-                          (issues (gethash "issues" (aref sections 0)))
-                           (titles (mapcar (lambda (val) (let* ((key (gethash "key" val))
-                                                                (summaryText (concat key " - " (gethash "summaryText" val)))
-                                                                (url (concat "https://example.atlassian.net/browse/" key)))
-                                                           (message summaryText)
-                                                          (propertize summaryText :url url :source "Jira"))) issues))
-                     )
-                     titles
-                     ))
-                 ))
-
-
-     (defun consult-omni-example (&optional initial
-                                             al no-callback &rest args)
-       "My omni"
-       (interactive "P")
-       (let ((consult-async-split-style 'comma))
-         (consult-omni-multi initial "Example 🌍:" '("notmuch" "Example Jira Tickets" "Example Bitbucket PRs") no-callback args)))
-
-
-      (consult-omni-define-source "UA2WEB Redmine task"
-                                  :type 'sync
-                                  :request
-                                  #'my-ua2web-redmine-task)
-
-
-     (defun my-ua2web-redmine-task (input &rest args)
-       "return UA2WEB task link"
-       (let ((ua2web_redmine_url (concat "https://redmine.example.com/" input))
-             )
-         (list
-          (propertize (format "Ua2Task %s" ua2web_redmine_url) :url ua2web_redmine_url :source "UA2WEB Redmine Task Reference")
-          )
-         )
-       )
-
-      (consult-omni-define-source "My Global Search"
-                                  :type 'sync
-                                  :request
-                                  #'my-global-search)
-
-     (defun my-global-search (input &rest args)
-       "My Global Search"
-       (let ((google_search_url (concat "https://www.google.com/search?q=" input))
-             (duckduckgo_search_url (concat "https://duckduckgo.com/?t=h_&q=" input))
-             )
-         (list
-          (propertize (format "Google Search %s" google_search_url) :url google_search_url :source "global search")
-          (propertize (format "Duck Duck Go Search %s" duckduckgo_search_url) :url duckduckgo_search_url :source "global search")
-          )
-         )
-       )
-
-   ;; RG
-   (consult-omni-define-source "RG DPA Merge Request"
-                               :type 'sync
-                               :request
-                               #'consult-omni-dpa-merge-request-url)
-
-   (consult-omni-define-source "RG DPA YourTrack Task"
-                               :type 'sync
-                               :request
-                               #'rg-dpa-yourtrack-url)
-
-
-   #+end_src
 
 ** YouTrack
 
@@ -5786,14 +5887,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
                                   (append org-babel-load-languages '((d2 . t)))))
    #+end_src
 
-** el-search
-
-   #+begin_src emacs-lisp
-   (use-package el-search)
-   #+end_src
-
-   #+RESULTS:
-
 ** COMMENT org-present
 
    #+begin_src emacs-lisp
@@ -5866,18 +5959,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
 
-** consult-denote
-
-   #+begin_src emacs-lisp
-   (use-package consult-denote)
-   (global-set-key (kbd "C-C f r") 'consult-denote-find)
-   (global-set-key (kbd "C-C f g") 'consult-denote-grep)
-   (define-key global-map  "\C-zn"         'denote)
-   #+end_src
-
-   #+RESULTS:
-   : denote
-
 ** yank with indent
 
    Often needed, especially in org mode.
@@ -5902,16 +5983,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : yank-with-indent
-
-** COMMENT p-search
-
-   #+begin_src emacs-lisp
-   (quelpa '(p-search :repo "zkry/p-search" :fetcher github))
-   (require 'p-search)
-   #+end_src
-
-   #+RESULTS:
-   : p-search
 
 ** openwith
 
@@ -6779,28 +6850,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : po-subedit-abort
-
-** imenu
-
-   #+begin_src emacs-lisp
-   (setq imenu-sort-function #'imenu--sort-by-position)
-
-    (with-eval-after-load 'imenu
-      (require 'cl-lib)
-      (defun my-imenu-flatten (index)
-        (cl-labels ((walk (alist)
-                          (cl-loop for (k . v) in alist
-                                   if (imenu--subalist-p (cons k v))
-                                   append (walk v)
-                                   else collect (cons k v))))
-          (sort (walk index) (lambda (a b) (< (cdr a) (cdr b))))))
-      (advice-add 'imenu--make-index-alist :filter-return #'my-imenu-flatten))
-
-   (global-set-key "\C-z=" 'imenu-list)
-   #+end_src
-
-   #+RESULTS:
-   : imenu-list
 
 ** review & annotate videos in emacs org-mode
 
@@ -7694,51 +7743,6 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 
    #+RESULTS:
-
-** completion preview mode
-   from: https://protesilaos.com/codelog/2026-08-29-emacs-completion-preview-mode/
-   #+begin_src emacs-lisp
-   
-   (use-package completion-preview
-     :ensure nil
-     :demand t
-     :bind
-     ( :map completion-preview-active-mode-map
-       ("M-i" . completion-preview-insert-word)
-       ("M-n" . completion-preview-next-candidate)
-       ("M-p" . completion-preview-prev-candidate)
-       ("M-<return>" . completion-preview-insert)
-       ;; With TAB we effectively defer to the *Completions* buffer to
-       ;; show more completion candidates at once.
-       ("<tab>" . completion-preview-complete))
-     :config
-     (setq completion-preview-minimum-symbol-length 2)
-     (with-eval-after-load 'org
-       (add-to-list 'completion-preview-commands #'org-self-insert-command))
-     (global-completion-preview-mode 1))
-
-   ;; I have a more detailed configuration (and explanation) that works
-   ;; with Emacs 31 built-in completion capabilities:
-   ;; https://protesilaos.com/codelog/2026-07-29-emacs-default-minibuffer-completion-overview/.
-   (use-package minibuffer
-     :ensure nil
-     :demand t
-     :bind
-     ( :map completion-in-region-mode-map
-       ("M-i" . minibuffer-choose-completion)
-       ("M-n" . minibuffer-next-completion)
-       ("M-p" . minibuffer-previous-completion))
-     :config
-     (setq completions-format 'one-column)
-     (setq completions-max-height 12)
-     (setq completion-auto-help t)
-     (setq completion-auto-select nil)
-     (setq minibuffer-visible-completions t)
-     (setq completion-eager-update t))
-   #+end_src
-
-   #+RESULTS:
-   : minibuffer-previous-completion
 
 * Small emacs functions of mine
 ** execute thunar here
