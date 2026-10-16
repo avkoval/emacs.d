@@ -2267,6 +2267,406 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    #+RESULTS:
    : minibuffer-previous-completion
 
+* Interface and windows
+
+  Key help, fonts, themes, tab-line, window and buffer switching.
+
+** indent-bars mode
+
+   #+begin_src emacs-lisp
+   (use-package indent-bars
+      :bind (("C-z <f1('1>" . indent-bars-mode))
+      )
+   #+end_src
+
+   #+RESULTS:
+   : indent-bars-mode
+
+** Choose/Change font
+
+   I wrote function to choose font using Helm.
+
+   #+begin_src emacs-lisp
+   (require 'subr-x)
+
+   (defcustom my-frame-default-font "" "Default font used for fontify new frames")
+
+   (unless (boundp 'helm-xfonts-cache)
+     (defvar helm-xfonts-cache nil))
+
+   (defun fontify-frame (frame)
+     (unless (= (length my-frame-default-font) 0)
+       (set-frame-parameter frame 'font my-frame-default-font))
+     )
+
+   (fontify-frame nil)
+   (push 'fontify-frame after-make-frame-functions)
+
+   (defun change_font (new-font where &optional size)
+     (interactive)
+     (let
+         ((font-with-size (split-string new-font "-"))
+          (size (or size (read-from-minibuffer "Font size: " "14"))))
+       (setcar (nthcdr 7 font-with-size) size)
+       (let ((new-font-final (string-join font-with-size "-")))
+         (if (string= where "default")
+             (progn
+               (set-face-font 'default new-font-final)
+               (setq my-frame-default-font new-font-final))
+           (set-frame-parameter nil 'font new-font-final))
+         )
+       (message (format "Default font set to %s of size %s" new-font size))
+       (setq org-ellipsis "⤵")
+       ))
+
+   (defun my-fix-org ()
+     (interactive)
+     (setq org-ellipsis "⤵"))
+
+   ;; (defun my-set-default-font()
+   ;;   (interactive)
+   ;;   (set-face-font 'default my-frame-default-font)
+   ;;   (set-frame-parameter nil 'font my-frame-default-font)
+   ;;   )
+
+   ;; (advice-add 'my-set-default-font :after 'customize-themes)
+
+   (defvar avk-change-default-font18
+     (helm-build-sync-source "AVK font selection"
+       :init (lambda ()
+               (unless helm-xfonts-cache
+                 (setq helm-xfonts-cache
+                       (x-list-fonts "*")))
+               )
+       :candidates 'helm-xfonts-cache
+       :action '(("Set default font" . (lambda (new-font)
+                                         (kill-new new-font)
+                                         (change_font new-font "default")
+                                         ))
+                 ("Set current frame font" . (lambda (new-font)
+                                               (kill-new new-font)
+                                               (change_font new-font "frame")
+                                               ))
+                 )
+       :persistent-action (lambda (new-font)
+                            (set-frame-font new-font 'keep-size)
+                            (kill-new new-font))
+       :persistent-help "Preview font and copy to kill-ring"))
+
+   (defun avk-change-default-font-fn ()
+     (interactive)
+     (helm :sources '(avk-change-default-font18))
+     )
+
+   (define-key global-map (kbd "C-z f a") 'avk-change-default-font-fn)
+
+                                           ; this theme needs explicit require ?
+
+   ;; emoji
+   (set-fontset-font "fontset-default" '(#x1F300 . #x1F55F) (font-spec :size 20 :name "Unifont Upper"))
+
+   #+end_src
+
+   #+RESULTS:
+
+** COMMENT minimap
+
+   #+begin_src emacs-lisp
+   (use-package minimap)
+   #+end_src
+
+** which-key - Discover key bindings
+
+   #+begin_src emacs-lisp
+     (use-package which-key
+       :config
+       (which-key-mode 1)
+       (setq which-key-idle-delay 0.7)
+       )
+   #+end_src
+
+** transparency
+
+   #+begin_src emacs-lisp
+     (defun enable-transparency ()
+       (interactive)
+       (set-frame-parameter (selected-frame) 'alpha '(92 97))
+       (add-to-list 'default-frame-alist '(alpha 92 97))
+       )
+
+     (defun disable-transparency ()
+       (interactive)
+       (set-frame-parameter (selected-frame) 'alpha '(100 100))
+       (add-to-list 'default-frame-alist '(alpha 100 100))
+       )
+
+					     ; (enable-transparency)
+     (define-key global-map (kbd "C-z p 1") 'enable-transparency)
+     (define-key global-map (kbd "C-z p 2") 'disable-transparency)
+     (define-key global-map (kbd "C-z p 0") 'disable-transparency)
+   #+end_src
+
+** my Favourite themes
+
+   #+begin_src emacs-lisp
+   (use-package ample-theme :defer t)
+   (use-package ample-zen-theme :defer t)
+   (use-package anti-zenburn-theme :defer t)
+   (use-package apropospriate-theme :defer t)
+   (use-package avk-emacs-themes :defer t)
+   (use-package base16-theme :defer t)
+   (use-package clues-theme :defer t)
+   (use-package color-theme-sanityinc-tomorrow :defer t)
+   (use-package creamsody-theme :defer t)
+   (use-package espresso-theme :defer t)
+   (use-package flatland-theme :defer t)
+   (use-package flatui-dark-theme :defer t)
+   (use-package flatui-theme :defer t)
+   (use-package inkpot-theme :defer t)
+   (use-package leuven-theme :defer t)
+   (use-package moe-theme :defer t)
+   (use-package panda-theme :defer t)
+   (use-package parchment-theme :defer t)
+   (use-package spacemacs-theme :defer t)
+   (use-package suscolors-theme :defer t)
+   (use-package tango-plus-theme :defer t)
+   (use-package tangotango-theme :defer t)
+   (use-package warm-night-theme :defer t)
+   (use-package darktooth-theme :defer t)
+   (use-package iodine-theme :defer t)
+   (use-package arjen-grey-theme :defer t)
+   (use-package birds-of-paradise-plus-theme :defer t)
+   (use-package bubbleberry-theme :defer t)
+   (use-package light-soap-theme :defer t)
+   (use-package ancient-one-dark-theme :defer t)
+   (use-package snazzy-theme :defer t)
+   (use-package twilight-bright-theme :defer t)
+   (use-package solo-jazz-theme :defer t)
+   (use-package dakrone-light-theme :defer t)
+   (use-package farmhouse-themes :defer t)
+   (use-package flucui-themes :defer t)
+   (use-package ef-themes :defer t)
+   (use-package monokai-theme :defer t)
+   (use-package zerodark-theme :defer t)
+   (use-package challenger-deep-theme :defer t)
+   (use-package humanoid-themes :defer t)
+   (use-package standard-themes :defer t)
+   (use-package color-theme-modern :defer t)
+   (use-package gruber-darker-theme :defer t)
+   (use-package sexy-theme :defer t)
+   ;; (use-package lambda-themes
+   ;;   :straight (:type git :host github :repo "lambda-emacs/lambda-themes")
+   ;;   :custom
+   ;;   (lambda-themes-set-italic-comments t)
+   ;;   (lambda-themes-set-italic-keywords t)
+   ;;   (lambda-themes-set-variable-pitch t)
+   ;;   :config
+   ;;   ;; load preferred theme
+   ;;   )
+   (use-package yotsuba-theme :load-path "lisp/yotsuba-emacs-theme" :defer nil)
+
+   #+end_src
+
+** Always display file name in frame title
+
+ http://www.emacswiki.org/emacs/FrameTitle
+ display full file name in window title
+
+ This feature is not yet complete - since it seems org-mode
+ looses current settings after clock-out.
+ #+begin_src emacs-lisp
+ (defun fix-frame-title ()
+   (interactive)
+   (setq frame-title-format
+         '("%S" (buffer-file-name "%f"
+                                  (dired-directory dired-directory "%b"))))
+   )
+ (fix-frame-title)
+ ;(add-hook 'after-make-frame-functions 'fix-frame-title)
+ (define-key global-map  "\C-cft" 'fix-frame-title)
+ #+end_src
+
+** switch buffers
+
+ #+begin_src emacs-lisp
+ (fset 'cxb_switch_last_buffer
+    (kmacro-lambda-form [?\C-x ?b return] 0 "%d"))
+
+ (global-unset-key (kbd "C-`"))
+ (global-set-key (kbd "C-`") 'cxb_switch_last_buffer)
+ (global-set-key (kbd "C-<iso-lefttab>") 'projectile-switch-to-buffer)
+
+ #+end_src
+
+** persistent keymap
+
+   https://karthinks.com/software/persistent-prefix-keymaps-in-emacs/
+
+   #+begin_src emacs-lisp
+  (defun repeated-prefix-help-command ()
+    (interactive)
+    (when-let* ((keys (this-command-keys-vector))
+	        (prefix (seq-take keys (1- (length keys))))
+	        (orig-keymap (key-binding prefix 'accept-default))
+	        (keymap (copy-keymap orig-keymap))
+	        (exit-func (set-transient-map keymap t #'which-key-abort)))
+      (define-key keymap [remap keyboard-quit]
+        (lambda () (interactive) (funcall exit-func)))
+      (which-key--create-buffer-and-show nil keymap)))
+
+  (setq prefix-help-command #'repeated-prefix-help-command)
+   #+end_src
+
+** COMMENT theme
+
+   #+begin_src emacs-lisp
+   (use-package org-html-themify
+     :straight
+     (org-html-themify
+      :type git
+      :host github
+      :repo "DogLooksGood/org-html-themify"
+      :files ("*.el" "*.js" "*.css"))
+     :hook (org-mode . org-html-themify-mode)
+     :custom
+     (org-html-themify-themes
+      '((dark . modus-vivendi)
+        (light . modus-operandi))))
+   #+end_src
+
+   #+RESULTS:
+   | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
+
+** COMMENT minimap
+
+   Lets try it (again), but I found that it does not work well in org-mode for example.
+
+   #+begin_src emacs-lisp
+   (use-package minimap
+     :ensure t)
+   (define-key esc-map [f12] #'minimap-mode)
+   #+end_src
+
+   - Comment from [2025-01-29 Wed] - its still buggy and sometimes won't exit from this mode
+
+** next/prev buffer
+
+   #+begin_src emacs-lisp
+   (global-set-key (kbd "C-z <right>") 'next-buffer)
+   (global-set-key (kbd "C-z <left>") 'previous-buffer)
+   #+end_src
+
+** tab-line
+   see also https://github.com/thread314/intuitive-tab-line-mode
+   #+begin_src emacs-lisp
+     (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
+     (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
+     (use-package tab-line
+       :custom
+       ;; Emacs 31.1+: don't rebind C-x <left>/<right> (and C-x C-<left>/<right>)
+       ;; from previous-buffer/next-buffer to tab-line-switch-to-prev/next-tab.
+       (tab-line-define-keys nil)
+       (tab-line-tabs-function 'tab-line-tabs-mode-buffers)
+       :config
+       (global-tab-line-mode 1)
+       ;; :init
+       ;; (defvar-keymap tab-line-mode-map
+       ;;   :doc "Keymap for keys of `tab-line-mode'."
+       ;;    "C-x C-<left>"  #'tab-line-switch-to-prev-tab
+       ;;    "C-x C-<right>" #'tab-line-switch-to-next-tab
+       ;;    )
+       )
+
+     ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
+     ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
+
+     ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
+     ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
+
+     ;; (use-package intuitive-tab-line
+     ;;   :load-path "lisp/intuitive-tab-line-mode"
+     ;;   :custom
+     ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
+     ;;   (tab-line-switch-cycling t)
+     ;;   :config
+     ;;   (global-tab-line-mode 1)
+     ;;   (recentf-mode 1)
+     ;;   (setq
+     ;;    tab-line-new-button-show nil  ;; do not show add-new button
+     ;;    tab-line-close-button-show nil  ;; do not show close button
+     ;;    tab-line-separator " "  ;; delimitation between tabs
+     ;;    ))
+
+     ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
+     ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
+     ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
+     ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
+   #+end_src
+
+** window management
+
+   #+begin_src emacs-lisp
+   (global-set-key (kbd "C-s-<down>") 'enlarge-window)
+   (global-set-key (kbd "C-s-<up>") 'shrink-window)
+   ;; (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
+   ;; (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
+   #+end_src
+
+** dedicated window
+
+   Some time ago I was able to do this without additional code, but I can't remember how, so here is the code based on
+   https://www.reddit.com/r/emacs/comments/e8enoh/make_buffers_stick_to_windows/
+
+   #+begin_src emacs-lisp
+     (defun my/set-window-dedicated ()
+       "Toggle whether or not the current window is dedicated to its buffer"
+       (interactive)
+       (set-window-dedicated-p (selected-window) t)
+       )
+
+     (defun my/unset-window-dedicated ()
+       "Toggle whether or not the current window is dedicated to its buffer"
+       (interactive)
+       (set-window-dedicated-p (selected-window) nil)
+       )
+
+   (defun my/toggle-window-dedicated ()
+     (interactive)
+     (message
+      (if (set-window-dedicated-p (selected-window) (not (window-dedicated-p (selected-window)) ))
+          "Marking window '%s' as dedicated"
+        "Un-dedicating window '%s'") (current-buffer)))
+   #+end_src
+
+** TODO theme looper & custom looper
+   :LOGBOOK:
+   - State "TODO"       from              [2025-12-03 Wed 11:55]
+   :END:
+
+   #+begin_src emacs-lisp
+   (use-package theme-looper)
+
+   (defvar my-favorite-themes
+     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid cobalt)
+     "Themes shared by `theme-looper' and `my-theme-looper-pick'.")
+
+   (theme-looper-set-favorite-themes my-favorite-themes)
+
+   (defun my-theme-looper-pick ()
+     "Pick a theme from `my-favorite-themes' via completion.
+Unlike `theme-looper-enable-next-theme', no theme is loaded while
+moving through the list — the chosen theme is applied only on RET."
+     (interactive)
+     (let* ((themes (mapcar #'symbol-name my-favorite-themes))
+            (choice (completing-read "Theme: " themes nil t)))
+       (mapc #'disable-theme custom-enabled-themes)
+       (load-theme (intern choice) t)))
+   #+end_src
+
+   #+RESULTS:
+   : my-theme-looper-pick
+
 * Core settings
 
   Settings that lived only in Customize until October 2026 and have no package section of
@@ -3966,104 +4366,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
       (kmacro "C-c C-j <up> <return> s M-% [ X ] <return> [ SPC ] <return> ! C-<home> <down-mouse-1> <mouse-1> <down-mouse-1> <mouse-1> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up>"))
     #+end_src
 
-** indent-bars mode
-
-   #+begin_src emacs-lisp
-   (use-package indent-bars
-      :bind (("C-z <f1('1>" . indent-bars-mode))
-      )
-   #+end_src
-
-   #+RESULTS:
-   : indent-bars-mode
-
-** Choose/Change font
-
-   I wrote function to choose font using Helm.
-
-   #+begin_src emacs-lisp
-   (require 'subr-x)
-
-   (defcustom my-frame-default-font "" "Default font used for fontify new frames")
-
-   (unless (boundp 'helm-xfonts-cache)
-     (defvar helm-xfonts-cache nil))
-
-   (defun fontify-frame (frame)
-     (unless (= (length my-frame-default-font) 0)
-       (set-frame-parameter frame 'font my-frame-default-font))
-     )
-
-   (fontify-frame nil)
-   (push 'fontify-frame after-make-frame-functions)
-
-   (defun change_font (new-font where &optional size)
-     (interactive)
-     (let
-         ((font-with-size (split-string new-font "-"))
-          (size (or size (read-from-minibuffer "Font size: " "14"))))
-       (setcar (nthcdr 7 font-with-size) size)
-       (let ((new-font-final (string-join font-with-size "-")))
-         (if (string= where "default")
-             (progn
-               (set-face-font 'default new-font-final)
-               (setq my-frame-default-font new-font-final))
-           (set-frame-parameter nil 'font new-font-final))
-         )
-       (message (format "Default font set to %s of size %s" new-font size))
-       (setq org-ellipsis "⤵")
-       ))
-
-   (defun my-fix-org ()
-     (interactive)
-     (setq org-ellipsis "⤵"))
-
-   ;; (defun my-set-default-font()
-   ;;   (interactive)
-   ;;   (set-face-font 'default my-frame-default-font)
-   ;;   (set-frame-parameter nil 'font my-frame-default-font)
-   ;;   )
-
-   ;; (advice-add 'my-set-default-font :after 'customize-themes)
-
-   (defvar avk-change-default-font18
-     (helm-build-sync-source "AVK font selection"
-       :init (lambda ()
-               (unless helm-xfonts-cache
-                 (setq helm-xfonts-cache
-                       (x-list-fonts "*")))
-               )
-       :candidates 'helm-xfonts-cache
-       :action '(("Set default font" . (lambda (new-font)
-                                         (kill-new new-font)
-                                         (change_font new-font "default")
-                                         ))
-                 ("Set current frame font" . (lambda (new-font)
-                                               (kill-new new-font)
-                                               (change_font new-font "frame")
-                                               ))
-                 )
-       :persistent-action (lambda (new-font)
-                            (set-frame-font new-font 'keep-size)
-                            (kill-new new-font))
-       :persistent-help "Preview font and copy to kill-ring"))
-
-   (defun avk-change-default-font-fn ()
-     (interactive)
-     (helm :sources '(avk-change-default-font18))
-     )
-
-   (define-key global-map (kbd "C-z f a") 'avk-change-default-font-fn)
-
-                                           ; this theme needs explicit require ?
-
-   ;; emoji
-   (set-fontset-font "fontset-default" '(#x1F300 . #x1F55F) (font-spec :size 20 :name "Unifont Upper"))
-
-   #+end_src
-
-   #+RESULTS:
-
 ** verb
 
    #+begin_src emacs-lisp
@@ -4330,12 +4632,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        )
    #+end_src
 
-** COMMENT minimap
-
-   #+begin_src emacs-lisp
-   (use-package minimap)
-   #+end_src
-
 ** pdf-tools
 
    #+begin_src emacs-lisp
@@ -4594,16 +4890,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
    #+end_src
 
-** which-key - Discover key bindings
-
-   #+begin_src emacs-lisp
-     (use-package which-key
-       :config
-       (which-key-mode 1)
-       (setq which-key-idle-delay 0.7)
-       )
-   #+end_src
-
 ** realgud
 
    Real good debugger.
@@ -4831,88 +5117,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (global-set-key [(control =)] 'jr-duplicate-line) ;; Ctrl+
    #+end_src
 
-** transparency
-
-   #+begin_src emacs-lisp
-     (defun enable-transparency ()
-       (interactive)
-       (set-frame-parameter (selected-frame) 'alpha '(92 97))
-       (add-to-list 'default-frame-alist '(alpha 92 97))
-       )
-
-     (defun disable-transparency ()
-       (interactive)
-       (set-frame-parameter (selected-frame) 'alpha '(100 100))
-       (add-to-list 'default-frame-alist '(alpha 100 100))
-       )
-
-					     ; (enable-transparency)
-     (define-key global-map (kbd "C-z p 1") 'enable-transparency)
-     (define-key global-map (kbd "C-z p 2") 'disable-transparency)
-     (define-key global-map (kbd "C-z p 0") 'disable-transparency)
-   #+end_src
-
-** my Favourite themes
-
-   #+begin_src emacs-lisp
-   (use-package ample-theme :defer t)
-   (use-package ample-zen-theme :defer t)
-   (use-package anti-zenburn-theme :defer t)
-   (use-package apropospriate-theme :defer t)
-   (use-package avk-emacs-themes :defer t)
-   (use-package base16-theme :defer t)
-   (use-package clues-theme :defer t)
-   (use-package color-theme-sanityinc-tomorrow :defer t)
-   (use-package creamsody-theme :defer t)
-   (use-package espresso-theme :defer t)
-   (use-package flatland-theme :defer t)
-   (use-package flatui-dark-theme :defer t)
-   (use-package flatui-theme :defer t)
-   (use-package inkpot-theme :defer t)
-   (use-package leuven-theme :defer t)
-   (use-package moe-theme :defer t)
-   (use-package panda-theme :defer t)
-   (use-package parchment-theme :defer t)
-   (use-package spacemacs-theme :defer t)
-   (use-package suscolors-theme :defer t)
-   (use-package tango-plus-theme :defer t)
-   (use-package tangotango-theme :defer t)
-   (use-package warm-night-theme :defer t)
-   (use-package darktooth-theme :defer t)
-   (use-package iodine-theme :defer t)
-   (use-package arjen-grey-theme :defer t)
-   (use-package birds-of-paradise-plus-theme :defer t)
-   (use-package bubbleberry-theme :defer t)
-   (use-package light-soap-theme :defer t)
-   (use-package ancient-one-dark-theme :defer t)
-   (use-package snazzy-theme :defer t)
-   (use-package twilight-bright-theme :defer t)
-   (use-package solo-jazz-theme :defer t)
-   (use-package dakrone-light-theme :defer t)
-   (use-package farmhouse-themes :defer t)
-   (use-package flucui-themes :defer t)
-   (use-package ef-themes :defer t)
-   (use-package monokai-theme :defer t)
-   (use-package zerodark-theme :defer t)
-   (use-package challenger-deep-theme :defer t)
-   (use-package humanoid-themes :defer t)
-   (use-package standard-themes :defer t)
-   (use-package color-theme-modern :defer t)
-   (use-package gruber-darker-theme :defer t)
-   (use-package sexy-theme :defer t)
-   ;; (use-package lambda-themes
-   ;;   :straight (:type git :host github :repo "lambda-emacs/lambda-themes")
-   ;;   :custom
-   ;;   (lambda-themes-set-italic-comments t)
-   ;;   (lambda-themes-set-italic-keywords t)
-   ;;   (lambda-themes-set-variable-pitch t)
-   ;;   :config
-   ;;   ;; load preferred theme
-   ;;   )
-   (use-package yotsuba-theme :load-path "lisp/yotsuba-emacs-theme" :defer nil)
-
-   #+end_src
-
 ** dap mode
 
    https://github.com/emacs-lsp/dap-mode
@@ -4962,37 +5166,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;; (setq-default bm-buffer-persistence t)
    )
    #+end_src
-
-** Always display file name in frame title
-
- http://www.emacswiki.org/emacs/FrameTitle
- display full file name in window title
-
- This feature is not yet complete - since it seems org-mode
- looses current settings after clock-out.
- #+begin_src emacs-lisp
- (defun fix-frame-title ()
-   (interactive)
-   (setq frame-title-format
-         '("%S" (buffer-file-name "%f"
-                                  (dired-directory dired-directory "%b"))))
-   )
- (fix-frame-title)
- ;(add-hook 'after-make-frame-functions 'fix-frame-title)
- (define-key global-map  "\C-cft" 'fix-frame-title)
- #+end_src
-
-** switch buffers
-
- #+begin_src emacs-lisp
- (fset 'cxb_switch_last_buffer
-    (kmacro-lambda-form [?\C-x ?b return] 0 "%d"))
-
- (global-unset-key (kbd "C-`"))
- (global-set-key (kbd "C-`") 'cxb_switch_last_buffer)
- (global-set-key (kbd "C-<iso-lefttab>") 'projectile-switch-to-buffer)
-
- #+end_src
 
 ** COMMENT lsp-bridge
 
@@ -5087,25 +5260,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (interactive)
      (async-shell-command "my-publish-file")
      )
-   #+end_src
-
-** persistent keymap
-
-   https://karthinks.com/software/persistent-prefix-keymaps-in-emacs/
-
-   #+begin_src emacs-lisp
-  (defun repeated-prefix-help-command ()
-    (interactive)
-    (when-let* ((keys (this-command-keys-vector))
-	        (prefix (seq-take keys (1- (length keys))))
-	        (orig-keymap (key-binding prefix 'accept-default))
-	        (keymap (copy-keymap orig-keymap))
-	        (exit-func (set-transient-map keymap t #'which-key-abort)))
-      (define-key keymap [remap keyboard-quit]
-        (lambda () (interactive) (funcall exit-func)))
-      (which-key--create-buffer-and-show nil keymap)))
-
-  (setq prefix-help-command #'repeated-prefix-help-command)
    #+end_src
 
 ** COMMENT eslint                                                       :WIP:
@@ -5283,26 +5437,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map 
  'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
 
-** COMMENT theme
-
-   #+begin_src emacs-lisp
-   (use-package org-html-themify
-     :straight
-     (org-html-themify
-      :type git
-      :host github
-      :repo "DogLooksGood/org-html-themify"
-      :files ("*.el" "*.js" "*.css"))
-     :hook (org-mode . org-html-themify-mode)
-     :custom
-     (org-html-themify-themes
-      '((dark . modus-vivendi)
-        (light . modus-operandi))))
-   #+end_src
-
-   #+RESULTS:
-   | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
-
 ** dape
 
    #+begin_src emacs-lisp
@@ -5338,82 +5472,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      ;; Projectile users
      (setq dape-cwd-fn 'projectile-project-root)
      )
-   #+end_src
-
-** COMMENT minimap
-
-   Lets try it (again), but I found that it does not work well in org-mode for example.
-
-   #+begin_src emacs-lisp
-   (use-package minimap
-     :ensure t)
-   (define-key esc-map [f12] #'minimap-mode)
-   #+end_src
-
-   - Comment from [2025-01-29 Wed] - its still buggy and sometimes won't exit from this mode
-
-** next/prev buffer
-
-   #+begin_src emacs-lisp
-   (global-set-key (kbd "C-z <right>") 'next-buffer)
-   (global-set-key (kbd "C-z <left>") 'previous-buffer)
-   #+end_src
-
-** tab-line
-   see also https://github.com/thread314/intuitive-tab-line-mode
-   #+begin_src emacs-lisp
-     (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
-     (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
-     (use-package tab-line
-       :custom
-       ;; Emacs 31.1+: don't rebind C-x <left>/<right> (and C-x C-<left>/<right>)
-       ;; from previous-buffer/next-buffer to tab-line-switch-to-prev/next-tab.
-       (tab-line-define-keys nil)
-       (tab-line-tabs-function 'tab-line-tabs-mode-buffers)
-       :config
-       (global-tab-line-mode 1)
-       ;; :init
-       ;; (defvar-keymap tab-line-mode-map
-       ;;   :doc "Keymap for keys of `tab-line-mode'."
-       ;;    "C-x C-<left>"  #'tab-line-switch-to-prev-tab
-       ;;    "C-x C-<right>" #'tab-line-switch-to-next-tab
-       ;;    )
-       )
-
-     ;;(global-set-key (kbd "s-<wheel-left>")  #'tab-line-switch-to-prev-tab)
-     ;;(global-set-key (kbd "s-<wheel-right>") #'tab-line-switch-to-next-tab)
-
-     ;; (global-set-key (kbd "C-S-<prior>") 'tab-line-switch-to-prev-tab)
-     ;; (global-set-key (kbd "C-S-<next>") 'tab-line-switch-to-next-tab)
-     ;; (global-set-key (kbd "C-S-w") 'tab-line-close-tab)
-
-     ;; (use-package intuitive-tab-line
-     ;;   :load-path "lisp/intuitive-tab-line-mode"
-     ;;   :custom
-     ;;   (tab-line-tabs-function 'intuitive-tab-line-buffers-list)
-     ;;   (tab-line-switch-cycling t)
-     ;;   :config
-     ;;   (global-tab-line-mode 1)
-     ;;   (recentf-mode 1)
-     ;;   (setq
-     ;;    tab-line-new-button-show nil  ;; do not show add-new button
-     ;;    tab-line-close-button-show nil  ;; do not show close button
-     ;;    tab-line-separator " "  ;; delimitation between tabs
-     ;;    ))
-
-     ;; ;;(global-set-key (kbd "C-<tab>") 'tab-line-switch-to-next-tab)
-     ;; (global-set-key (kbd "C-S-<prior>") 'intuitive-tab-line-shift-tab-left)
-     ;; (global-set-key (kbd "C-S-<next>") 'intuitive-tab-line-shift-tab-right)
-     ;; ;;(global-set-key (kbd "C-S-t") 'recentf-open-most-recent-file)
-   #+end_src
-
-** window management
-
-   #+begin_src emacs-lisp
-   (global-set-key (kbd "C-s-<down>") 'enlarge-window)
-   (global-set-key (kbd "C-s-<up>") 'shrink-window)
-   ;; (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
-   ;; (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
    #+end_src
 
 ** COMMENT dslide
@@ -6002,32 +6060,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 
    #+RESULTS:
-
-** dedicated window
-
-   Some time ago I was able to do this without additional code, but I can't remember how, so here is the code based on
-   https://www.reddit.com/r/emacs/comments/e8enoh/make_buffers_stick_to_windows/
-
-   #+begin_src emacs-lisp
-     (defun my/set-window-dedicated ()
-       "Toggle whether or not the current window is dedicated to its buffer"
-       (interactive)
-       (set-window-dedicated-p (selected-window) t)
-       )
-
-     (defun my/unset-window-dedicated ()
-       "Toggle whether or not the current window is dedicated to its buffer"
-       (interactive)
-       (set-window-dedicated-p (selected-window) nil)
-       )
-
-   (defun my/toggle-window-dedicated ()
-     (interactive)
-     (message
-      (if (set-window-dedicated-p (selected-window) (not (window-dedicated-p (selected-window)) ))
-          "Marking window '%s' as dedicated"
-        "Un-dedicating window '%s'") (current-buffer)))
-   #+end_src
 
 ** Copy file name to clipboard
 
@@ -6888,34 +6920,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : eng
-
-** TODO theme looper & custom looper
-   :LOGBOOK:
-   - State "TODO"       from              [2025-12-03 Wed 11:55]
-   :END:
-
-   #+begin_src emacs-lisp
-   (use-package theme-looper)
-
-   (defvar my-favorite-themes
-     '(parchment ef-eagle avk-daylight zerodark ef-cyprus kaolin-temple deep-blue base16-gruvbox-dark-pale base16-gruvbox-light-hard suscolors modus-operandi-deuteranopia modus-operandi modus-operandi-tinted modus-operandi-tritanopia modus-vivendi-deuteranopia modus-vivendi modus-vivendi-tinted modus-vivendi-tritanopia doric-almond doric-beach doric-fire doric-mermaid cobalt)
-     "Themes shared by `theme-looper' and `my-theme-looper-pick'.")
-
-   (theme-looper-set-favorite-themes my-favorite-themes)
-
-   (defun my-theme-looper-pick ()
-     "Pick a theme from `my-favorite-themes' via completion.
-Unlike `theme-looper-enable-next-theme', no theme is loaded while
-moving through the list — the chosen theme is applied only on RET."
-     (interactive)
-     (let* ((themes (mapcar #'symbol-name my-favorite-themes))
-            (choice (completing-read "Theme: " themes nil t)))
-       (mapc #'disable-theme custom-enabled-themes)
-       (load-theme (intern choice) t)))
-   #+end_src
-
-   #+RESULTS:
-   : my-theme-looper-pick
 
 ** org-crypt
 
