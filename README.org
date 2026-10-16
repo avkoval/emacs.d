@@ -2966,38 +2966,9 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+RESULTS:
 
-* Core settings
+* Org and writing
 
-  Settings that lived only in Customize until October 2026 and have no package section of
-  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
-  overrides the ~:custom~ value set here (Customize's user theme has priority over the
-  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
-  time to time.
-
-** Indentation and interpreters of built-in programming modes
-
-   #+begin_src emacs-lisp
-   (use-package python
-     :ensure nil
-     :defer t
-     :custom
-     (python-shell-interpreter "python3"))
-   (use-package css-mode
-     :ensure nil
-     :defer t
-     :custom
-     (css-indent-offset 2))
-   (use-package sh-script
-     :ensure nil
-     :defer t
-     :custom
-     (sh-basic-offset 2))
-   (use-package typescript-ts-mode
-     :ensure nil
-     :defer t
-     :custom
-     (typescript-ts-mode-indent-offset 2))
-   #+end_src
+  Org mode, its exporters and extensions, diagrams.
 
 ** Org: general settings that used to live in Customize
 
@@ -3040,19 +3011,6 @@ moving through the list — the chosen theme is applied only on RET."
      (org-taskjuggler-default-global-properties "\n "))
    #+end_src
 
-** Packages without a section of their own yet
-
-   #+begin_src emacs-lisp
-   (use-package treemacs
-     :defer t
-     :custom
-     (treemacs-follow-mode t))
-   (use-package pyvenv
-     :config
-     (pyvenv-tracking-mode 1))
-   #+end_src
-
-* Emacs tools and minor modes
 ** org-mode
 *** org-bullets
     #+begin_src emacs-lisp
@@ -4652,203 +4610,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
       (kmacro "C-c C-j <up> <return> s M-% [ X ] <return> [ SPC ] <return> ! C-<home> <down-mouse-1> <mouse-1> <down-mouse-1> <mouse-1> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up> <up>"))
     #+end_src
 
-** verb
-
-   #+begin_src emacs-lisp
-     (use-package verb
-       :custom
-       (verb-babel-timeout 60.0))
-     (with-eval-after-load 'org
-       (define-key org-mode-map (kbd "C-c C-r") verb-command-map))
-   ;; (org-babel-do-load-languages
-   ;;  'org-babel-load-languages
-   ;;  '((verb . t)))
-   #+end_src
-
-** lsp-mode
-
-   #+begin_src emacs-lisp
-   ;; (with-eval-after-load 'lsp-mode
-   ;;   (add-to-list 'lsp-language-id-configuration
-   ;;     '(rst-mode . "rst")))
-
-   ;; (defcustom lsp-rst-ls-command '("rst-ls")
-   ;;   "Command to start the RST Language Server."
-   ;;   :type 'string)
-
-
-   (use-package lsp-mode
-     :ensure t
-     :custom
-     (lsp-diagnostics-provider :none)
-     (lsp-auto-guess-root t)
-     (lsp-diagnostics-attributes
-      '((unnecessary :foreground "cornsilk4")
-        (deprecated :strike-through t)))
-     (lsp-imenu-index-symbol-kinds
-      '(Class Function Method Constructor Property)))
-
-   ;; (require 'lsp-mode)
-
-   ;; (lsp-register-client
-   ;;   (make-lsp-client :new-connection (lsp-stdio-connection (lambda () lsp-rst-ls-command))
-   ;;                    :major-modes '(rst-mode)
-   ;;                    :server-id 'rst-ls))
-
-   #+end_src
-
-** COMMENT elfeed
-
-   #+begin_src emacs-lisp
-     (defalias 'elfeed-mark-read
-       (kmacro "<return> q"))
-
-     (use-package elfeed
-       :bind (:map elfeed-search-mode-map
-		   ("r" . elfeed-mark-read)
-		   ("`" . elfeed-mark-read)
-		   )
-       )
-   #+end_src
-
-** docker support
-
-   #+begin_src emacs-lisp
-   (use-package docker)
-   (use-package dockerfile-mode)
-   (add-to-list 'auto-mode-alist '("Dockerfile\\.*" . dockerfile-mode))
-   (add-to-list 'auto-mode-alist '("\.*\.docker" . dockerfile-mode))
-   (define-key global-map  "\C-zd"         'docker)
-   #+end_src
-
-** COMMENT poetry
-   I don't plan to use Poetry anymore - replaced with ~uv~
-
-   #+begin_src emacs-lisp
-     (use-package poetry
-       :ensure t)
-   #+end_src
-
-** git & magit & github
-
-     Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
-     #+begin_src emacs-lisp
-     (use-package magit
-       :custom
-       (magit-auto-revert-immediately nil)
-       (magit-list-refs-sortby "-creatordate")
-       :bind (("C-x g" . magit-status)))
-
-     (use-package git-link
-       :bind (
-              ("C-c g" . git-link)
-              )
-       )
-     (use-package magit-todos
-       ;; Set in :config, NOT :custom. `magit-todos-scanner' has a :set function that
-       ;; silently no-ops while `magit-todos-scanners' is still nil, and use-package
-       ;; runs :custom before the package loads — so a :custom value would be dropped.
-       ;; `magit-todos-keywords' has a plain :set function, so :custom is safe for it.
-       :custom
-       (magit-todos-keywords '("XXX" "TODO" "FIXME" "FixMe" "ToDo"))
-       :config
-       ;; Pin rg explicitly. The auto-chooser can land on the find|grep fallback, which
-       ;; honours no ignore rules and descends into every dot-directory; rg skips
-       ;; dot-dirs and respects .gitignore by default.
-       (setopt magit-todos-scanner #'magit-todos--scan-with-rg)
-       ;; Passed through to whichever scanner actually runs, so these hold even if rg
-       ;; is missing. Two distinct problems:
-       ;;   - `.venv/' / `.claude/' / `node_modules/': huge trees, and one .venv per
-       ;;     git worktree (a repo with 16 worktrees has 16 of them).
-       ;;   - the asset globs: single minified lines of ~1M characters overflow Emacs'
-       ;;     regexp matcher, which is what emits "File has lines too long to search".
-       ;;     These live in tracked source too, so excluding .venv alone is not enough.
-       (setopt magit-todos-exclude-globs
-               '(".git/" ".venv/" ".claude/" "node_modules/" "site/"
-                 "*.min.js" "*.min.css" "*.map" "*.svg" "*.so" "*.cap"))
-       ;; Two things used to silently clobber the two settings above; both are
-       ;; worth remembering, because neither produces any warning:
-       ;;
-       ;;   1. `custom-set-variables' in ~/.emacs.  That block runs *after*
-       ;;      `org-babel-load-file' on this file, so anything Custom has ever
-       ;;      saved wins over what is set here.  The magit-todos entries have
-       ;;      been deleted from it; don't let "Apply and Save" put them back.
-       ;;   2. A project's .dir-locals.el.  `magit-status-mode' applies
-       ;;      dir-locals (`magit-hack-dir-local-variables'), and a dir-local
-       ;;      value *replaces* the global list rather than extending it — so a
-       ;;      project pinning `magit-todos-exclude-globs' to its own two entries
-       ;;      dropped .venv/ and *.map again.  Prefer adding project-specific
-       ;;      directories (like "site/" above) to the global list.
-       ;;
-       ;; Declaring the option safe keeps any remaining dir-local from prompting.
-       (put 'magit-todos-exclude-globs 'safe-local-variable
-            (lambda (val) (and (listp val) (seq-every-p #'stringp val)))))
-     (use-package forge
-       :after magit)
-     (use-package github-review)
-
-     (defalias 'my-insert-git-link
-       (kmacro "C-c C-o M-x g i t - l i n k <return> s-w C-<escape> <end> SPC [ [ C-y ] [ . . C-x 8 <return> 2 1 9 2 <return> ] ]"))
-
-     #+end_src
-
-**** magit-todos
-
-**** COMMENT code-review
-
-     https://github.com/wandersoncferreira/code-review
-
-     #+begin_src emacs-lisp
-     (use-package uuidgen)
-
-
-     (use-package code-review
-       ;; :load-path "~/.emacs.d/lisp/code-review"
-       ;;       :after magit forge emojify
-       :after magit forge
-       :after forge
-       :straight (code-review
-                  :type git
-                  :host github
-                  :repo "phelrine/code-review"
-                  :branch "fix/closql-update")
-       :demand t
-       :config
-       (setq code-review-auth-login-marker 'forge)
-       (add-hook 'code-review-mode-hook #'emojify-mode)
-       (define-key forge-topic-mode-map (kbd "C-z c r") 'code-review-forge-pr-at-point)
-       (define-key code-review-feedback-section-map (kbd "k") 'code-review-section-delete-comment)
-       (define-key code-review-local-comment-section-map (kbd "k") 'code-review-section-delete-comment)
-       (define-key code-review-reply-comment-section-map (kbd "k") 'code-review-section-delete-comment)
-       (define-key code-review-mode-map (kbd "C-c C-n") 'code-review-comment-jump-next)
-       (define-key code-review-mode-map (kbd "C-c C-p") 'code-review-comment-jump-previous))
-     #+end_src
-
-** ledger
-   #+begin_src emacs-lisp
-     (use-package ledger-mode
-       :init
-       (magit-todos-mode)
-       )
-   #+end_src
-
-** pdf-tools
-
-   #+begin_src emacs-lisp
-     (use-package pdf-tools
-       :custom
-       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
-       :config
-       (pdf-tools-install)
-       )
-   #+end_src
-
-** pass
-
-   #+begin_src emacs-lisp
-   (use-package pass)
-   #+end_src
-
 ** plantuml-mode
 
    #+begin_src emacs-lisp
@@ -4861,246 +4622,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (add-to-list
       'org-src-lang-modes '("plantuml" . plantuml))
    #+end_src
-
-** COMMENT pylookup
-   I don't use it anymore as LSP has great documentation support.
-
-   https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
-
-   #+begin_src emacs-lisp
-     ;; load pylookup when compile time
-     (eval-when-compile (require 'pylookup))
-     (setq pylookup-program "~/.emacs.d/pylookup.py")
-     (setq pylookup-db-file "~/var/pylookup/pylookup.db")
-     (global-set-key [(control shift menu)] 'pylookup-lookup)
-   #+end_src
-
-** Email support
-
-*** smtpmail
-
-    #+begin_src emacs-lisp
-      (use-package smtpmail-multi)
-    #+end_src
-
-*** notmuch
-    Email setup
-
-    #+begin_src emacs-lisp :results output replace
-      (use-package notmuch
-        :init
-        (progn
-          ;; (require 'org-notmuch)
-          (require 'org-notmuch)
-          (require 'notmuch-address)
-          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
-          )
-        :bind (
-               ("C-z z" . notmuch)
-               ("C-c C-o" . browse-url-at-point)
-               )
-        :config
-
-        (defun notmuch-show-tag-spam ()
-          "mark message as spam"
-          (interactive)
-          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-          (next-line)
-          )
-        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-        (defun notmuch-show-tag-deleted ()
-          "mark message as deleted"
-          (interactive)
-          (notmuch-search-tag '("+deleted" "-inbox")))
-
-        (defun notmuch-show-tag-read ()
-          "mark message as read"
-          (interactive)
-          (notmuch-search-tag '("-unread"))
-          (next-line)
-          )
-
-        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
-        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
-        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
-        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
-
-        )
-
-      (defun mg-notmuch-display-email-in-xwidget ()
-        "Display the HTML email content in xwidget-webkit.
-      This function requires the current MIME part to be of type
-      text/html. If the content is not HTML, it falls back to calling
-      `notmuch-show-view-part'.  Similarly, if xwidget support is
-      unavailable in the current Emacs build, it fallbacks to
-      `notmuch-show-view-part'."
-          (interactive)
-          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
-                    (is-html-mime (equal (caadr mime-part) "text/html"))
-                    (has-xwidget (featurep 'xwidget-internal)))
-                  (notmuch-show-apply-to-current-part-handle
-                   (lambda (handle)
-                       (let ((tempf (make-temp-file "notmuch"
-                                                    nil
-                                                    ".html"
-                                                    (with-current-buffer (car handle)
-                                                        (buffer-string)))))
-                           (xwidget-webkit-browse-url (concat "file://" tempf))
-                           (run-with-idle-timer 3 nil #'delete-file tempf))))
-              (notmuch-show-view-part)))
-
-
-
-
-
-      (defun notmuch-show-tag-spam ()
-        "mark message as spam"
-        (interactive)
-        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
-        (next-line)
-        )
-      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
-
-      (defun notmuch-show-tag-deleted ()
-        "mark message as deleted"
-        (interactive)
-        (notmuch-search-tag '("+deleted" "-inbox")))
-
-      (defun notmuch-show-tag-read ()
-        "mark message as read"
-        (interactive)
-        (notmuch-search-tag '("-unread"))
-        (next-line)
-
-        ;; Sign messages by default.
-        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
-
-        (custom-set-variables
-         '(notmuch-search-oldest-first nil)
-         '(notmuch-crypto-process-mime t)
-         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
-         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
-        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
-
-        (defun expand-only-unread-hook ()
-          "eexpand only recent unreads"
-          (interactive)
-          (let ((unread nil)
-                (open (notmuch-show-get-message-ids-for-open-messages)))
-            (notmuch-show-mapc (lambda ()
-        		         (when (member "unread" (notmuch-show-get-tags))
-        			   (setq unread t))))
-            (when unread
-              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
-                (notmuch-show-filter-thread "tag:unread")))))
-
-
-    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
-
-        )
-
-
-    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
-    #+end_src
-
-    #+RESULTS:
-
-
-     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
-     notmuch don't have this functionality by default, so I've monkey patched it here:
-
-     #+begin_src emacs-lisp
-       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
-         (let ((sender (notmuch-mua-prompt-for-sender)))
-	   ad-do-it))
-       (ad-activate 'notmuch-mua-reply)
-     #+end_src
-
-***** xwidget
-      :LOGBOOK:
-      - State "TODO"       from              [2025-08-18 Mon 11:35]
-      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
-      :END:
-
-      #+begin_src emacs-lisp
-
-      #+end_src
-
-      #+RESULTS:
-      : mg-notmuch-display-email-in-xwidget
-
-**** settings for notmuch-show
-
-     #+begin_src emacs-lisp
-     (defun my-notmuch-show-local-bindings ()
-       (interactive)
-       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
-
-     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
-     #+end_src
-
-** COMMENT lastpass
-
-   #+begin_src emacs-lisp
-   (use-package lastpass
-     :init
-     (setq lastpass-multifactor-use-passcode t)
-     :config
-     ;; Set lastpass user
-     ;; Enable lastpass custom auth-source
-     (lastpass-auth-source-enable))
-   #+end_src
-
-** ztree
-
-   #+begin_src emacs-lisp
-     (use-package ztree)
-     (defun ztree-do-dired ()
-       (interactive)
-       "Jump to dired in specified place of ZTree-dir"
-       (let* ((line (line-number-at-pos))
-	      (node (ztree-find-node-in-line line)))
-	 (when node
-	   (dired node))
-	 )
-       )
-     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
-					     ; (global-set-key [f5] 'ztree-dir)
-     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
-     (global-set-key (kbd "<C-f3>") 'ztree-side)
-     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
-
-     (fset 'ztree-side
-	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
-   #+end_src
-
-** realgud
-
-   Real good debugger.
-   #+begin_src emacs-lisp
-     (use-package realgud
-       :custom
-       (realgud-populate-common-fn-keys-function nil))
-   #+end_src
-
-** COMMENT prettier (replaced with Aphelia mode)
-
-   https://github.com/jscheid/prettier.el
-
-   #+begin_src emacs-lisp
-   (use-package prettier
-     :bind (
-	    ("C-c m e" . prettier-mode))
-     )
-   #+end_src
-
-   I also enable it where its needed by this in .dir-locals, as in example below:
-   #+begin_example
-   (
-    (js-mode . ((eval . (prettier-mode t))))
-    (typescript-mode . ((eval . (prettier-mode t))))
-   )
-   #+end_example
 
 ** COMMENT org-roam (replaced with ~denote~)
 
@@ -5156,235 +4677,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
      ("C-c n r" . consult-org-roam-search))
    #+end_src
 
-** COMMENT moldable emacs
-   :LOGBOOK:
-   - State "TODO"       from              [2023-01-21 сб 13:55]
-   :END:
-
- #+begin_src emacs-lisp
- (use-package moldable-emacs
-   :load-path "~/.emacs.d/lisp/moldable-emacs/"
-   :bind (("C-c m m" . me-mold)
-          ("C-c m f" . me-go-forward)
-          ("C-c m b" . me-go-back)
-          ("C-c m o" . me-open-at-point)
-          ("C-c m d" . me-mold-docs)
-          ("C-c m g" . me-goto-mold-source)
-          ("C-c m e a" . me-mold-add-last-example)
-          )
-   :config
-   (require 'moldable-emacs)
-   (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
-   (me-setup-molds))
- #+end_src
-
-** shells
-
-   #+begin_src emacs-lisp
-                                           ; various shells
-   (require 'python)
-   (add-hook 'shell-output-filter-functions
-             '(lambda () ""
-                (when (shell-interactive-process)
-                  (python-pdbtrack-set-tracked-buffer
-                   (buffer-substring (shell-beginning-of-output) shell-last-output-end)))))
-
-   (global-unset-key (kbd "s-s"))
-   (defun switch-to-shell(n) ()
-          (interactive)
-          (if (get-buffer (concat "*shell*<" n ">"))
-              (switch-to-buffer (concat "*shell*<" n ">"))
-            (shell (concat "*shell*<" n ">")))
-          )
-
-   (global-set-key (kbd "C-z C-1") (lambda () (interactive) (switch-to-shell "1")))
-   (global-set-key (kbd "C-z C-2") (lambda () (interactive) (switch-to-shell "2")))
-   (global-set-key (kbd "C-z C-3") (lambda () (interactive) (switch-to-shell "3")))
-   (global-set-key (kbd "C-z C-4") (lambda () (interactive) (switch-to-shell "4")))
-   (global-set-key (kbd "C-z C-5") (lambda () (interactive) (switch-to-shell "5")))
-   (global-set-key (kbd "C-z C-6") (lambda () (interactive) (switch-to-shell "6")))
-   (global-set-key (kbd "C-z C-7") (lambda () (interactive) (switch-to-shell "7")))
-   (global-set-key (kbd "C-z C-8") (lambda () (interactive) (switch-to-shell "8")))
-   (global-set-key (kbd "C-z C-9") (lambda () (interactive) (switch-to-shell "9")))
-   (global-set-key (kbd "C-z C-0") 'shell)
-   (global-set-key (kbd "C-z C-e") 'eshell)
-
-   (global-set-key (kbd "C-z x 1") (lambda () (interactive) (switch-to-shell "1")))
-   (global-set-key (kbd "C-z x 2") (lambda () (interactive) (switch-to-shell "2")))
-   (global-set-key (kbd "C-z x 3") (lambda () (interactive) (switch-to-shell "3")))
-   (global-set-key (kbd "C-z x 4") (lambda () (interactive) (switch-to-shell "4")))
-   (global-set-key (kbd "C-z x 5") (lambda () (interactive) (switch-to-shell "5")))
-   (global-set-key (kbd "C-z x 6") (lambda () (interactive) (switch-to-shell "6")))
-   (global-set-key (kbd "C-z x 7") (lambda () (interactive) (switch-to-shell "7")))
-   (global-set-key (kbd "C-z x 8") (lambda () (interactive) (switch-to-shell "8")))
-   (global-set-key (kbd "C-z x 9") (lambda () (interactive) (switch-to-shell "9")))
-   (global-set-key (kbd "C-z x 0") 'shell)
-
-
-                                           ; ansi-term
-   (global-set-key (kbd "s-s t") '(lambda ()
-                                    (interactive)
-                                    (call-process "kitty" nil 0 nil)))
-
-   (fset 'myshells
-         [?\M-x ?i ?b ?u ?f ?f ?e ?r return ?/ ?/ ?/ ?m ?s ?h ?e ?l ?l ?- ?m ?o ?d ?e return ?s ?f])
-
-   (global-set-key (kbd "s-s l") 'myshells)
-
-   (defun my-shell-mode-hook ()
-     (hide-trailing-whitespace)
-     ;; (company-mode)
-     )
-
-   (add-hook 'shell-mode-hook 'my-shell-mode-hook)
-   (add-hook 'term-mode-hook 'my-shell-mode-hook)
-
-   ;; from http://stackoverflow.com/questions/13185729/npm-dont-display-prompt-correctly-under-emacs-eshell
-   ;; to filter out npm special chars
-   (add-to-list
-    'comint-preoutput-filter-functions
-    (lambda (output)
-      (replace-regexp-in-string "\033\[[0-9]+[AGK]" "" output)))
-
-   (defun ansible-highlight()
-     "Hightlight ok, failed, changed lines"
-     (interactive)
-     (highlight-lines-matching-regexp "^ok:" 'hi-green-b)
-     (highlight-phrase "failed:" 'flycheck-error)
-     (highlight-phrase "FAILED\!" 'flycheck-error)
-     (highlight-lines-matching-regexp "changed:" 'font-lock-warning-face)
-     )
-
-   (defun sql-highlight()
-     "SQL updates, inserts"
-     (interactive)
-     (highlight-lines-matching-regexp "INSERT\sINTO\s" 'hi-pink)
-     (highlight-lines-matching-regexp "DELETE\sFROM\s" 'hi-red-b)
-     (highlight-lines-matching-regexp "UPDATE\s" 'hi-yellow)
-     )
-   #+end_src
-
-   #+RESULTS:
-   : sql-highlight
-
-*** shell comint input history
-
-    #+begin_src emacs-lisp
-    (add-hook 'shell-mode-hook 'my-shell-mode-hook2)
-    (defun my-shell-mode-hook2 ()
-      (setq comint-input-ring-file-name "~/.histfile")
-      (comint-read-input-ring t))
-    #+end_src
-
 ** htmlize
 
    #+begin_src emacs-lisp
      (use-package htmlize)
    #+end_src
-
-** dap mode
-
-   https://github.com/emacs-lsp/dap-mode
-   #+begin_src emacs-lisp
-   (use-package dap-mode)
-   (add-hook 'dap-stopped-hook
-             (lambda (arg) (call-interactively #'dap-hydra)))
-   (require 'dap-node)
-   ;; (dap-node-setup)
-
-   #+end_src
-
-** COMMENT tree-sitter settings
-
-   #+begin_src emacs-lisp
-
-   #+end_src
-
-** COMMENT lsp-bridge
-
-   Fast & more automated LSP support
-
-   #+begin_src emacs-lisp
-     (use-package posframe)
-     (add-to-list 'load-path "~/.emacs.d/lisp/lsp-bridge/")
-     (require 'lsp-bridge)
-     ;; (global-lsp-bridge-mode)
-
-     (defun my-enable-lsp-bridge-for-typescript ()
-       (interactive)
-       (add-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
-       (add-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-typescript ()
-       (interactive)
-       (remove-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
-       (remove-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-enable-lsp-bridge-for-python ()
-       (interactive)
-       (add-hook 'python-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-python ()
-       (interactive)
-       (remove-hook 'python-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-project-current (d)
-       (message d)
-       (cdr (project-current))
-       )
-
-
-     (defun my-enable-lsp-bridge-for-clojure ()
-       (interactive)
-       (add-hook 'clojure-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-clojure ()
-       (interactive)
-       (remove-hook 'clojure-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-enable-lsp-bridge-for-js2 ()
-       (interactive)
-       (add-hook 'js2-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-js2 ()
-       (interactive)
-       (remove-hook 'js2-mode-hook #'lsp-bridge-mode)
-       )
-
-   (define-key lsp-bridge-mode-map (kbd "M-.") #'lsp-bridge-find-def)
-   (define-key lsp-bridge-mode-map (kbd "M-,") #'lsp-bridge-find-def-return)
-   (define-key lsp-bridge-mode-map [(shift f1)] #'lsp-bridge-popup-documentation)
-   (define-key lsp-bridge-mode-map [f8] #'lsp-bridge-diagnostic-jump-next)
-   (define-key lsp-bridge-mode-map [(shift f8)] #'lsp-bridge-diagnostic-jump-prev)
-   (define-key lsp-bridge-mode-map [(control shift f8)] #'lsp-bridge-diagnostic-list)
-
-
-   (my-enable-lsp-bridge-for-js2)
-   ;; (my-enable-lsp-bridge-for-typescript)
-   ;; (my-enable-lsp-bridge-for-clojure)
-   (my-enable-lsp-bridge-for-python)
-
-   ;; https://github.com/manateelazycat/lsp-bridge/issues/636
-   (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer)
-   #+end_src
-
-** COMMENT sql-mysql
-
-   #+begin_src emacs-lisp
-   ;; https://stackoverflow.com/questions/12613/specify-a-port-number-in-emacs-sql-mysql
-   (setq sql-mysql-login-params (append sql-mysql-login-params '(port)))
-   (setq sql-port 3306) ;; default MySQL port
-   #+end_src
-
-   #+RESULTS:
-   : 3306
 
 ** publish file
 
@@ -5392,210 +4689,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (defun my-publish-file()
      (interactive)
      (async-shell-command "my-publish-file")
-     )
-   #+end_src
-
-** COMMENT eslint                                                       :WIP:
-
-   #+begin_src emacs-lisp
-     (add-hook 'js2-mode-hook
-	       (defun my-js2-mode-setup ()
-		 (flycheck-mode t)
-		 (when (executable-find "eslint")
-		   (flycheck-select-checker 'javascript-eslint))))
-
-   (with-eval-after-load 'flycheck
-     (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
-   #+end_src
-
-   P.S. may be try: http://codewinds.com/blog/2015-04-02-emacs-flycheck-eslint-jsx.html
-
-** eslint for tide
-
-   #+begin_src emacs-lisp
-       ;; (flycheck-add-mode 'javascript-eslint 'typescript-mode)
-       ;; (with-eval-after-load 'flycheck
-       ;;   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
-
-
-     ;; https://github.com/hlissner/doom-emacs/issues/1530#issuecomment-507653761
-     ;; (add-hook 'after-typescript-mode-hook
-     ;;           (lambda ()
-     ;;             (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)))
-     ;;   (flycheck-add-next-checker 'python-flake8 'python-pylint)
-   ;;(flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
-   #+end_src
-
-** flycheck, flymake
-
- #+begin_src emacs-lisp
- (use-package flycheck
-   :ensure t
-   :custom
-   (flycheck-checker-error-threshold 550)
-   (flycheck-checkers
-    '(lsp tsx-tide typescript-tide javascript-eslint ada-gnat asciidoctor
-          asciidoc c/c++-clang c/c++-gcc c/c++-cppcheck cfengine
-          chef-foodcritic coffee coffee-coffeelint coq css-csslint
-          css-stylelint cuda-nvcc cwl d-dmd dockerfile-hadolint
-          emacs-lisp emacs-lisp-checkdoc erlang-rebar3 erlang
-          eruby-erubis fortran-gfortran go-gofmt go-golint go-vet
-          go-build go-test go-errcheck go-unconvert go-megacheck
-          go-staticcheck groovy haml handlebars haskell-stack-ghc
-          haskell-ghc haskell-hlint html-tidy javascript-jshint
-          javascript-standard json-jsonlint json-python-json json-jq
-          jsonnet less less-stylelint llvm-llc lua-luacheck lua
-          markdown-markdownlint-cli markdown-mdl nix nix-linter opam perl
-          perl-perlcritic php php-phpmd php-phpcs processing proselint
-          protobuf-protoc pug puppet-parser puppet-lint python-pylint
-          python-flake8 python-ruff python-pycompile python-mypy r-lintr
-          racket rpm-rpmlint rst-sphinx rst ruby-rubocop ruby-reek
-          ruby-rubylint ruby ruby-jruby rust-cargo rust rust-clippy scala
-          scala-scalastyle scheme-chicken scss-lint scss-stylelint
-          sass/scss-sass-lint sass scss sh-bash sh-posix-dash
-          sh-posix-bash sh-zsh sh-shellcheck slim slim-lint sql-sqlint
-          systemd-analyze tcl-nagelfar tex-chktex tex-lacheck texinfo
-          textlint typescript-tslint verilog-verilator vhdl-ghdl
-          xml-xmlstarlet xml-xmllint yaml-jsyaml yaml-ruby
-          javascript-tide jsx-tide))
-   (flycheck-disabled-checkers '(lsp python-mypy))
-   (flycheck-global-modes
-    '(python-mode python-ts-mode typescript-mode typescript-ts-mode
-                  js-mode web-mode))
-   (flycheck-idle-change-delay 5)
-   :config
-   (global-flycheck-mode t)
-   (flycheck-add-mode 'javascript-eslint 'typescript-mode)
-   ;; Disable mypy globally; re-enable per project via .dir-locals.el
-   ;; (setq-default flycheck-disabled-checkers '(python-mypy))
-   ;; note that these bindings are optional
-   :bind
-   ([C-f8] . flycheck-list-errors)
-   )
- ;; (use-package flycheck-pycheckers
- ;;   :after flycheck
- ;;   :ensure t
- ;;   :init
- ;;   (with-eval-after-load 'flycheck
- ;;     (add-hook 'flycheck-mode-hook #'flycheck-pycheckers-setup)
- ;;     )
- ;;   (setq flycheck-pycheckers-checkers
- ;; 	'(
- ;; 	  pylint
- ;; 	  pyflakes
- ;; 	  mypy3
- ;; 	  )
- ;; 	)
- ;;   )
-
- ;; (add-hook 'python-ts-mode-hook
- ;; 	  (setq indent-tabs-mode nil)
- ;; 	  (setq tab-width 4)
- ;; 	  (flycheck-mode)
- ;; 	  )
- (add-hook 'python-ts-mode-hook #'flycheck-mode)
-
- #+end_src
-
-To re-enable mypy in a specific project, add a .dir-locals.el in that project's root:                                                           
-   
-  ((python-ts-mode                                                                                                                                
-    . ((flycheck-disabled-checkers . nil))))                
-                                                                                                                                                  
-  Or if you want to keep other checkers disabled but just re-enable mypy:                                                                         
-                                                                                                                                                  
-  ((python-ts-mode                                                                                                                                
-    . ((eval . (setq-local flycheck-disabled-checkers       
-                           (remove 'python-mypy flycheck-disabled-checkers))))))                                                                  
-
-** Aphelia
-
-   #+begin_src emacs-lisp
-   (use-package apheleia
-     :bind (("\C-cmA" . apheleia-mode)))
-   (require 'apheleia-formatters)
-
-   ;; (setf (alist-get 'isort apheleia-formatters)
-   ;;       '("isort" "--stdout" "-"))
-   ;; (setf (alist-get 'python-mode apheleia-mode-alist)
-   ;;       '(isort))
-
-  ;; Configure ruff for Python formatting
-  (setf (alist-get 'ruff apheleia-formatters)
-        '("ruff" "format" "--stdin-filename" filepath "-"))
-  (setf (alist-get 'python-mode apheleia-mode-alist) 'ruff)
-  (setf (alist-get 'python-ts-mode apheleia-mode-alist) 'ruff)
-
-   #+end_src
-
-** COMMENT python auto virtualenv for python-ts-mode
-
-   #+begin_src emacs-lisp
-        (use-package auto-virtualenv
-          :load-path "path/to/auto-virtualenv"
-          :config
-          (setq auto-virtualenv-verbose t)
-          (auto-virtualenv-setup))
-        ;; my custom version of PR
-        ;; (defun auto-virtualenv-find-local-venv (project-root)
-        ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
-        ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
-        ;;   (catch 'found-virtualenv
-        ;;     (dolist (dir auto-virtualenv-local-env-dirs)
-        ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
-        ;;         (when (file-directory-p maybe-virtualenv-in)
-        ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
-        ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
-        (defun auto-virtualenv-update-mode-line ()
-          )
-
-   #+end_src
-
-** auto-virtualenvwrapper
-
-   #+begin_src emacs-lisp
-   (use-package auto-virtualenvwrapper)
-   (add-hook 'python-mode-hook #'auto-virtualenvwrapper-activate)
-   #+end_src
-
-   #+RESULTS:
-   | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map 
- 'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
-
-** dape
-
-   #+begin_src emacs-lisp
-   (use-package dape
-     ;; To use window configuration like gud (gdb-mi)
-     ;; :init
-     ;; (setq dape-buffer-window-arrangement 'gud)
-
-     :config
-     ;; Info buffers to the right
-     (setq dape-buffer-window-arrangement 'right)
-
-     ;; To not display info and/or buffers on startup
-     ;; (remove-hook 'dape-on-start-hooks 'dape-info)
-     ;; (remove-hook 'dape-on-start-hooks 'dape-repl)
-
-     ;; To display info and/or repl buffers on stopped
-     (add-hook 'dape-on-stopped-hooks 'dape-info)
-     (add-hook 'dape-on-stopped-hooks 'dape-repl)
-
-     ;; By default dape uses gdb keybinding prefix
-     ;; If you do not want to use any prefix, set it to nil.
-     (setq dape-key-prefix "\C-x\C-a")
-
-     ;; Kill compile buffer on build success
-     (add-hook 'dape-compile-compile-hooks 'kill-buffer)
-
-     ;; Save buffers on startup, useful for interpreted languages
-     ;; (add-hook 'dape-on-start-hooks
-     ;;           (defun dape--save-on-start ()
-     ;;             (save-some-buffers t t)))
-
-     ;; Projectile users
-     (setq dape-cwd-fn 'projectile-project-root)
      )
    #+end_src
 
@@ -5608,56 +4701,12 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      ;;    :url "https://github.com/positron-solutions/dslide.git"))
    #+end_src
 
-** gptel
-
-#+begin_src emacs-lisp
-(use-package gptel
-  :bind (("C-z <f4>" . gptel)
-         ("C-z <f5>" . gptel-menu))
-  :custom
-  (gptel-default-mode 'org-mode)
-  (gptel-model 'gpt-4o) ;; Note: Ensure your OpenAI account has access to the model you specify here (gpt-4o, gpt-4-turbo, gpt-5, etc.)
-  :config
-  ;; Explicitly construct the backend and tell it to use auth-source
-  (setq gptel-backend (gptel-make-openai "OpenAI"
-                        :stream t
-                        :key 'gptel-api-key-from-auth-source)))
-#+end_src
-
-** YouTrack
-
-   Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
-   submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
-
-   #+begin_src emacs-lisp
-   (setq youtrack-host "youtrack.example.com")
-   (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
-   (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
-   (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
-   (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
-   (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
-   #+end_src
-
 ** org-pdftools
 
  I often want to link to my own comment in a PDF file. Here is the approach to do this
 
    #+begin_src emacs-lisp
    (use-package org-pdftools)
-   #+end_src
-
-** COMMENT pgmacs
-   https://github.com/emarsden/pgmacs.git
-
-   #+begin_src emacs-lisp
-   (use-package pgmacs
-     :load-path "~/.emacs.d/lisp/pgmacs/"
-     :init
-     (unless (package-installed-p 'pg)
-       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
-     (unless (package-installed-p 'pgmacs)
-       (package-vc-install "https://github.com/emarsden/pgmacs"))
-     (require 'pgmacs))
    #+end_src
 
 ** el-easydraw
@@ -6020,6 +5069,1009 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+begin_src emacs-lisp
    (use-package org-present)
+   #+end_src
+
+** review & annotate videos in emacs org-mode
+
+
+   #+begin_src emacs-lisp
+   (use-package mpvi :ensure t)
+
+   (use-package mpvi
+     :ensure t
+     :config
+     ;; M-x customize-group mpvi
+     (setq mpvi-mpv-ontop-p t)
+     (setq mpvi-mpv-border-p t)
+     (setq mpvi-cmds-on-init
+           '(((set_property autofit "40%x85%"))
+             ((set_property geometry "-3%+8%"))))
+
+     ;; Upstream bug: `mpvi-org-link-push' passes (beg end) into
+     ;; `mpvi-start's (type beg) slots, so the start time is never honored
+     ;; and mpv always opens at 0.  Patch the org follow-handler to call
+     ;; mpvi-start with the right positional args.
+     (defun mpvi-org-link-push (link)
+       "Play the mpv LINK."
+       (pcase-let ((`(,path ,beg ,end) (mpvi-parse-link link)))
+         (mpvi-start path nil beg end)))
+
+     :bind (
+            ("\C-clv" . mpvi-insert)
+            )
+
+     )
+
+   (setenv "TESSDATA_PREFIX" "/usr/share/tessdata/")
+   (setq mpv-ocr-language "eng")
+   #+end_src
+
+   #+RESULTS:
+   : eng
+
+** org-crypt
+
+   #+begin_src emacs-lisp
+   (require 'org-crypt)
+   (setq org-crypt-key "841079E7A0CD6951A54C73EB00AA19ED7AD0481A")
+   #+end_src
+
+   #+RESULTS:
+   : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
+
+* Core settings
+
+  Settings that lived only in Customize until October 2026 and have no package section of
+  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
+  overrides the ~:custom~ value set here (Customize's user theme has priority over the
+  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
+  time to time.
+
+** Indentation and interpreters of built-in programming modes
+
+   #+begin_src emacs-lisp
+   (use-package python
+     :ensure nil
+     :defer t
+     :custom
+     (python-shell-interpreter "python3"))
+   (use-package css-mode
+     :ensure nil
+     :defer t
+     :custom
+     (css-indent-offset 2))
+   (use-package sh-script
+     :ensure nil
+     :defer t
+     :custom
+     (sh-basic-offset 2))
+   (use-package typescript-ts-mode
+     :ensure nil
+     :defer t
+     :custom
+     (typescript-ts-mode-indent-offset 2))
+   #+end_src
+
+** Packages without a section of their own yet
+
+   #+begin_src emacs-lisp
+   (use-package treemacs
+     :defer t
+     :custom
+     (treemacs-follow-mode t))
+   (use-package pyvenv
+     :config
+     (pyvenv-tracking-mode 1))
+   #+end_src
+
+* Emacs tools and minor modes
+** verb
+
+   #+begin_src emacs-lisp
+     (use-package verb
+       :custom
+       (verb-babel-timeout 60.0))
+     (with-eval-after-load 'org
+       (define-key org-mode-map (kbd "C-c C-r") verb-command-map))
+   ;; (org-babel-do-load-languages
+   ;;  'org-babel-load-languages
+   ;;  '((verb . t)))
+   #+end_src
+
+** lsp-mode
+
+   #+begin_src emacs-lisp
+   ;; (with-eval-after-load 'lsp-mode
+   ;;   (add-to-list 'lsp-language-id-configuration
+   ;;     '(rst-mode . "rst")))
+
+   ;; (defcustom lsp-rst-ls-command '("rst-ls")
+   ;;   "Command to start the RST Language Server."
+   ;;   :type 'string)
+
+
+   (use-package lsp-mode
+     :ensure t
+     :custom
+     (lsp-diagnostics-provider :none)
+     (lsp-auto-guess-root t)
+     (lsp-diagnostics-attributes
+      '((unnecessary :foreground "cornsilk4")
+        (deprecated :strike-through t)))
+     (lsp-imenu-index-symbol-kinds
+      '(Class Function Method Constructor Property)))
+
+   ;; (require 'lsp-mode)
+
+   ;; (lsp-register-client
+   ;;   (make-lsp-client :new-connection (lsp-stdio-connection (lambda () lsp-rst-ls-command))
+   ;;                    :major-modes '(rst-mode)
+   ;;                    :server-id 'rst-ls))
+
+   #+end_src
+
+** COMMENT elfeed
+
+   #+begin_src emacs-lisp
+     (defalias 'elfeed-mark-read
+       (kmacro "<return> q"))
+
+     (use-package elfeed
+       :bind (:map elfeed-search-mode-map
+		   ("r" . elfeed-mark-read)
+		   ("`" . elfeed-mark-read)
+		   )
+       )
+   #+end_src
+
+** docker support
+
+   #+begin_src emacs-lisp
+   (use-package docker)
+   (use-package dockerfile-mode)
+   (add-to-list 'auto-mode-alist '("Dockerfile\\.*" . dockerfile-mode))
+   (add-to-list 'auto-mode-alist '("\.*\.docker" . dockerfile-mode))
+   (define-key global-map  "\C-zd"         'docker)
+   #+end_src
+
+** COMMENT poetry
+   I don't plan to use Poetry anymore - replaced with ~uv~
+
+   #+begin_src emacs-lisp
+     (use-package poetry
+       :ensure t)
+   #+end_src
+
+** git & magit & github
+
+     Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
+     #+begin_src emacs-lisp
+     (use-package magit
+       :custom
+       (magit-auto-revert-immediately nil)
+       (magit-list-refs-sortby "-creatordate")
+       :bind (("C-x g" . magit-status)))
+
+     (use-package git-link
+       :bind (
+              ("C-c g" . git-link)
+              )
+       )
+     (use-package magit-todos
+       ;; Set in :config, NOT :custom. `magit-todos-scanner' has a :set function that
+       ;; silently no-ops while `magit-todos-scanners' is still nil, and use-package
+       ;; runs :custom before the package loads — so a :custom value would be dropped.
+       ;; `magit-todos-keywords' has a plain :set function, so :custom is safe for it.
+       :custom
+       (magit-todos-keywords '("XXX" "TODO" "FIXME" "FixMe" "ToDo"))
+       :config
+       ;; Pin rg explicitly. The auto-chooser can land on the find|grep fallback, which
+       ;; honours no ignore rules and descends into every dot-directory; rg skips
+       ;; dot-dirs and respects .gitignore by default.
+       (setopt magit-todos-scanner #'magit-todos--scan-with-rg)
+       ;; Passed through to whichever scanner actually runs, so these hold even if rg
+       ;; is missing. Two distinct problems:
+       ;;   - `.venv/' / `.claude/' / `node_modules/': huge trees, and one .venv per
+       ;;     git worktree (a repo with 16 worktrees has 16 of them).
+       ;;   - the asset globs: single minified lines of ~1M characters overflow Emacs'
+       ;;     regexp matcher, which is what emits "File has lines too long to search".
+       ;;     These live in tracked source too, so excluding .venv alone is not enough.
+       (setopt magit-todos-exclude-globs
+               '(".git/" ".venv/" ".claude/" "node_modules/" "site/"
+                 "*.min.js" "*.min.css" "*.map" "*.svg" "*.so" "*.cap"))
+       ;; Two things used to silently clobber the two settings above; both are
+       ;; worth remembering, because neither produces any warning:
+       ;;
+       ;;   1. `custom-set-variables' in ~/.emacs.  That block runs *after*
+       ;;      `org-babel-load-file' on this file, so anything Custom has ever
+       ;;      saved wins over what is set here.  The magit-todos entries have
+       ;;      been deleted from it; don't let "Apply and Save" put them back.
+       ;;   2. A project's .dir-locals.el.  `magit-status-mode' applies
+       ;;      dir-locals (`magit-hack-dir-local-variables'), and a dir-local
+       ;;      value *replaces* the global list rather than extending it — so a
+       ;;      project pinning `magit-todos-exclude-globs' to its own two entries
+       ;;      dropped .venv/ and *.map again.  Prefer adding project-specific
+       ;;      directories (like "site/" above) to the global list.
+       ;;
+       ;; Declaring the option safe keeps any remaining dir-local from prompting.
+       (put 'magit-todos-exclude-globs 'safe-local-variable
+            (lambda (val) (and (listp val) (seq-every-p #'stringp val)))))
+     (use-package forge
+       :after magit)
+     (use-package github-review)
+
+     (defalias 'my-insert-git-link
+       (kmacro "C-c C-o M-x g i t - l i n k <return> s-w C-<escape> <end> SPC [ [ C-y ] [ . . C-x 8 <return> 2 1 9 2 <return> ] ]"))
+
+     #+end_src
+
+**** magit-todos
+
+**** COMMENT code-review
+
+     https://github.com/wandersoncferreira/code-review
+
+     #+begin_src emacs-lisp
+     (use-package uuidgen)
+
+
+     (use-package code-review
+       ;; :load-path "~/.emacs.d/lisp/code-review"
+       ;;       :after magit forge emojify
+       :after magit forge
+       :after forge
+       :straight (code-review
+                  :type git
+                  :host github
+                  :repo "phelrine/code-review"
+                  :branch "fix/closql-update")
+       :demand t
+       :config
+       (setq code-review-auth-login-marker 'forge)
+       (add-hook 'code-review-mode-hook #'emojify-mode)
+       (define-key forge-topic-mode-map (kbd "C-z c r") 'code-review-forge-pr-at-point)
+       (define-key code-review-feedback-section-map (kbd "k") 'code-review-section-delete-comment)
+       (define-key code-review-local-comment-section-map (kbd "k") 'code-review-section-delete-comment)
+       (define-key code-review-reply-comment-section-map (kbd "k") 'code-review-section-delete-comment)
+       (define-key code-review-mode-map (kbd "C-c C-n") 'code-review-comment-jump-next)
+       (define-key code-review-mode-map (kbd "C-c C-p") 'code-review-comment-jump-previous))
+     #+end_src
+
+** ledger
+   #+begin_src emacs-lisp
+     (use-package ledger-mode
+       :init
+       (magit-todos-mode)
+       )
+   #+end_src
+
+** pdf-tools
+
+   #+begin_src emacs-lisp
+     (use-package pdf-tools
+       :custom
+       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
+       :config
+       (pdf-tools-install)
+       )
+   #+end_src
+
+** pass
+
+   #+begin_src emacs-lisp
+   (use-package pass)
+   #+end_src
+
+** COMMENT pylookup
+   I don't use it anymore as LSP has great documentation support.
+
+   https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
+
+   #+begin_src emacs-lisp
+     ;; load pylookup when compile time
+     (eval-when-compile (require 'pylookup))
+     (setq pylookup-program "~/.emacs.d/pylookup.py")
+     (setq pylookup-db-file "~/var/pylookup/pylookup.db")
+     (global-set-key [(control shift menu)] 'pylookup-lookup)
+   #+end_src
+
+** Email support
+
+*** smtpmail
+
+    #+begin_src emacs-lisp
+      (use-package smtpmail-multi)
+    #+end_src
+
+*** notmuch
+    Email setup
+
+    #+begin_src emacs-lisp :results output replace
+      (use-package notmuch
+        :init
+        (progn
+          ;; (require 'org-notmuch)
+          (require 'org-notmuch)
+          (require 'notmuch-address)
+          (setq notmuch-address-command "~/bin/notmuch_addresses.py")
+          )
+        :bind (
+               ("C-z z" . notmuch)
+               ("C-c C-o" . browse-url-at-point)
+               )
+        :config
+
+        (defun notmuch-show-tag-spam ()
+          "mark message as spam"
+          (interactive)
+          (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+          (next-line)
+          )
+        (define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+        (defun notmuch-show-tag-deleted ()
+          "mark message as deleted"
+          (interactive)
+          (notmuch-search-tag '("+deleted" "-inbox")))
+
+        (defun notmuch-show-tag-read ()
+          "mark message as read"
+          (interactive)
+          (notmuch-search-tag '("-unread"))
+          (next-line)
+          )
+
+        (define-key notmuch-search-mode-map "d" 'notmuch-show-tag-deleted)
+        (define-key notmuch-search-mode-map "~" 'notmuch-show-tag-read)
+        (define-key notmuch-search-mode-map "`" 'notmuch-show-tag-read)
+        (define-key notmuch-show-part-map "x" #'mg-notmuch-display-email-in-xwidget)
+
+        )
+
+      (defun mg-notmuch-display-email-in-xwidget ()
+        "Display the HTML email content in xwidget-webkit.
+      This function requires the current MIME part to be of type
+      text/html. If the content is not HTML, it falls back to calling
+      `notmuch-show-view-part'.  Similarly, if xwidget support is
+      unavailable in the current Emacs build, it fallbacks to
+      `notmuch-show-view-part'."
+          (interactive)
+          (if-let* ((mime-part (ignore-errors (notmuch-show-current-part-handle)))
+                    (is-html-mime (equal (caadr mime-part) "text/html"))
+                    (has-xwidget (featurep 'xwidget-internal)))
+                  (notmuch-show-apply-to-current-part-handle
+                   (lambda (handle)
+                       (let ((tempf (make-temp-file "notmuch"
+                                                    nil
+                                                    ".html"
+                                                    (with-current-buffer (car handle)
+                                                        (buffer-string)))))
+                           (xwidget-webkit-browse-url (concat "file://" tempf))
+                           (run-with-idle-timer 3 nil #'delete-file tempf))))
+              (notmuch-show-view-part)))
+
+
+
+
+
+      (defun notmuch-show-tag-spam ()
+        "mark message as spam"
+        (interactive)
+        (notmuch-search-tag '("+spam" "-inbox" "-unread"))
+        (next-line)
+        )
+      ;;(define-key notmuch-search-mode-map "S" 'notmuch-show-tag-spam)
+
+      (defun notmuch-show-tag-deleted ()
+        "mark message as deleted"
+        (interactive)
+        (notmuch-search-tag '("+deleted" "-inbox")))
+
+      (defun notmuch-show-tag-read ()
+        "mark message as read"
+        (interactive)
+        (notmuch-search-tag '("-unread"))
+        (next-line)
+
+        ;; Sign messages by default.
+        (add-hook 'message-setup-hook 'mml-secure-sign-pgpmime)
+
+        (custom-set-variables
+         '(notmuch-search-oldest-first nil)
+         '(notmuch-crypto-process-mime t)
+         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
+         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
+        (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
+
+        (defun expand-only-unread-hook ()
+          "eexpand only recent unreads"
+          (interactive)
+          (let ((unread nil)
+                (open (notmuch-show-get-message-ids-for-open-messages)))
+            (notmuch-show-mapc (lambda ()
+        		         (when (member "unread" (notmuch-show-get-tags))
+        			   (setq unread t))))
+            (when unread
+              (let ((notmuch-show-hook (remove 'expand-only-unread-hook notmuch-show-hook)))
+                (notmuch-show-filter-thread "tag:unread")))))
+
+
+    (add-hook 'notmuch-show-hook 'expand-only-unread-hook)
+
+        )
+
+
+    ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
+    #+end_src
+
+    #+RESULTS:
+
+
+     I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
+     notmuch don't have this functionality by default, so I've monkey patched it here:
+
+     #+begin_src emacs-lisp
+       (defadvice notmuch-mua-reply (around notmuch-fix-sender)
+         (let ((sender (notmuch-mua-prompt-for-sender)))
+	   ad-do-it))
+       (ad-activate 'notmuch-mua-reply)
+     #+end_src
+
+***** xwidget
+      :LOGBOOK:
+      - State "TODO"       from              [2025-08-18 Mon 11:35]
+      - State "BUGFIXED"   from              [2025-08-18 Mon 11:35]
+      :END:
+
+      #+begin_src emacs-lisp
+
+      #+end_src
+
+      #+RESULTS:
+      : mg-notmuch-display-email-in-xwidget
+
+**** settings for notmuch-show
+
+     #+begin_src emacs-lisp
+     (defun my-notmuch-show-local-bindings ()
+       (interactive)
+       (local-set-key (kbd "C-c C-c") 'w3m-view-url-with-browse-url))
+
+     (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
+     #+end_src
+
+** COMMENT lastpass
+
+   #+begin_src emacs-lisp
+   (use-package lastpass
+     :init
+     (setq lastpass-multifactor-use-passcode t)
+     :config
+     ;; Set lastpass user
+     ;; Enable lastpass custom auth-source
+     (lastpass-auth-source-enable))
+   #+end_src
+
+** ztree
+
+   #+begin_src emacs-lisp
+     (use-package ztree)
+     (defun ztree-do-dired ()
+       (interactive)
+       "Jump to dired in specified place of ZTree-dir"
+       (let* ((line (line-number-at-pos))
+	      (node (ztree-find-node-in-line line)))
+	 (when node
+	   (dired node))
+	 )
+       )
+     (define-key ztree-mode-map (kbd "D") 'ztree-do-dired)
+					     ; (global-set-key [f5] 'ztree-dir)
+     (global-set-key (kbd "C-x <f3>") 'ztree-dir)
+     (global-set-key (kbd "<C-f3>") 'ztree-side)
+     ;; (global-set-key (kbd "M-<f3>") 'ztree-dir)
+
+     (fset 'ztree-side
+	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
+   #+end_src
+
+** realgud
+
+   Real good debugger.
+   #+begin_src emacs-lisp
+     (use-package realgud
+       :custom
+       (realgud-populate-common-fn-keys-function nil))
+   #+end_src
+
+** COMMENT prettier (replaced with Aphelia mode)
+
+   https://github.com/jscheid/prettier.el
+
+   #+begin_src emacs-lisp
+   (use-package prettier
+     :bind (
+	    ("C-c m e" . prettier-mode))
+     )
+   #+end_src
+
+   I also enable it where its needed by this in .dir-locals, as in example below:
+   #+begin_example
+   (
+    (js-mode . ((eval . (prettier-mode t))))
+    (typescript-mode . ((eval . (prettier-mode t))))
+   )
+   #+end_example
+
+** COMMENT moldable emacs
+   :LOGBOOK:
+   - State "TODO"       from              [2023-01-21 сб 13:55]
+   :END:
+
+ #+begin_src emacs-lisp
+ (use-package moldable-emacs
+   :load-path "~/.emacs.d/lisp/moldable-emacs/"
+   :bind (("C-c m m" . me-mold)
+          ("C-c m f" . me-go-forward)
+          ("C-c m b" . me-go-back)
+          ("C-c m o" . me-open-at-point)
+          ("C-c m d" . me-mold-docs)
+          ("C-c m g" . me-goto-mold-source)
+          ("C-c m e a" . me-mold-add-last-example)
+          )
+   :config
+   (require 'moldable-emacs)
+   (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
+   (me-setup-molds))
+ #+end_src
+
+** shells
+
+   #+begin_src emacs-lisp
+                                           ; various shells
+   (require 'python)
+   (add-hook 'shell-output-filter-functions
+             '(lambda () ""
+                (when (shell-interactive-process)
+                  (python-pdbtrack-set-tracked-buffer
+                   (buffer-substring (shell-beginning-of-output) shell-last-output-end)))))
+
+   (global-unset-key (kbd "s-s"))
+   (defun switch-to-shell(n) ()
+          (interactive)
+          (if (get-buffer (concat "*shell*<" n ">"))
+              (switch-to-buffer (concat "*shell*<" n ">"))
+            (shell (concat "*shell*<" n ">")))
+          )
+
+   (global-set-key (kbd "C-z C-1") (lambda () (interactive) (switch-to-shell "1")))
+   (global-set-key (kbd "C-z C-2") (lambda () (interactive) (switch-to-shell "2")))
+   (global-set-key (kbd "C-z C-3") (lambda () (interactive) (switch-to-shell "3")))
+   (global-set-key (kbd "C-z C-4") (lambda () (interactive) (switch-to-shell "4")))
+   (global-set-key (kbd "C-z C-5") (lambda () (interactive) (switch-to-shell "5")))
+   (global-set-key (kbd "C-z C-6") (lambda () (interactive) (switch-to-shell "6")))
+   (global-set-key (kbd "C-z C-7") (lambda () (interactive) (switch-to-shell "7")))
+   (global-set-key (kbd "C-z C-8") (lambda () (interactive) (switch-to-shell "8")))
+   (global-set-key (kbd "C-z C-9") (lambda () (interactive) (switch-to-shell "9")))
+   (global-set-key (kbd "C-z C-0") 'shell)
+   (global-set-key (kbd "C-z C-e") 'eshell)
+
+   (global-set-key (kbd "C-z x 1") (lambda () (interactive) (switch-to-shell "1")))
+   (global-set-key (kbd "C-z x 2") (lambda () (interactive) (switch-to-shell "2")))
+   (global-set-key (kbd "C-z x 3") (lambda () (interactive) (switch-to-shell "3")))
+   (global-set-key (kbd "C-z x 4") (lambda () (interactive) (switch-to-shell "4")))
+   (global-set-key (kbd "C-z x 5") (lambda () (interactive) (switch-to-shell "5")))
+   (global-set-key (kbd "C-z x 6") (lambda () (interactive) (switch-to-shell "6")))
+   (global-set-key (kbd "C-z x 7") (lambda () (interactive) (switch-to-shell "7")))
+   (global-set-key (kbd "C-z x 8") (lambda () (interactive) (switch-to-shell "8")))
+   (global-set-key (kbd "C-z x 9") (lambda () (interactive) (switch-to-shell "9")))
+   (global-set-key (kbd "C-z x 0") 'shell)
+
+
+                                           ; ansi-term
+   (global-set-key (kbd "s-s t") '(lambda ()
+                                    (interactive)
+                                    (call-process "kitty" nil 0 nil)))
+
+   (fset 'myshells
+         [?\M-x ?i ?b ?u ?f ?f ?e ?r return ?/ ?/ ?/ ?m ?s ?h ?e ?l ?l ?- ?m ?o ?d ?e return ?s ?f])
+
+   (global-set-key (kbd "s-s l") 'myshells)
+
+   (defun my-shell-mode-hook ()
+     (hide-trailing-whitespace)
+     ;; (company-mode)
+     )
+
+   (add-hook 'shell-mode-hook 'my-shell-mode-hook)
+   (add-hook 'term-mode-hook 'my-shell-mode-hook)
+
+   ;; from http://stackoverflow.com/questions/13185729/npm-dont-display-prompt-correctly-under-emacs-eshell
+   ;; to filter out npm special chars
+   (add-to-list
+    'comint-preoutput-filter-functions
+    (lambda (output)
+      (replace-regexp-in-string "\033\[[0-9]+[AGK]" "" output)))
+
+   (defun ansible-highlight()
+     "Hightlight ok, failed, changed lines"
+     (interactive)
+     (highlight-lines-matching-regexp "^ok:" 'hi-green-b)
+     (highlight-phrase "failed:" 'flycheck-error)
+     (highlight-phrase "FAILED\!" 'flycheck-error)
+     (highlight-lines-matching-regexp "changed:" 'font-lock-warning-face)
+     )
+
+   (defun sql-highlight()
+     "SQL updates, inserts"
+     (interactive)
+     (highlight-lines-matching-regexp "INSERT\sINTO\s" 'hi-pink)
+     (highlight-lines-matching-regexp "DELETE\sFROM\s" 'hi-red-b)
+     (highlight-lines-matching-regexp "UPDATE\s" 'hi-yellow)
+     )
+   #+end_src
+
+   #+RESULTS:
+   : sql-highlight
+
+*** shell comint input history
+
+    #+begin_src emacs-lisp
+    (add-hook 'shell-mode-hook 'my-shell-mode-hook2)
+    (defun my-shell-mode-hook2 ()
+      (setq comint-input-ring-file-name "~/.histfile")
+      (comint-read-input-ring t))
+    #+end_src
+
+** dap mode
+
+   https://github.com/emacs-lsp/dap-mode
+   #+begin_src emacs-lisp
+   (use-package dap-mode)
+   (add-hook 'dap-stopped-hook
+             (lambda (arg) (call-interactively #'dap-hydra)))
+   (require 'dap-node)
+   ;; (dap-node-setup)
+
+   #+end_src
+
+** COMMENT tree-sitter settings
+
+   #+begin_src emacs-lisp
+
+   #+end_src
+
+** COMMENT lsp-bridge
+
+   Fast & more automated LSP support
+
+   #+begin_src emacs-lisp
+     (use-package posframe)
+     (add-to-list 'load-path "~/.emacs.d/lisp/lsp-bridge/")
+     (require 'lsp-bridge)
+     ;; (global-lsp-bridge-mode)
+
+     (defun my-enable-lsp-bridge-for-typescript ()
+       (interactive)
+       (add-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
+       (add-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-typescript ()
+       (interactive)
+       (remove-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
+       (remove-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-enable-lsp-bridge-for-python ()
+       (interactive)
+       (add-hook 'python-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-python ()
+       (interactive)
+       (remove-hook 'python-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-project-current (d)
+       (message d)
+       (cdr (project-current))
+       )
+
+
+     (defun my-enable-lsp-bridge-for-clojure ()
+       (interactive)
+       (add-hook 'clojure-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-clojure ()
+       (interactive)
+       (remove-hook 'clojure-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-enable-lsp-bridge-for-js2 ()
+       (interactive)
+       (add-hook 'js2-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-js2 ()
+       (interactive)
+       (remove-hook 'js2-mode-hook #'lsp-bridge-mode)
+       )
+
+   (define-key lsp-bridge-mode-map (kbd "M-.") #'lsp-bridge-find-def)
+   (define-key lsp-bridge-mode-map (kbd "M-,") #'lsp-bridge-find-def-return)
+   (define-key lsp-bridge-mode-map [(shift f1)] #'lsp-bridge-popup-documentation)
+   (define-key lsp-bridge-mode-map [f8] #'lsp-bridge-diagnostic-jump-next)
+   (define-key lsp-bridge-mode-map [(shift f8)] #'lsp-bridge-diagnostic-jump-prev)
+   (define-key lsp-bridge-mode-map [(control shift f8)] #'lsp-bridge-diagnostic-list)
+
+
+   (my-enable-lsp-bridge-for-js2)
+   ;; (my-enable-lsp-bridge-for-typescript)
+   ;; (my-enable-lsp-bridge-for-clojure)
+   (my-enable-lsp-bridge-for-python)
+
+   ;; https://github.com/manateelazycat/lsp-bridge/issues/636
+   (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer)
+   #+end_src
+
+** COMMENT sql-mysql
+
+   #+begin_src emacs-lisp
+   ;; https://stackoverflow.com/questions/12613/specify-a-port-number-in-emacs-sql-mysql
+   (setq sql-mysql-login-params (append sql-mysql-login-params '(port)))
+   (setq sql-port 3306) ;; default MySQL port
+   #+end_src
+
+   #+RESULTS:
+   : 3306
+
+** COMMENT eslint                                                       :WIP:
+
+   #+begin_src emacs-lisp
+     (add-hook 'js2-mode-hook
+	       (defun my-js2-mode-setup ()
+		 (flycheck-mode t)
+		 (when (executable-find "eslint")
+		   (flycheck-select-checker 'javascript-eslint))))
+
+   (with-eval-after-load 'flycheck
+     (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
+   #+end_src
+
+   P.S. may be try: http://codewinds.com/blog/2015-04-02-emacs-flycheck-eslint-jsx.html
+
+** eslint for tide
+
+   #+begin_src emacs-lisp
+       ;; (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+       ;; (with-eval-after-load 'flycheck
+       ;;   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
+
+
+     ;; https://github.com/hlissner/doom-emacs/issues/1530#issuecomment-507653761
+     ;; (add-hook 'after-typescript-mode-hook
+     ;;           (lambda ()
+     ;;             (flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)))
+     ;;   (flycheck-add-next-checker 'python-flake8 'python-pylint)
+   ;;(flycheck-add-next-checker 'typescript-tide 'javascript-eslint 'append)
+   #+end_src
+
+** flycheck, flymake
+
+ #+begin_src emacs-lisp
+ (use-package flycheck
+   :ensure t
+   :custom
+   (flycheck-checker-error-threshold 550)
+   (flycheck-checkers
+    '(lsp tsx-tide typescript-tide javascript-eslint ada-gnat asciidoctor
+          asciidoc c/c++-clang c/c++-gcc c/c++-cppcheck cfengine
+          chef-foodcritic coffee coffee-coffeelint coq css-csslint
+          css-stylelint cuda-nvcc cwl d-dmd dockerfile-hadolint
+          emacs-lisp emacs-lisp-checkdoc erlang-rebar3 erlang
+          eruby-erubis fortran-gfortran go-gofmt go-golint go-vet
+          go-build go-test go-errcheck go-unconvert go-megacheck
+          go-staticcheck groovy haml handlebars haskell-stack-ghc
+          haskell-ghc haskell-hlint html-tidy javascript-jshint
+          javascript-standard json-jsonlint json-python-json json-jq
+          jsonnet less less-stylelint llvm-llc lua-luacheck lua
+          markdown-markdownlint-cli markdown-mdl nix nix-linter opam perl
+          perl-perlcritic php php-phpmd php-phpcs processing proselint
+          protobuf-protoc pug puppet-parser puppet-lint python-pylint
+          python-flake8 python-ruff python-pycompile python-mypy r-lintr
+          racket rpm-rpmlint rst-sphinx rst ruby-rubocop ruby-reek
+          ruby-rubylint ruby ruby-jruby rust-cargo rust rust-clippy scala
+          scala-scalastyle scheme-chicken scss-lint scss-stylelint
+          sass/scss-sass-lint sass scss sh-bash sh-posix-dash
+          sh-posix-bash sh-zsh sh-shellcheck slim slim-lint sql-sqlint
+          systemd-analyze tcl-nagelfar tex-chktex tex-lacheck texinfo
+          textlint typescript-tslint verilog-verilator vhdl-ghdl
+          xml-xmlstarlet xml-xmllint yaml-jsyaml yaml-ruby
+          javascript-tide jsx-tide))
+   (flycheck-disabled-checkers '(lsp python-mypy))
+   (flycheck-global-modes
+    '(python-mode python-ts-mode typescript-mode typescript-ts-mode
+                  js-mode web-mode))
+   (flycheck-idle-change-delay 5)
+   :config
+   (global-flycheck-mode t)
+   (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+   ;; Disable mypy globally; re-enable per project via .dir-locals.el
+   ;; (setq-default flycheck-disabled-checkers '(python-mypy))
+   ;; note that these bindings are optional
+   :bind
+   ([C-f8] . flycheck-list-errors)
+   )
+ ;; (use-package flycheck-pycheckers
+ ;;   :after flycheck
+ ;;   :ensure t
+ ;;   :init
+ ;;   (with-eval-after-load 'flycheck
+ ;;     (add-hook 'flycheck-mode-hook #'flycheck-pycheckers-setup)
+ ;;     )
+ ;;   (setq flycheck-pycheckers-checkers
+ ;; 	'(
+ ;; 	  pylint
+ ;; 	  pyflakes
+ ;; 	  mypy3
+ ;; 	  )
+ ;; 	)
+ ;;   )
+
+ ;; (add-hook 'python-ts-mode-hook
+ ;; 	  (setq indent-tabs-mode nil)
+ ;; 	  (setq tab-width 4)
+ ;; 	  (flycheck-mode)
+ ;; 	  )
+ (add-hook 'python-ts-mode-hook #'flycheck-mode)
+
+ #+end_src
+
+To re-enable mypy in a specific project, add a .dir-locals.el in that project's root:                                                           
+   
+  ((python-ts-mode                                                                                                                                
+    . ((flycheck-disabled-checkers . nil))))                
+                                                                                                                                                  
+  Or if you want to keep other checkers disabled but just re-enable mypy:                                                                         
+                                                                                                                                                  
+  ((python-ts-mode                                                                                                                                
+    . ((eval . (setq-local flycheck-disabled-checkers       
+                           (remove 'python-mypy flycheck-disabled-checkers))))))                                                                  
+
+** Aphelia
+
+   #+begin_src emacs-lisp
+   (use-package apheleia
+     :bind (("\C-cmA" . apheleia-mode)))
+   (require 'apheleia-formatters)
+
+   ;; (setf (alist-get 'isort apheleia-formatters)
+   ;;       '("isort" "--stdout" "-"))
+   ;; (setf (alist-get 'python-mode apheleia-mode-alist)
+   ;;       '(isort))
+
+  ;; Configure ruff for Python formatting
+  (setf (alist-get 'ruff apheleia-formatters)
+        '("ruff" "format" "--stdin-filename" filepath "-"))
+  (setf (alist-get 'python-mode apheleia-mode-alist) 'ruff)
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist) 'ruff)
+
+   #+end_src
+
+** COMMENT python auto virtualenv for python-ts-mode
+
+   #+begin_src emacs-lisp
+        (use-package auto-virtualenv
+          :load-path "path/to/auto-virtualenv"
+          :config
+          (setq auto-virtualenv-verbose t)
+          (auto-virtualenv-setup))
+        ;; my custom version of PR
+        ;; (defun auto-virtualenv-find-local-venv (project-root)
+        ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
+        ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
+        ;;   (catch 'found-virtualenv
+        ;;     (dolist (dir auto-virtualenv-local-env-dirs)
+        ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
+        ;;         (when (file-directory-p maybe-virtualenv-in)
+        ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
+        ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
+        (defun auto-virtualenv-update-mode-line ()
+          )
+
+   #+end_src
+
+** auto-virtualenvwrapper
+
+   #+begin_src emacs-lisp
+   (use-package auto-virtualenvwrapper)
+   (add-hook 'python-mode-hook #'auto-virtualenvwrapper-activate)
+   #+end_src
+
+   #+RESULTS:
+   | auto-virtualenvwrapper-activate | (lambda nil (global-set-key [(control shift menu)] 'pylookup-lookup) (display-line-numbers-mode nil) (define-key python-mode-map 
+ 'newline-and-indent) (if (buffer-file-name) (if (file-remote-p (buffer-file-name)) (flymake-mode) (flycheck-mode t))) (lsp-mode) (apheleia-mode 1) (display-fill-column-indicator-mode) (indent-bars-mode)) |
+
+** dape
+
+   #+begin_src emacs-lisp
+   (use-package dape
+     ;; To use window configuration like gud (gdb-mi)
+     ;; :init
+     ;; (setq dape-buffer-window-arrangement 'gud)
+
+     :config
+     ;; Info buffers to the right
+     (setq dape-buffer-window-arrangement 'right)
+
+     ;; To not display info and/or buffers on startup
+     ;; (remove-hook 'dape-on-start-hooks 'dape-info)
+     ;; (remove-hook 'dape-on-start-hooks 'dape-repl)
+
+     ;; To display info and/or repl buffers on stopped
+     (add-hook 'dape-on-stopped-hooks 'dape-info)
+     (add-hook 'dape-on-stopped-hooks 'dape-repl)
+
+     ;; By default dape uses gdb keybinding prefix
+     ;; If you do not want to use any prefix, set it to nil.
+     (setq dape-key-prefix "\C-x\C-a")
+
+     ;; Kill compile buffer on build success
+     (add-hook 'dape-compile-compile-hooks 'kill-buffer)
+
+     ;; Save buffers on startup, useful for interpreted languages
+     ;; (add-hook 'dape-on-start-hooks
+     ;;           (defun dape--save-on-start ()
+     ;;             (save-some-buffers t t)))
+
+     ;; Projectile users
+     (setq dape-cwd-fn 'projectile-project-root)
+     )
+   #+end_src
+
+** gptel
+
+#+begin_src emacs-lisp
+(use-package gptel
+  :bind (("C-z <f4>" . gptel)
+         ("C-z <f5>" . gptel-menu))
+  :custom
+  (gptel-default-mode 'org-mode)
+  (gptel-model 'gpt-4o) ;; Note: Ensure your OpenAI account has access to the model you specify here (gpt-4o, gpt-4-turbo, gpt-5, etc.)
+  :config
+  ;; Explicitly construct the backend and tell it to use auth-source
+  (setq gptel-backend (gptel-make-openai "OpenAI"
+                        :stream t
+                        :key 'gptel-api-key-from-auth-source)))
+#+end_src
+
+** YouTrack
+
+   Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
+   submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
+
+   #+begin_src emacs-lisp
+   (setq youtrack-host "youtrack.example.com")
+   (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
+   (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
+   (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
+   (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
+   (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
+   #+end_src
+
+** COMMENT pgmacs
+   https://github.com/emarsden/pgmacs.git
+
+   #+begin_src emacs-lisp
+   (use-package pgmacs
+     :load-path "~/.emacs.d/lisp/pgmacs/"
+     :init
+     (unless (package-installed-p 'pg)
+       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
+     (unless (package-installed-p 'pgmacs)
+       (package-vc-install "https://github.com/emarsden/pgmacs"))
+     (require 'pgmacs))
    #+end_src
 
 ** eat?
@@ -6886,54 +6938,6 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : po-subedit-abort
-
-** review & annotate videos in emacs org-mode
-
-
-   #+begin_src emacs-lisp
-   (use-package mpvi :ensure t)
-
-   (use-package mpvi
-     :ensure t
-     :config
-     ;; M-x customize-group mpvi
-     (setq mpvi-mpv-ontop-p t)
-     (setq mpvi-mpv-border-p t)
-     (setq mpvi-cmds-on-init
-           '(((set_property autofit "40%x85%"))
-             ((set_property geometry "-3%+8%"))))
-
-     ;; Upstream bug: `mpvi-org-link-push' passes (beg end) into
-     ;; `mpvi-start's (type beg) slots, so the start time is never honored
-     ;; and mpv always opens at 0.  Patch the org follow-handler to call
-     ;; mpvi-start with the right positional args.
-     (defun mpvi-org-link-push (link)
-       "Play the mpv LINK."
-       (pcase-let ((`(,path ,beg ,end) (mpvi-parse-link link)))
-         (mpvi-start path nil beg end)))
-
-     :bind (
-            ("\C-clv" . mpvi-insert)
-            )
-
-     )
-
-   (setenv "TESSDATA_PREFIX" "/usr/share/tessdata/")
-   (setq mpv-ocr-language "eng")
-   #+end_src
-
-   #+RESULTS:
-   : eng
-
-** org-crypt
-
-   #+begin_src emacs-lisp
-   (require 'org-crypt)
-   (setq org-crypt-key "841079E7A0CD6951A54C73EB00AA19ED7AD0481A")
-   #+end_src
-
-   #+RESULTS:
-   : 841079E7A0CD6951A54C73EB00AA19ED7AD0481A
 
 ** COMMENT kubernetes
 
