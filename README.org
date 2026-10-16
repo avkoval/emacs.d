@@ -1,9 +1,10 @@
 #+OPTIONS: texht:nil
 #+OPTIONS: ^:nil
 #+STARTUP: overview
+#+PROPERTY: header-args:emacs-lisp :results none
 #+TITLE: Oleksii Koval (ok) emacs configuration file
 
-* Basic keybindings and configration settings
+* Basic keybindings and configuration settings
 ** ~PATH~ for CLI tools
 
    A GUI Emacs inherits whatever environment it was launched with, which on
@@ -12,26 +13,24 @@
    both ~exec-path~ (used by ~start-process~) and ~PATH~ (used by
    ~shell-command~ and anything that re-resolves the binary itself).
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (dolist (dir (list (expand-file-name "~/.local/bin")
                         "/opt/homebrew/bin"))
        (when (file-directory-p dir)
          (add-to-list 'exec-path dir)
          (unless (member dir (split-string (getenv "PATH") path-separator))
            (setenv "PATH" (concat dir path-separator (getenv "PATH"))))))
-   #+END_SRC
+   #+end_src
 
 ** Disable ~tool-bar~
 
    Disable ~tool-bar~
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (tool-bar-mode -1)
-   #+END_SRC
+   #+end_src
 
 ** Free some keybindings
-
-   Here is the corrected version of your paragraphs:
 
    The typical strategy for using Emacs is to reconfigure shortcuts for the applications you use most frequently. This is a
    very individual process, as the shortcuts that are typical for a JavaScript developer differ significantly from those of
@@ -39,18 +38,18 @@
 
    Here, I free some key bindings to allow their use later for various packages:
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
    (global-unset-key (kbd "C-z"))
    (global-unset-key (kbd "C-z j"))
    (global-unset-key (kbd "C-x C-j"))
    (global-unset-key [f9])
    (global-unset-key [(control \#)])
-   #+END_SRC
+   #+end_src
 
 ** Unsorted keybindings (FIXME!)
    I need to cleanup it. /Later!/
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
 
     ;; (global-set-key [f7]  'man)
     (global-set-key [(shift f1)] 'helm-man-woman)
@@ -542,17 +541,17 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
     ;;  (global-set-key "\C-zs" 'switch-to-scratch)
 
-   #+END_SRC
+   #+end_src
 
 ** Fullscreen fix
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (setq frame-resize-pixelwise t)
    #+end_src
 
 ** Some mouse bindings
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (global-set-key (kbd "s-<mouse-1>")  'split-window-below)
    (global-set-key (kbd "s-<mouse-3>")  'split-window-right)
    (global-set-key (kbd "s-<drag-mouse-3>")  'delete-window)
@@ -560,7 +559,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    #+end_src
 ** large files
    Do not ask for confirmation for opening large file, because Helm will freeze with follow mode enabled (TBD report a bug?)
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (defun files--ask-user-about-large-file (size op-type filename offer-raw)
      "Query the user about what to do with large files.
    Files are \"large\" if file SIZE is larger than `large-file-warning-threshold'.
@@ -577,7 +576,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    Custom package sources. Also I've read somewhere that emacs default TLS configuration is not
    ideal and  reconfigured it according the recipe.
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (package-initialize)
      (unless (assoc-default "melpa" package-archives)
        (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
@@ -590,13 +589,13 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 	   '("gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h"
 	     "gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h --protocols ssl3"
 	     "openssl s_client -connect %h:%p -CAfile /etc/ssl/certs/ca-certificates.crt -no_ssl2 -ign_eof"))
-   #+END_SRC
+   #+end_src
 
 ** Use-package
 
    There are several (to ~package.el~) alternative/additional package managers, I use ~use-package~.
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (setq use-package-always-ensure t)
 
    (unless (package-installed-p 'use-package)
@@ -608,7 +607,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      (require 'use-package))
    (use-package auto-compile
      :config (auto-compile-on-load-mode))
-   #+END_SRC
+   #+end_src
 
 ** Own packages (github.com/avkoval)
 
@@ -623,7 +622,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    checkout with local commits or edits that conflict is left as it is; re-evaluate the package's section (or restart)
    to load the new code.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (defvar my/own-packages
      '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx"
        ("youtrack" . "emacs-org-mode-youtrack"))
@@ -682,7 +681,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
 ** COMMENT Straight
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (defvar bootstrap-version)
    (let ((bootstrap-file
           (expand-file-name
@@ -718,7 +717,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
    A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package dash)
    #+end_src
 
@@ -730,7 +729,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
    It does have some criticism, for example it does not follow Emacs conventions on setting colors, as result many themes
    are not very compatible and will show wierd colors.
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (use-package helm
        :diminish helm-mode
        :init
@@ -827,26 +826,26 @@ and cause version-skew macro errors after magit/forge upgrades.
      ;; (require 'helm-mode)
 
      (define-key org-mode-map (kbd "C-s-<tab>") 'helm-buffers-list)
-   #+END_SRC
+   #+end_src
 
    #+RESULTS:
    : helm-buffers-list
 
 *** helm-comint
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
   (use-package helm-comint
     :bind
     (("C-c h h" . helm-comint-input-ring)))
-  #+END_SRC
+  #+end_src
 
 
 *** helm-fzf
- #+BEGIN_SRC emacs-lisp
+ #+begin_src emacs-lisp
    (use-package s)
    (use-package dash)
    (require 'helm-fzf)
- #+END_SRC
+ #+end_src
 
 
 *** helm-bm
@@ -862,7 +861,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
  And this helm function makes it easy to choose bookmarks using Helm
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
   (use-package helm-bm
     :init
     :bind (
@@ -870,14 +869,14 @@ and cause version-skew macro errors after magit/forge upgrades.
            ([M-f1] . helm-bm)
            ("C-z <SPC>" . helm-bm)
            ))
-  #+END_SRC
+  #+end_src
 
 
 *** helm-ag
 
  Searching using [[https://github.com/ggreer/the_silver_searcher]["The silver searcher"]] with Helm.
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
 
   ;; (use-package helm-ag
   ;;   :init
@@ -898,31 +897,31 @@ and cause version-skew macro errors after magit/forge upgrades.
     (setq helm-grep-ag-command
           "ag --nocolor --nogroup --line-number --smart-case %s -- %s %s"))
 
-  #+END_SRC
+  #+end_src
 
 *** helm-pass
 
  Password management using [[https://www.passwordstore.org/][famous 'pass' utility]]. If you never tried it, it is much better then
  many of other password managers available, including most of commercial.
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
     (use-package helm-pass
       :init
       :bind (("C-z p s" . helm-pass)))
-  #+END_SRC
+  #+end_src
 
   This module provides searhing, but it also has dependency module for generic pass management within
   emacs UI.
 
 *** helm-org
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
   (use-package helm-org)
-  #+END_SRC
+  #+end_src
 
 *** helm-rg
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package helm-rg
       :init
       :config
@@ -950,7 +949,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
 *** COMMENT helm-org-roam
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (defun helm-org-roam (&optional input candidates)
       (interactive)
       (require 'org-roam)
@@ -998,7 +997,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
 ** camel case
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package string-inflection)
    (global-set-key (kbd "C-c _") 'string-inflection-cycle)
    ;; (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
@@ -1026,7 +1025,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 
 *** org-babel sql
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (org-babel-do-load-languages
      'org-babel-load-languages
      '((sql . t)))
@@ -1034,7 +1033,7 @@ and cause version-skew macro errors after magit/forge upgrades.
 *** COMMENT org-mode session reset
     from: https://emacs.stackexchange.com/questions/5293/how-to-force-an-org-babel-session-to-reset-or-initialize
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (add-hook 'org-babel-after-execute-hook 'semacs/ob-args-ext-session-reset)
 
     (defun semacs/ob-args-ext-session-reset()
@@ -1116,7 +1115,7 @@ buffer apply; the plain-text part is the Markdown export.
 
 Slack does not render tables (the rows run together); the command warns when the exported text has one.
 
-#+begin_src emacs-lisp :results output none
+#+begin_src emacs-lisp
 (require 'ox-html)
 (require 'ox-md)
 
@@ -1187,7 +1186,7 @@ Gmail, YouTrack comments and Google Docs."
     Rendering goes through ~plantuml-jar-path~ when the jar is readable, and falls
     back to a ~plantuml~ executable on ~PATH~ otherwise.
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (defgroup my/markdown-plantuml nil
         "Render fenced PlantUML blocks in Markdown buffers."
         :group 'markdown)
@@ -1395,7 +1394,7 @@ Gmail, YouTrack comments and Google Docs."
     the document; ~plantuml-save-current-block~ writes the ~@startuml…@enduml~ block
     around point to an arbitrary file.
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (with-eval-after-load 'markdown-mode
         (define-key markdown-mode-map (kbd "C-c C-u") #'plantuml-preview-current-block))
 
@@ -1635,7 +1634,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** org-mind-map
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     ;; the headings of an org file
     (use-package org-mind-map
       :init
@@ -1655,7 +1654,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
     #+end_src
 
 *** ox-gfm
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package ox-gfm)
     #+end_src
 *** COMMENT ox export hack
@@ -1743,7 +1742,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
     - https://emacs.stackexchange.com/questions/27060/embed-image-as-base64-on-html-export-from-orgmode
     - https://www.reddit.com/r/orgmode/comments/7dyywu/creating_a_selfcontained_html/
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (defun replace-prefix-if-present (string prefix new-prefix)
       "If STRING starts with PREFIX, replace the PREFIX by NEW-PREFIX.
        Else, returns NIL."
@@ -1767,13 +1766,13 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** ellipsis
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (setq org-ellipsis "⤵")
     #+end_src
 
 *** COMMENT ox-publish (my blog)
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (require 'ox-publish)
    (setq org-html-validation-link nil)
    (setq org-publish-project-alist
@@ -1813,7 +1812,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** ox-moderncv
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package ox-moderncv
        :load-path "~/.emacs.d/lisp/org-cv/"
        :init (require 'ox-moderncv))
@@ -1821,7 +1820,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** ox-hugo
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package ox-hugo
      :ensure t   ;Auto-install the package from Melpa
      :pin melpa  ;`package-archives' should already have ("melpa" . "https://melpa.org/packages/")
@@ -1858,7 +1857,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
    [[file:org2docx/org2docx.el][org2docx/org2docx.el]] (pandoc + LibreOffice, profiles ~formal~ and ~internal~).
    ~C-c C-e w w~ or ~M-x org2docx-export~ (~C-u~ asks for the profile); see [[file:org2docx/README.md][org2docx/README.md]].
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package org2docx
      :ensure nil
      :load-path (lambda () (my/own-package "org2docx"))
@@ -1891,7 +1890,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
      instruction in =:BROWSER_NOTE:=; the key for finding the place in =:BROWSER_LOCATOR:=
      (a quote from the customer's comment, or the exact text to change).
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    ;; `load', not `require': re-evaluating this block always picks up the current code.
    (load (expand-file-name "org-browser-run.el" (my/own-package "org-browser-run")))
    (setq org-browser-run-dir "~/.emacs.d/org-browser-run/"
@@ -1907,13 +1906,13 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** ob-mongo
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package ob-mongo)
    #+end_src
 
 *** ob-clojure
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
     (use-package cider)
     (require 'ob-clojure)
     (setq org-babel-clojure-backend 'cider)
@@ -1927,7 +1926,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 *** main org mode settings
    https://orgmode.org/manual/Structure-Templates.html
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      ;; Org-mode settings
      (add-to-list 'load-path "/usr/share/emacs/site-lisp/org")
                                              ;(add-to-list 'load-path "~/.emacs.d/lisp/ob-async")
@@ -2268,7 +2267,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
 *** syntax highlight in code blocks
 
     https://www.reddit.com/r/orgmode/comments/64tiq9/syntax_highlighting_in_code_blocks/
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (setq org-src-fontify-natively t
 	  org-src-tab-acts-natively t
 	  org-edit-src-content-indentation 0)
@@ -2276,28 +2275,28 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
 *** ox-rst
 
-    #+BEGIN_SRC emacs-lisp
+    #+begin_src emacs-lisp
     (use-package ox-rst)
-    #+END_SRC
+    #+end_src
 
 *** COMMENT ox-jira
 
-    #+BEGIN_SRC emacs-lisp
+    #+begin_src emacs-lisp
     (use-package ox-jira)
-    #+END_SRC
+    #+end_src
 
 *** org-redmine
 
-    #+BEGIN_SRC emacs-lisp
+    #+begin_src emacs-lisp
       (use-package org-redmine
         :bind (
 	       ("C-z r g" . org-redmine-get-issue)
 	       )
         )
-    #+END_SRC
+    #+end_src
 
     FIXME:
-    #+BEGIN_EXAMPLE
+    #+begin_example
     (require 'org-redmine)
     (defun org-redmine-curl-args (uri)
       (let ((args '("-X" "GET" "-s" "-f" "--ciphers" "RC4-SHA:RC4-MD5")))
@@ -2315,37 +2314,37 @@ With prefix ARG, replace the converted text in place instead of copying it."
 	 `(,uri))))
     (setq org-redmine-uri "https://<Your Redmine URL>")
     (setq org-redmine-auth-api-key "<Please set your Redmine API key here>")
-    #+END_EXAMPLE
+    #+end_example
 
 *** org-bullets
 
     Nice bullets for org-mode but somehow it makes editor a little slower, so I don't always enable it.
 
-    #+BEGIN_SRC emacs-lisp
+    #+begin_src emacs-lisp
     (use-package org-bullets)
     (org-bullets-mode)
-    #+END_SRC
+    #+end_src
 
     #+RESULTS:
     : t
 
 *** org-jira
 
- #+BEGIN_SRC emacs-lisp
+ #+begin_src emacs-lisp
  (use-package org-jira)
- #+END_SRC
+ #+end_src
 
 *** org-habit
   https://orgmode.org/manual/Tracking-your-habits.html
   https://orgmode.org/worg/org-tutorials/tracking-habits.html
 
-  #+BEGIN_SRC emacs-lisp
+  #+begin_src emacs-lisp
   (require 'org-habit)
-  #+END_SRC
+  #+end_src
 
 *** ob-tmux
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (use-package ob-tmux
         :init
         (setq org-babel-default-header-args:tmux
@@ -2361,11 +2360,11 @@ With prefix ARG, replace the converted text in place instead of copying it."
         (setq org-babel-tmux-session-prefix "ob-")
         )
 
-    #+END_SRC
+    #+end_src
 
 *** COMMENT defadvice for time
  from: https://kisaragi-hiu.com/blog/2019-10-09-format-time-string-today.html
- #+BEGIN_SRC emacs-lisp
+ #+begin_src emacs-lisp
  (defun kisaragi/english-dow (&optional time zone abbreviated)
    "Return ABBREVIATED name of the day of week at TIME and ZONE.
 
@@ -2390,13 +2389,13 @@ With prefix ARG, replace the converted text in place instead of copying it."
      (funcall func format time zone)))
 
  (advice-add 'format-time-string :around #'kisaragi/advice-format-time-string)
- #+END_SRC
+ #+end_src
 
 *** org-msg (format email in org-mode)
  https://github.com/jeremy-compostella/org-msg
 
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package org-msg)
     (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
 	  org-msg-startup "hidestars indent inlineimages"
@@ -2409,7 +2408,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
     (setq mail-user-agent 'notmuch-user-agent)
 
     (org-msg-mode)
-    #+END_SRC
+    #+end_src
 
 *** COMMENT gtasks, gtasks-org-tools.el
     SCHEDULED: <2026-03-15 Sun>
@@ -2469,19 +2468,19 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 *** folding?
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (setq-local outline-regexp "^[A-Z]")
     (setq-local outline-heading-end-regexp ".$")
     (setq-local outline-minor-mode-prefix "C-~")
     (outline-minor-mode)
     (local-set-key outline-minor-mode-prefix outline-mode-prefix-map)
-    #+END_SRC
+    #+end_src
 
 *** make exported org mode checkboxes clickable
 
  Publish clickable org mode checklists
 
- #+begin_src emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (defalias 'my-transform-and-publish-org-checklist
     (kmacro "C-s < / h e a d C-a <return> <up> <tab> j q u e r y <tab> <return> C-S-<backspace> C-s < / b o d y C-a <return> <up> <tab> m y - p r <backspace> <backspace> o r g - c h e c k b o x e s - c l i c k <tab> C-<left> C-<left> C-<left> C-SPC C-<left> C-w C-e <tab> <return> C-a <tab> C-x C-s M-s c M-x m y - p u b l i s h - f i l e <return>"))
  (defun my-publish-org-checklist ()
@@ -2497,7 +2496,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
  #+end_src
 
 *** org-ql
- #+begin_src emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (use-package quelpa-use-package)
  (use-package org-ql
    :bind (("C-c o" . org-ql-view))
@@ -2506,15 +2505,15 @@ https://github.com/thndrbrrr/gtasks-org-tools
  #+end_src
 *** COMMENT ox-beamer
 
-      #+BEGIN_SRC emacs-lisp
+      #+begin_src emacs-lisp
       (require 'ox-beamer)
-      #+END_SRC
+      #+end_src
 
 *** COMMENT org-trello
 
  /Not using its now. Thats why 'example' block here/
 
- #+BEGIN_EXAMPLE
+ #+begin_example
  (require 'org-trello)
  ; (custom-set-variables '(org-trello-current-prefix-keybinding "C-c o"))
  (add-hook 'org-trello-mode-hook
@@ -2539,13 +2538,13 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (define-key org-trello-mode-map (kbd "C-c o l") 'org-trello-show-card-labels)
      (define-key org-trello-mode-map (kbd "C-c o u") 'org-trello-update-board-metadata)
      (define-key org-trello-mode-map (kbd "C-c o h") 'org-trello-help-describing-bindings)))
- #+END_EXAMPLE
+ #+end_example
 
 *** COMMENT org-tree-slide show starts here
 
  Thanks to: [[https://www.youtube.com/watch?v=xsvk-BtPZso][Org-mode - Start slide from current subtree]]
 
- #+begin_src emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (defun my-org-tree-slide-show-starts-here ()
    (interactive)
    (setq org-tree-slide-cursor-init nil)
@@ -2555,7 +2554,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 *** switch to org-agenda file
     My custom helm extension
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (defvar avk-switch-to-org-agenda-file
       (helm-build-sync-source "Switch to org agenda file"
         :candidates 'org-agenda-files
@@ -2572,12 +2571,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
       )
 
     (define-key global-map (kbd "C-x O") 'avk-switch-org-agenda-file)
-    #+END_SRC
+    #+end_src
 
 *** org-html export
 
     from: https://emacs.stackexchange.com/questions/3374/set-the-background-of-org-exported-code-blocks-according-to-theme
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (defun my/org-inline-css-hook (exporter)
       "Insert custom inline css to automatically set the
     background of code to whatever theme I'm using's background"
@@ -2642,7 +2641,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    I wrote function to choose font using Helm.
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
    (require 'subr-x)
 
    (defcustom my-frame-default-font "" "Default font used for fontify new frames")
@@ -2721,7 +2720,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;; emoji
    (set-fontset-font "fontset-default" '(#x1F300 . #x1F55F) (font-spec :size 20 :name "Unifont Upper"))
 
-   #+END_SRC
+   #+end_src
 
    #+RESULTS:
 
@@ -2731,9 +2730,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    This is a package for GNU Emacs that can be used to tie related commands into a family of short bindings with a common prefix - a Hydra.
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
    (use-package hydra)
-   #+END_SRC
+   #+end_src
 
    And now some various hydras
 
@@ -2741,7 +2740,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
     Hydra for highlights.
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (defun copy-current-buffer-name()
       (interactive)
       (kill-new (buffer-name))
@@ -2775,7 +2774,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
       ("M-w" eww-search-words "Search the web for the text")
       )
     (global-set-key "\M-s" 'alt_s_hydras_menu/body)
-    #+END_SRC
+    #+end_src
 
 ** Backups
 
@@ -2791,7 +2790,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    Disk space is cheap. Save lots.
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (setq delete-old-versions nil
 	   kept-new-versions 100
 	   kept-old-versions 100
@@ -2799,11 +2798,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (setq version-control t)
      (setq vc-make-backup-files t)
      ;;(setq auto-save-file-name-transforms '((".*" "~/.emacs.d/auto-save-list/" t)))
-   #+END_SRC
+   #+end_src
 
 ** verb
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package verb)
      (with-eval-after-load 'org
        (define-key org-mode-map (kbd "C-c C-r") verb-command-map))
@@ -2814,11 +2813,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** Unique file names ('uniquify)
 
-   #+BEGIN_SRC emacs-lisp  :results output none
+   #+begin_src emacs-lisp
      (require 'uniquify)
      (custom-set-variables
       '(uniquify-buffer-name-style (quote post-forward) nil (uniquify)))
-   #+END_SRC
+   #+end_src
 
 ** lsp-mode
 
@@ -2850,7 +2849,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
   Jumping between frames, windows, lines, etc.
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
    (use-package ace-window
      :bind (
             ("\M-[" . ace-window)
@@ -2858,12 +2857,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
      )
    (global-set-key "\M-[" 'ace-window)
    (global-set-key "\M-]" 'avy-goto-char-timer)
- #+END_SRC
+ #+end_src
 
 ** vertico
 
  https://github.com/minad/vertico
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  ;; Enable vertico
  (use-package vertico
    :init
@@ -2934,11 +2933,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (apply args)))
  (advice-add #'org-make-tags-matcher :around #'org-enforce-basic-completion)
  (advice-add #'org-agenda-filter :around #'org-enforce-basic-completion)
- #+END_SRC
+ #+end_src
 
 ** COMMENT ivy
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  ;; (use-package counsel
  ;;   :after ivy
  ;;   :config (counsel-mode))
@@ -2957,29 +2956,29 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (ivy-use-virtual-buffers t)
    :config (ivy-mode nil))
 
- #+END_SRC
+ #+end_src
 
 ** COMMENT icomplete
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (global-set-key [s-f11] 'icomplete-mode)
  (icomplete-mode nil)
- #+END_SRC
+ #+end_src
 
 ** annotate-mode
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package annotate
        :defer t
        :bind (
 	      ("\C-cma" . annotate-mode)
 	      ))
-   #+END_SRC
+   #+end_src
 
 ** deadgrep
 
    Another method to search
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
    (defalias 'my-deadgrep-current
     (kmacro "C-; C-; M-w C-c d C-y <return>"))
 
@@ -2990,11 +2989,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
              ("C-x / d" . my-deadgrep-current)
              )
             ))
-   #+END_SRC
+   #+end_src
 
 ** dired
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      ;; (dired-async-mode 1)
      (setq dired-omit-files "^\\...+$")
      ;; two-panel behaviour: C / R default to the dir of another visible dired
@@ -3040,11 +3039,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
      ;;     (lambda ()
      ;;       (dired-hide-details-mode)
      ;;       ))
-   #+END_SRC
+   #+end_src
 
    Ansible/DevOps related - edit ~vault~ files with emacsclient.
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (defun open-vault-file(arg)
        "Decrypt vault file specified in ARG by calling ansible-vault and .vaultfile password
         from any upper directory"
@@ -3071,22 +3070,22 @@ https://github.com/thndrbrrr/gtasks-org-tools
        )
 
      (global-set-key (kbd "C-z v") 'open-vault-files)
-   #+END_SRC
+   #+end_src
 
 *** coloring
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (use-package diredfl
         :ensure t
         :config
         (diredfl-global-mode 1))
-    #+END_SRC
+    #+end_src
 
 
 *** dired-sidebar
 
     Interesting alternative to treemacs
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (use-package all-the-icons-dired)
 
       (use-package dired-sidebar
@@ -3107,20 +3106,20 @@ https://github.com/thndrbrrr/gtasks-org-tools
         (setq dired-sidebar-use-term-integration t)
         ;;(setq dired-sidebar-use-custom-font t)
         )
-    #+END_SRC
+    #+end_src
 
 *** git info
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
       (use-package dired-git-info
         :ensure t
         :bind (:map dired-mode-map
 		    (")" . dired-git-info-mode)))
-    #+END_SRC
+    #+end_src
 
 ** COMMENT elfeed
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (defalias 'elfeed-mark-read
        (kmacro "<return> q"))
 
@@ -3130,31 +3129,31 @@ https://github.com/thndrbrrr/gtasks-org-tools
 		   ("`" . elfeed-mark-read)
 		   )
        )
-   #+END_SRC
+   #+end_src
 
 ** docker support
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package docker)
    (use-package dockerfile-mode)
    (add-to-list 'auto-mode-alist '("Dockerfile\\.*" . dockerfile-mode))
    (add-to-list 'auto-mode-alist '("\.*\.docker" . dockerfile-mode))
    (define-key global-map  "\C-zd"         'docker)
-   #+END_SRC
+   #+end_src
 
 ** COMMENT poetry
    I don't plan to use Poetry anymore - replaced with ~uv~
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package poetry
        :ensure t)
-   #+END_SRC
+   #+end_src
 
 ** expand-region
 
    Expand region.
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package expand-region
        :bind (
 	      ("C-;" . er/expand-region)
@@ -3182,12 +3181,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
      ;; FIXME
      ;; (setq er/try-expand-list (append er/try-expand-list
      ;; 				 '(tree-sitter-mark-bigger-node)))
-   #+END_SRC
+   #+end_src
 
 ** git & magit & github
 
      Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
-     #+BEGIN_SRC emacs-lisp :results output none
+     #+begin_src emacs-lisp
      (use-package magit
        :bind (("C-x g" . magit-status)))
 
@@ -3239,7 +3238,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (defalias 'my-insert-git-link
        (kmacro "C-c C-o M-x g i t - l i n k <return> s-w C-<escape> <end> SPC [ [ C-y ] [ . . C-x 8 <return> 2 1 9 2 <return> ] ]"))
 
-     #+END_SRC
+     #+end_src
 
 **** magit-todos
 
@@ -3247,7 +3246,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
      https://github.com/wandersoncferreira/code-review
 
-     #+begin_src emacs-lisp :results output none
+     #+begin_src emacs-lisp
      (use-package uuidgen)
 
 
@@ -3274,7 +3273,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
      #+end_src
 
 ** multiple-cursors
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
 
    (use-package multiple-cursors
      ;; :bind (
@@ -3288,17 +3287,17 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (global-set-key (kbd "C-z c *") 'mc/mark-all-like-this)
    (global-set-key (kbd "C-s-.") 'mc/mark-next-like-this)
    (global-set-key (kbd "C-s-,") 'mc/mark-previous-like-this)
-   #+END_SRC
+   #+end_src
 
 ** Phi-search
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package phi-search
        :bind (
 	      ("C-c C-s" . phi-search)
 	      ("C-c C-r" . phi-search-backward)
 	      ))
-   #+END_SRC
+   #+end_src
 
 ** hl-todo
    :LOGBOOK:
@@ -3308,49 +3307,49 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    Highlight TODO, FIXME, etc faces
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package hl-todo
      :config
      (global-hl-todo-mode)
      )
    (setopt global-hl-line-buffers '(not (derived-mode dired-mode)))
-   #+END_SRC
+   #+end_src
 
 ** imenu
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package imenu-list)
-   #+END_SRC
+   #+end_src
 ** ledger
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package ledger-mode
        :init
        (magit-todos-mode)
        )
-   #+END_SRC
+   #+end_src
 ** COMMENT minimap
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package minimap)
    #+end_src
 
 ** pdf-tools
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package pdf-tools
        :config
        (pdf-tools-install)
        )
-   #+END_SRC
+   #+end_src
 
 ** pass
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package pass)
-   #+END_SRC
+   #+end_src
 
 ** plantuml-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package plantuml-mode)
      (add-to-list 'auto-mode-alist '("\\.plantuml\\'" . plantuml-mode))
 
@@ -3366,26 +3365,26 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      ;; load pylookup when compile time
      (eval-when-compile (require 'pylookup))
      (setq pylookup-program "~/.emacs.d/pylookup.py")
      (setq pylookup-db-file "~/var/pylookup/pylookup.db")
      (global-set-key [(control shift menu)] 'pylookup-lookup)
-   #+END_SRC
+   #+end_src
 
 ** Email support
 
 *** smtpmail
 
-    #+BEGIN_SRC emacs-lisp  :results output none
+    #+begin_src emacs-lisp
       (use-package smtpmail-multi)
-    #+END_SRC
+    #+end_src
 
 *** notmuch
     Email setup
 
-    #+BEGIN_SRC emacs-lisp  :results output replace
+    #+begin_src emacs-lisp :results output replace
       (use-package notmuch
         :init
         (progn
@@ -3500,7 +3499,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 
     ;; (setq notmuch-show-part-open-command "~/bin/bin/notmuch-html-open")
-    #+END_SRC
+    #+end_src
 
     #+RESULTS:
 
@@ -3508,12 +3507,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
      I have several mail accounts in different companies, and I need to originate my replys according to company. It appears
      notmuch don't have this functionality by default, so I've monkey patched it here:
 
-     #+BEGIN_SRC emacs-lisp :results output none
+     #+begin_src emacs-lisp
        (defadvice notmuch-mua-reply (around notmuch-fix-sender)
          (let ((sender (notmuch-mua-prompt-for-sender)))
 	   ad-do-it))
        (ad-activate 'notmuch-mua-reply)
-     #+END_SRC
+     #+end_src
 
 ***** xwidget
       :LOGBOOK:
@@ -3540,7 +3539,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** COMMENT lastpass
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package lastpass
      :init
      (setq lastpass-multifactor-use-passcode t)
@@ -3551,16 +3550,16 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+end_src
 
 ** shrink-whitespace
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (use-package shrink-whitespace
        :bind (
 	      ("M-\\" . shrink-whitespace)
 	      ))
-   #+END_SRC
+   #+end_src
 
 ** tramp
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
       ;; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
       (require 'tramp)
       (require 'password-cache)
@@ -3680,19 +3679,19 @@ https://github.com/thndrbrrr/gtasks-org-tools
       (connection-local-set-profiles '(:application tramp) 'remote-bash))
 
 
-   #+END_SRC
+   #+end_src
 
 ** yasnippet
 
    Snippets for various languages
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (use-package yasnippet)
      (yas-global-mode 1)
-   #+END_SRC
+   #+end_src
 
 ** ztree
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package ztree)
      (defun ztree-do-dired ()
        (interactive)
@@ -3711,17 +3710,17 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
      (fset 'ztree-side
 	   [?\C-x ?z return ?\C-x ?3 ?\C-x ?\C-- ?\C-x ?w ?w ?\s-w ?\C-x right ?\s-w])
-   #+END_SRC
+   #+end_src
 
 ** which-key - Discover key bindings
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package which-key
        :config
        (setq which-key-mode t)
        (setq which-key-idle-delay 0.7)
        )
-   #+END_SRC
+   #+end_src
 
 ** recentf
    Since yesterday emacs update [2019-03-07 Thu] recentf started aggressive cleanup
@@ -3730,7 +3729,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    Quick workaround:
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package recentf
      :init
      (setq
@@ -3742,20 +3741,20 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (run-at-time (current-time) (* 5 60) 'recentf-save-list)
      )
    (load "~/.cache/emacs-recentf" t)
-   #+END_SRC
+   #+end_src
 
 ** realgud
 
    Real good debugger.
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package realgud)
-   #+END_SRC
+   #+end_src
 
 ** COMMENT prettier (replaced with Aphelia mode)
 
    https://github.com/jscheid/prettier.el
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package prettier
      :bind (
 	    ("C-c m e" . prettier-mode))
@@ -3772,7 +3771,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** COMMENT org-roam (replaced with ~denote~)
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package org-roam
      :ensure t
      :custom(org-roam-directory "~/org-roam")
@@ -3822,14 +3821,14 @@ https://github.com/thndrbrrr/gtasks-org-tools
      ("C-c n b" . consult-org-roam-backlinks)
      ("C-c n l" . consult-org-roam-forward-links)
      ("C-c n r" . consult-org-roam-search))
-   #+END_SRC
+   #+end_src
 
 ** COMMENT moldable emacs
    :LOGBOOK:
    - State "TODO"       from              [2023-01-21 сб 13:55]
    :END:
 
- #+BEGIN_SRC emacs-lisp  :results output none
+ #+begin_src emacs-lisp
  (use-package moldable-emacs
    :load-path "~/.emacs.d/lisp/moldable-emacs/"
    :bind (("C-c m m" . me-mold)
@@ -3844,7 +3843,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (require 'moldable-emacs)
    (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
    (me-setup-molds))
- #+END_SRC
+ #+end_src
 
 ** COMMENT Hydra + smerge
 
@@ -3858,7 +3857,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
  https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
 
- #+BEGIN_SRC elisp :results output none
+ #+begin_src emacs-lisp
    (require 'hydra)
 
    (use-package smerge-mode
@@ -3899,10 +3898,10 @@ https://github.com/thndrbrrr/gtasks-org-tools
      :hook (magit-diff-visit-file . (lambda ()
                                       (when smerge-mode
                                         (unpackaged/smerge-hydra/body)))))
- #+END_SRC
+ #+end_src
 ** shells
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
                                            ; various shells
    (require 'python)
    (add-hook 'shell-output-filter-functions
@@ -3984,14 +3983,14 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (highlight-lines-matching-regexp "DELETE\sFROM\s" 'hi-red-b)
      (highlight-lines-matching-regexp "UPDATE\s" 'hi-yellow)
      )
-   #+END_SRC
+   #+end_src
 
    #+RESULTS:
    : sql-highlight
 
 *** shell comint input history
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (add-hook 'shell-mode-hook 'my-shell-mode-hook2)
     (defun my-shell-mode-hook2 ()
       (setq comint-input-ring-file-name "~/.histfile")
@@ -3999,15 +3998,15 @@ https://github.com/thndrbrrr/gtasks-org-tools
     #+end_src
 ** htmlize
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package htmlize)
-   #+END_SRC
+   #+end_src
 
 ** Duplicate line
    I like this variation from
    http://stackoverflow.com/questions/88399/how-do-i-duplicate-a-whole-line-in-emacs
    because: it does not uses kill ring
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (defun jr-duplicate-line ()
        "EASY"
        (interactive)
@@ -4020,11 +4019,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
 	   (insert line-text))))
 
      (global-set-key [(control =)] 'jr-duplicate-line) ;; Ctrl+
-   #+END_SRC
+   #+end_src
 
 ** transparency
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (defun enable-transparency ()
        (interactive)
        (set-frame-parameter (selected-frame) 'alpha '(92 97))
@@ -4041,11 +4040,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (define-key global-map (kbd "C-z p 1") 'enable-transparency)
      (define-key global-map (kbd "C-z p 2") 'disable-transparency)
      (define-key global-map (kbd "C-z p 0") 'disable-transparency)
-   #+END_SRC
+   #+end_src
 
 ** my Favourite themes
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package ample-theme :defer t)
    (use-package ample-zen-theme :defer t)
    (use-package anti-zenburn-theme :defer t)
@@ -4102,12 +4101,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;;   )
    (use-package yotsuba-theme :load-path "lisp/yotsuba-emacs-theme" :defer nil)
 
-   #+END_SRC
+   #+end_src
 
 ** dap mode
 
    https://github.com/emacs-lsp/dap-mode
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package dap-mode)
    (add-hook 'dap-stopped-hook
              (lambda (arg) (call-interactively #'dap-hydra)))
@@ -4118,13 +4117,13 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** COMMENT tree-sitter settings
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
 
    #+end_src
 
 ** compilation colors
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (require 'ansi-color)
    (defun colorize-compilation-buffer ()
      (ansi-color-apply-on-region compilation-filter-start (point-max)))
@@ -4134,7 +4133,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
  Easy way to select file in your project.
 
-  #+BEGIN_SRC emacs-lisp :results output none
+  #+begin_src emacs-lisp
   (use-package projectile)
   (use-package helm-projectile
     :init
@@ -4201,19 +4200,19 @@ https://github.com/thndrbrrr/gtasks-org-tools
         (projectile-mode +1)
         (message "projectile-mode ON"))))
   ;; ------------------------------------------------------------------------
-  #+END_SRC
+  #+end_src
 ** easy-kill
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (use-package easy-kill
    :ensure t
    :config
    (global-set-key [remap kill-ring-save] #'easy-kill)
    (global-set-key [remap mark-sexp] #'easy-mark))
- #+END_SRC
+ #+end_src
 
 ** bm - bookmarks
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package bm
    :bind (
    ("C-z b" . bm-toggle)
@@ -4234,16 +4233,16 @@ https://github.com/thndrbrrr/gtasks-org-tools
 ** yesno
 
      I am too lazy to answer 'yes' and 'no' in full notation, lets shortcut:
-     #+BEGIN_SRC emacs-lisp :results output none
+     #+begin_src emacs-lisp
      (fset 'yes-or-no-p 'y-or-n-p)
-     #+END_SRC
+     #+end_src
 
 ** Enable ibuffer
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (require 'ibuffer)
  (global-set-key [f9]  'ibuffer)
- #+END_SRC
+ #+end_src
 
 ** Always display file name in frame title
 
@@ -4252,7 +4251,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
  This feature is not yet complete - since it seems org-mode
  looses current settings after clock-out.
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (defun fix-frame-title ()
    (interactive)
    (setq frame-title-format
@@ -4262,12 +4261,12 @@ https://github.com/thndrbrrr/gtasks-org-tools
  (fix-frame-title)
  ;(add-hook 'after-make-frame-functions 'fix-frame-title)
  (define-key global-map  "\C-cft" 'fix-frame-title)
- #+END_SRC
+ #+end_src
 
 ** ediff
  Ediff - diffing framework within emacs. Some useful extensions here, like choosing both variants (frequent case),
  from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-ediff-how-can-i-take-the-changes-of-both-version
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (defun ediff-copy-both-to-C ()
    (interactive)
    (ediff-copy-diff ediff-current-difference nil 'C nil
@@ -4276,10 +4275,10 @@ https://github.com/thndrbrrr/gtasks-org-tools
                      (ediff-get-region-contents ediff-current-difference 'B ediff-control-buffer))))
  (defun add-d-to-ediff-mode-map () (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
  (add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
- #+END_SRC
+ #+end_src
 ** switch buffers
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (fset 'cxb_switch_last_buffer
     (kmacro-lambda-form [?\C-x ?b return] 0 "%d"))
 
@@ -4287,13 +4286,13 @@ https://github.com/thndrbrrr/gtasks-org-tools
  (global-set-key (kbd "C-`") 'cxb_switch_last_buffer)
  (global-set-key (kbd "C-<iso-lefttab>") 'projectile-switch-to-buffer)
 
- #+END_SRC
+ #+end_src
 
 ** COMMENT lsp-bridge
 
    Fast & more automated LSP support
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package posframe)
      (add-to-list 'load-path "~/.emacs.d/lisp/lsp-bridge/")
      (require 'lsp-bridge)
@@ -4379,7 +4378,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    While its in conflict with lsp-bridge, this mode is still very useful in some cases, e.g. shell etc
 
-#+begin_src emacs-lisp :results output none
+#+begin_src emacs-lisp
 (use-package company
   :bind
   ("s-/" . company-complete)
@@ -4389,7 +4388,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** publish file
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (defun my-publish-file()
      (interactive)
      (async-shell-command "my-publish-file")
@@ -4400,7 +4399,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    https://karthinks.com/software/persistent-prefix-keymaps-in-emacs/
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
   (defun repeated-prefix-help-command ()
     (interactive)
     (when-let* ((keys (this-command-keys-vector))
@@ -4417,7 +4416,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** COMMENT eslint                                                       :WIP:
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (add-hook 'js2-mode-hook
 	       (defun my-js2-mode-setup ()
 		 (flycheck-mode t)
@@ -4432,7 +4431,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** eslint for tide
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
        ;; (flycheck-add-mode 'javascript-eslint 'typescript-mode)
        ;; (with-eval-after-load 'flycheck
        ;;   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
@@ -4448,7 +4447,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
 ** flycheck, flymake
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (use-package flycheck
    :ensure t
    :config
@@ -4483,7 +4482,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
  ;; 	  )
  (add-hook 'python-ts-mode-hook #'flycheck-mode)
 
- #+END_SRC
+ #+end_src
 
 To re-enable mypy in a specific project, add a .dir-locals.el in that project's root:                                                           
    
@@ -4499,7 +4498,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** Aphelia
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package apheleia
      :bind (("\C-cmA" . apheleia-mode)))
    (require 'apheleia-formatters)
@@ -4520,12 +4519,12 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    also read: https://stackoverflow.com/questions/27731433/setting-per-project-indent-variables-in-emacs
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (setq-default indent-tabs-mode nil)
    #+end_src
 ** COMMENT marginalia & embark
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
       (use-package marginalia
         ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
         ;; available in the *Completions* buffer, add it to the
@@ -4585,7 +4584,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 ** COMMENT python auto virtualenv for python-ts-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
         (use-package auto-virtualenv
           :load-path "path/to/auto-virtualenv"
           :config
@@ -4619,7 +4618,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** helm-systemd
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package helm-systemd)
    #+end_src
 
@@ -4644,7 +4643,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
 ** dape
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package dape
      ;; To use window configuration like gud (gdb-mi)
      ;; :init
@@ -4680,7 +4679,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 ** COMMENT dirvish
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package dirvish
      )
    (dirvish-override-dired-mode)
@@ -4688,7 +4687,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT emacs calc
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package casual
      :ensure t
      :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
@@ -4696,7 +4695,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT consult imenu
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (global-set-key [M-f2] 'consult-imenu)
    (add-to-list 'consult-imenu-config
                 '(python-mode
@@ -4716,7 +4715,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    Lets try it (again), but I found that it does not work well in org-mode for example.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package minimap
      :ensure t)
    (define-key esc-map [f12] #'minimap-mode)
@@ -4726,14 +4725,14 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** next/prev buffer
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (global-set-key (kbd "C-z <right>") 'next-buffer)
    (global-set-key (kbd "C-z <left>") 'previous-buffer)
    #+end_src
 
 ** tab-line
    see also https://github.com/thread314/intuitive-tab-line-mode
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (global-set-key (kbd "s-<prior>") 'tab-line-switch-to-prev-tab)
      (global-set-key (kbd "s-<next>") 'tab-line-switch-to-next-tab)
      (use-package tab-line
@@ -4778,7 +4777,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** window management
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (global-set-key (kbd "C-s-<down>") 'enlarge-window)
    (global-set-key (kbd "C-s-<up>") 'shrink-window)
    ;; (global-set-key (kbd "C-s-<right>") 'enlarge-window-horizontally)
@@ -4787,7 +4786,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** counsel-ag
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package counsel-ag-popup
      :ensure t
      :bind ("C-c M-c" . 'counsel-ag))
@@ -4795,7 +4794,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT dired-casual
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package casual-dired
    :ensure t
    :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
@@ -4803,7 +4802,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT dslide
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      ;; package-vc
      ;; (package-vc-install
      ;;  '(dslide
@@ -4812,7 +4811,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** move-text
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
        (use-package move-text
          :ensure t
          :bind (
@@ -4824,7 +4823,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+end_src
 ** COMMENT combobulate
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package combobulate
        :preface
        ;; You can customize Combobulate's key prefix here.
@@ -4852,7 +4851,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** gptel
 
-#+begin_src emacs-lisp :results output none
+#+begin_src emacs-lisp
 (use-package gptel
   :bind (("C-z <f4>" . gptel)
          ("C-z <f5>" . gptel-menu))
@@ -4867,7 +4866,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 #+end_src
 ** consult
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package consult
      :pin gnu
      )
@@ -4875,7 +4874,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT consult-omni
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (global-unset-key (kbd "C-x /"))
      (use-package browser-hist)
      (use-package consult-omni
@@ -5051,7 +5050,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
    submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (setq auth-sources '("~/.authinfo.gpg"))
    (setq youtrack-host "youtrack.example.com")
    (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
@@ -5063,7 +5062,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** COMMENT outline-ident
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package outline-indent
      :ensure t
      :straight (outline-indent
@@ -5078,7 +5077,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
  I often want to link to my own comment in a PDF file. Here is the approach to do this
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package org-pdftools)
    #+end_src
 
@@ -5162,7 +5161,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    the file to ~xdg-open~. The helpers below avoid that detour and work on
    =.drawio= files wherever they already live in the repository.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (require 'subr-x)
      (require 'seq)
      (require 'org-element)
@@ -5435,7 +5434,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    ~C-c C-c~ on the block renders it; ~C-c '~ edits it in ~d2-ts-mode~ (via ~org-src-lang-modes~).
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package d2-ts-mode
      :mode "\\.d2\\'"
      :custom
@@ -5968,7 +5967,7 @@ Format: \"/full/path/file.el:L42\"."
  - [X] Use property when
 
 **** Helpers
- #+begin_src elisp
+ #+begin_src emacs-lisp
  (defun my/org-get-current-property (property &optional inherit)
    "Return the value of PROPERTY on the current Org heading.
  PROPERTY may be a string or symbol (e.g. \"MYPROP\" or 'MYPROP).
@@ -5988,12 +5987,12 @@ Format: \"/full/path/file.el:L42\"."
  Usage examples:
 
  - To get a non-inherited value of “STATUS” on the current headline:
- #+begin_src elisp
+ #+begin_src emacs-lisp
  (my/org-get-current-property "STATUS")
  #+end_src
 
  - To fall back to an inherited value if it’s not set locally:
- #+begin_src elisp
+ #+begin_src emacs-lisp
  (my/org-get-current-property 'HUBSTAFF_TASK_ID t)
  #+end_src
 
@@ -6002,7 +6001,7 @@ Format: \"/full/path/file.el:L42\"."
 
  If you need /all/ properties as an alist, you can use =org-entry-properties=:
 
- #+begin_src elisp
+ #+begin_src emacs-lisp
  (defun my/org-get-all-current-properties (&optional inherit)
    "Return an alist of all properties on the current heading.
  If INHERIT is non-nil, include inherited properties too."
@@ -6011,7 +6010,7 @@ Format: \"/full/path/file.el:L42\"."
 
  Then look up your key:
 
- #+begin_src elisp
+ #+begin_src emacs-lisp
  ;; returns the value of \"FOO\" or nil
  (cdr (assoc "FOO" (my/org-get-all-current-properties)))
  #+end_src
@@ -6307,7 +6306,7 @@ Format: \"/full/path/file.el:L42\"."
    buffer list *is* the session list, and picking a session is a filter over
    it. This is the ~C-x <f2>~ counterpart of ~C-x <f1>~.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (defconst my-codex-session-buffer-regexp
      "\\`\\*codex-cli:\\([^:*]+\\)\\(?::\\([^*]+\\)\\)?\\*\\'"
      "Match a `codex-cli' session buffer name.
@@ -6584,7 +6583,7 @@ moving through the list — the chosen theme is applied only on RET."
       point a manual re-eval would. Registering it inline does *not*
       survive; the hook does.
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (require 'tramp-container)
 
    ;; (1) Don't force --namespace=default; defer to the current kube context.
@@ -6649,37 +6648,37 @@ moving through the list — the chosen theme is applied only on RET."
    I love Mercurial (over git) and I will never understand and agree that ~git~ is won the version control competition game.
    I still use it for personal projects despite the declining support everywhere.
 
-    #+BEGIN_SRC emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package ahg)
     (global-set-key (kbd "C-z h") 'ahg-status)
     ;; (global-set-key (kbd "C-<f4>") 'ahg-status)
-    #+END_SRC
+    #+end_src
 
 ** Language: go
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (require 'go-template-mode)
    #+end_src
 
 ** apache mode
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package apache-mode)
-   #+END_SRC
+   #+end_src
 
 ** crontab-mode
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (use-package crontab-mode)
-   #+END_SRC
+   #+end_src
 
 ** nginx
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package nginx-mode)
    #+end_src
 
 ** javascript
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (defun my-js-console-log (arg)
        "Insert js console.log(). Prefix argument will ask for string or variable name"
        (interactive "P")
@@ -6717,7 +6716,7 @@ moving through the list — the chosen theme is applied only on RET."
    - State "BUGFIXED"   from              [2023-03-07 Tue 20:35]
    :END:
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      ;; (autoload 'javascript-mode "javascript" nil t)
      ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
      (use-package js2-mode)
@@ -6756,35 +6755,35 @@ moving through the list — the chosen theme is applied only on RET."
 		 (flycheck-mode t)
 		 (when (executable-find "eslint")
 		   (flycheck-select-checker 'javascript-eslint))))
-   #+END_SRC
+   #+end_src
 
 ** COMMENT React
 
- #+BEGIN_SRC emacs-lisp
+ #+begin_src emacs-lisp
  (use-package rjsx-mode)
- #+END_SRC
+ #+end_src
 
 ** json-mode
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package json-mode)
-   #+END_SRC
+   #+end_src
 
 ** logview
    https://github.com/doublep/logview
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package logview)
-   #+END_SRC
+   #+end_src
 
 ** php-mode
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
    (use-package php-mode)
-   #+END_SRC
+   #+end_src
 
 ** python (new)
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
     (defun python-create-empty-init-py()
       (interactive)
       (shell-command "touch __init__.py")
@@ -6892,7 +6891,7 @@ moving through the list — the chosen theme is applied only on RET."
     In most of cases I use ~lsp-bridge~ now, but there are keybindings to manually switch to ~lsp-jedi~ - this mode has some
     interesting features too.
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package lsp-jedi
       :ensure t
       :config
@@ -6914,13 +6913,13 @@ moving through the list — the chosen theme is applied only on RET."
 
 *** isort
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package py-isort)
     #+end_src
 
 *** pyimport
 
-    #+begin_src emacs-lisp :results output none
+    #+begin_src emacs-lisp
     (use-package pyinspect)
     (use-package pyimpsort)
     (use-package pyimport)
@@ -6928,7 +6927,7 @@ moving through the list — the chosen theme is applied only on RET."
 
 ** vuejs
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    ;; (use-package lsp-mode
    ;;   :commands lsp)
 
@@ -6952,7 +6951,7 @@ moving through the list — the chosen theme is applied only on RET."
 
 ** yaml-mode
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package yaml-mode)
      (use-package indent-tools)
      (add-hook 'yaml-mode-hook
@@ -6991,18 +6990,18 @@ moving through the list — the chosen theme is applied only on RET."
 
      (require 'indent-tools)
      (global-set-key (kbd "C-c ,") 'indent-tools-hydra/body)
-   #+END_SRC
+   #+end_src
 
 ** prog-mode
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      ;;   Always display line numbers in all sub-modes
      (add-hook 'prog-mode-hook 'display-line-numbers-mode)
-   #+END_SRC
+   #+end_src
 
 ** Lisp & paredit
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package paredit)
      (add-hook 'lisp-mode-hook 'paredit-mode)
 
@@ -7017,26 +7016,26 @@ moving through the list — the chosen theme is applied only on RET."
 
      ;; Make the key no longer bound to paredit-forward-slurp-sexp
      (define-key paredit-mode-map (kbd "<C-right>") nil)
-   #+END_SRC
+   #+end_src
 
    #+RESULTS:
 
 ** terraform-mode
 
-   #+BEGIN_SRC emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package terraform-mode)
      (add-to-list 'auto-mode-alist '("\\.tf\\.j2\\'" . terraform-mode))
-   #+END_SRC
+   #+end_src
 
 ** makefile-mode
 
-   #+BEGIN_SRC emacs-lisp
+   #+begin_src emacs-lisp
      (add-to-list 'auto-mode-alist '("Makefile\\.*" . makefile-mode))
-   #+END_SRC
+   #+end_src
 
 ** clojure-mode and cider
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (use-package flycheck-clj-kondo
      :ensure t)
 
@@ -7086,7 +7085,7 @@ moving through the list — the chosen theme is applied only on RET."
 
 *** clj-kondo
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package flymake-kondor
        :ensure t
        :hook (clojure-mode . flymake-kondor-setup)
@@ -7100,18 +7099,18 @@ moving through the list — the chosen theme is applied only on RET."
 
 ** COMMENT typescript-ts-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.ts" . typescript-ts-mode))
    #+end_src
 
 ** typescript-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.ts" . typescript-mode))
    #+end_src
 ** vterm
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (use-package vterm
    :bind
    ("C-z k" . vterm)
@@ -7122,11 +7121,11 @@ moving through the list — the chosen theme is applied only on RET."
    )
 
 
- #+END_SRC
+ #+end_src
 
 ** web-mode
 
- #+BEGIN_SRC emacs-lisp :results output none
+ #+begin_src emacs-lisp
  (use-package web-mode)
 
  (setq web-mode-markup-indent-offset 2)
@@ -7178,13 +7177,13 @@ moving through the list — the chosen theme is applied only on RET."
  (fset 'macro-insert-trans
     (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item '([23 116 114 97 110 115 tab tab return 25] 0 "%d") arg)))
 
- #+END_SRC
+ #+end_src
 
 ** tide & typescript mode
 
    https://github.com/ananthakumaran/tide
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
 
      (use-package typescript-mode)
      (use-package tide
@@ -7234,18 +7233,18 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 ** COMMENT python-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
    #+end_src
 
 ** COMMENT python-ts-mode
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
    #+end_src
 
 ** conf-mode
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.env" . conf-mode))
    #+end_src
 
@@ -7253,19 +7252,19 @@ moving through the list — the chosen theme is applied only on RET."
 
   for cucumber / gherkin tests
 
-  #+begin_src emacs-lisp :results output none
+  #+begin_src emacs-lisp
   (use-package feature-mode)
   #+end_src
 
 ** sgml / mailgun
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.mjml" . sgml-mode))
    #+end_src
 
 ** COMMENT org postgres / sql
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
    (org-babel-do-load-languages
     'org-babel-load-languages
     '((sql . t)))
@@ -7296,7 +7295,7 @@ moving through the list — the chosen theme is applied only on RET."
 
 ** jtsx
 
-   #+begin_src emacs-lisp :results output none
+   #+begin_src emacs-lisp
      (use-package jtsx
        :ensure t
        ;; .mjs/.cjs are plain ES/CommonJS modules -- same tree-sitter grammar,
