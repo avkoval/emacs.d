@@ -747,6 +747,176 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      (load bootstrap-file nil 'nomessage))
    #+end_src
 
+* Core settings
+
+  Settings that lived only in Customize until October 2026 and have no package section of
+  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
+  overrides the ~:custom~ value set here (Customize's user theme has priority over the
+  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
+  time to time.
+
+** Built-in editing, display and scrolling behaviour
+
+   #+begin_src emacs-lisp
+   (use-package emacs
+     :ensure nil
+     :custom
+     ;; Editing
+     (fill-column 120)
+     (sentence-end-double-space nil)
+     (truncate-lines t)
+     ;; Scrolling
+     (scroll-preserve-screen-position t)
+     (scroll-up-aggressively 0.5)
+     (scroll-error-top-bottom t)
+     ;; Display
+     (line-spacing 0.2)
+     (echo-keystrokes 0.1)
+     (inhibit-startup-screen t)
+     (display-line-numbers-type 'absolute)
+     (ansi-color-faces-vector
+      [default bold shadow italic underline bold bold-italic bold])
+     (buffers-menu-max-size 50)
+     (buffers-menu-show-status nil)
+     (whitespace-line-column 120)
+     (shr-color-visible-luminance-min 10)
+     ;; Language
+     (current-language-environment "UTF-8")
+     ;; Files, tags, processes
+     (dired-kept-versions 3)
+     (tags-revert-without-query t)
+     (compilation-scroll-output 'first-error)
+     (proced-enable-color-flag t)
+     (speedbar-vc-do-check nil)
+     (mm-text-html-renderer 'w3m)
+     (native-comp-async-report-warnings-errors 'silent)
+     :config
+     (column-number-mode 1)
+     (line-number-mode -1)
+     (delete-selection-mode 1)
+     (electric-indent-mode -1)
+     (minibuffer-depth-indicate-mode 1)
+     (repeat-mode 1)
+     (save-place-mode 1)
+     (winner-mode 1)
+     (menu-bar-mode -1)
+     (scroll-bar-mode -1)
+     (tooltip-mode -1)
+     (fringe-mode 6))
+   #+end_src
+
+** Calendar
+
+   #+begin_src emacs-lisp
+   (use-package calendar
+     :ensure nil
+     :defer t
+     :custom
+     (calendar-week-start-day 1)
+     (diary-entry-marker 'font-lock-variable-name-face))
+   #+end_src
+
+** ibuffer
+
+   #+begin_src emacs-lisp
+   (use-package ibuffer
+     :ensure nil
+     :defer t
+     :custom
+     (ibuffer-always-show-last-buffer t)
+     (ibuffer-expert t))
+   #+end_src
+
+** grep
+
+   #+begin_src emacs-lisp
+   (use-package grep
+     :ensure nil
+     :defer t
+     :custom
+     (grep-command
+      "grep --color=never -nHr -e * | grep -v .svn --color=never")
+     (grep-use-null-device nil))
+   #+end_src
+
+** Indentation and interpreters of built-in programming modes
+
+   #+begin_src emacs-lisp
+   (use-package python
+     :ensure nil
+     :defer t
+     :custom
+     (python-shell-interpreter "python3"))
+   (use-package css-mode
+     :ensure nil
+     :defer t
+     :custom
+     (css-indent-offset 2))
+   (use-package sh-script
+     :ensure nil
+     :defer t
+     :custom
+     (sh-basic-offset 2))
+   (use-package typescript-ts-mode
+     :ensure nil
+     :defer t
+     :custom
+     (typescript-ts-mode-indent-offset 2))
+   #+end_src
+
+** Org: general settings that used to live in Customize
+
+   #+begin_src emacs-lisp
+   (use-package org
+     :ensure nil
+     :custom
+     ;; Agenda, logging, priorities
+     (org-deadline-warning-days 7)
+     (org-log-into-drawer t)
+     (org-log-done 'time)
+     (org-log-redeadline 'time)
+     (org-priority-default 67)
+     (org-priority-lowest 68)
+     (org-timestamp-rounding-minutes '(5 5))
+     (org-clock-mode-line-total 'today)
+     (org-refile-targets '((org-agenda-files . t)))
+     (org-habit-completed-glyph 10003)
+     (org-habit-graph-column 95)
+     ;; Display
+     (org-startup-folded t)
+     (org-adapt-indentation t)
+     (org-fontify-whole-heading-line t)
+     (org-fontify-quote-and-verse-blocks t)
+     ;; Modules, babel, export
+     (org-modules
+      '(org-bbdb org-bibtex org-docview org-gnus org-info org-irc org-mhe
+                 org-rmail org-w3m))
+     (org-babel-python-command "python")
+     (org-latex-default-packages-alist
+      '(("utf8x" "inputenc" t ("pdflatex"))
+        ("T2A" "fontenc" t ("pdflatex"))
+        ("russian,english" "babel" nil nil) ("" "graphicx" t nil)
+        ("" "longtable" nil nil) ("" "wrapfig" nil nil)
+        ("" "rotating" nil nil) ("normalem" "ulem" t nil)
+        ("" "amsmath" t nil) ("" "amssymb" t nil) ("" "capt-of" nil nil)
+        ("unicode" "hyperref" nil nil)))
+     (org-latex-hyperref-template
+      "\\hypersetup{\n  pdfauthor={%a},\n  pdftitle={%t},\n  pdfkeywords={%k},\n  colorlinks=true,\n  linkcolor=blue,\n  pdfsubject={%d},\n  pdfcreator={%c}, \n  pdflang={%L}}\n ")
+     (org-taskjuggler-default-global-properties "\n "))
+   #+end_src
+
+** Packages without a section of their own yet
+
+   #+begin_src emacs-lisp
+   (use-package treemacs
+     :defer t
+     :custom
+     (treemacs-follow-mode t))
+   (use-package pyvenv
+     :config
+     (pyvenv-tracking-mode 1))
+   #+end_src
+
 * Internal dependencies
 ** COMMENT cond-let
 
@@ -780,6 +950,8 @@ and cause version-skew macro errors after magit/forge upgrades.
    #+begin_src emacs-lisp
      (use-package helm
        :diminish helm-mode
+       :custom
+       (helm-follow-mode-persistent t)
        :init
        (progn
          ;; (require 'helm-config)
@@ -1961,7 +2133,11 @@ With prefix ARG, replace the converted text in place instead of copying it."
 *** ob-clojure
 
    #+begin_src emacs-lisp
-    (use-package cider)
+    (use-package cider
+      :custom
+      (nrepl-message-colors
+       '("#CC9393" "#DFAF8F" "#F0DFAF" "#488249" "#95d291" "#57a2a4"
+         "#93E0E3" "#DC8CC3" "#bbb0cb")))
     (require 'ob-clojure)
     (setq org-babel-clojure-backend 'cider)
     ;; (require 'cider)
@@ -1999,7 +2175,7 @@ With prefix ARG, replace the converted text in place instead of copying it."
      (org-babel-do-load-languages
       'org-babel-load-languages
       '((shell . t)
-        ;;      (plantuml . t)
+        (plantuml . t)
         (lisp . t)
         (clojure . t)
         (python . t)
@@ -2394,6 +2570,8 @@ With prefix ARG, replace the converted text in place instead of copying it."
 
     #+begin_src emacs-lisp
       (use-package ob-tmux
+        :custom
+        (org-babel-tmux-terminal "kitty")
         :init
         (setq org-babel-default-header-args:tmux
 	      '((:results . "silent")		;
@@ -2851,7 +3029,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
 ** verb
 
    #+begin_src emacs-lisp
-     (use-package verb)
+     (use-package verb
+       :custom
+       (verb-babel-timeout 60.0))
      (with-eval-after-load 'org
        (define-key org-mode-map (kbd "C-c C-r") verb-command-map))
    ;; (org-babel-do-load-languages
@@ -2882,7 +3062,13 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (use-package lsp-mode
      :ensure t
      :custom
-     (lsp-diagnostics-provider :none))
+     (lsp-diagnostics-provider :none)
+     (lsp-auto-guess-root t)
+     (lsp-diagnostics-attributes
+      '((unnecessary :foreground "cornsilk4")
+        (deprecated :strike-through t)))
+     (lsp-imenu-index-symbol-kinds
+      '(Class Function Method Constructor Property)))
 
    ;; (require 'lsp-mode)
 
@@ -3017,6 +3203,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+begin_src emacs-lisp
      (use-package annotate
        :defer t
+       :custom
+       (annotate-diff-export-options "-c")
        :bind (
 	      ("\C-cma" . annotate-mode)
 	      ))
@@ -3137,6 +3325,10 @@ https://github.com/thndrbrrr/gtasks-org-tools
       (use-package all-the-icons-dired)
 
       (use-package dired-sidebar
+        :custom
+        (dired-sidebar-cycle-subtree-on-click nil)
+        (dired-sidebar-delay-auto-revert-updates nil)
+        (dired-sidebar-theme 'icons)
         :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
         :ensure t
         :commands (dired-sidebar-toggle-sidebar)
@@ -3236,6 +3428,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
      Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
      #+begin_src emacs-lisp
      (use-package magit
+       :custom
+       (magit-auto-revert-immediately nil)
+       (magit-list-refs-sortby "-creatordate")
        :bind (("C-x g" . magit-status)))
 
      (use-package git-link
@@ -3247,6 +3442,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
        ;; Set in :config, NOT :custom. `magit-todos-scanner' has a :set function that
        ;; silently no-ops while `magit-todos-scanners' is still nil, and use-package
        ;; runs :custom before the package loads — so a :custom value would be dropped.
+       ;; `magit-todos-keywords' has a plain :set function, so :custom is safe for it.
+       :custom
+       (magit-todos-keywords '("XXX" "TODO" "FIXME" "FixMe" "ToDo"))
        :config
        ;; Pin rg explicitly. The auto-chooser can land on the find|grep fallback, which
        ;; honours no ignore rules and descends into every dot-directory; rg skips
@@ -3357,6 +3555,14 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+begin_src emacs-lisp
    (use-package hl-todo
+     :custom
+     (hl-todo-keyword-faces
+      '(("TODO" . "#dc752f") ("NEXT" . "#dc752f") ("THEM" . "#2d9574")
+        ("PROG" . "#3a81c3") ("OKAY" . "#3a81c3") ("DONT" . "#f2241f")
+        ("FAIL" . "#f2241f") ("DONE" . "#42ae2c") ("NOTE" . "#b1951d")
+        ("KLUDGE" . "#b1951d") ("HACK" . "#b1951d") ("TEMP" . "#b1951d")
+        ("FIXME" . "#dc752f") ("XXX+" . "#dc752f")
+        ("\\?\\?\\?+" . "#dc752f")))
      :config
      (global-hl-todo-mode)
      )
@@ -3384,6 +3590,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+begin_src emacs-lisp
      (use-package pdf-tools
+       :custom
+       (pdf-view-midnight-colors '("#655370" . "#fbf8ef"))
        :config
        (pdf-tools-install)
        )
@@ -3765,7 +3973,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+begin_src emacs-lisp
      (use-package which-key
        :config
-       (setq which-key-mode t)
+       (which-key-mode 1)
        (setq which-key-idle-delay 0.7)
        )
    #+end_src
@@ -3779,6 +3987,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+begin_src emacs-lisp
    (use-package recentf
+     :custom
+     (recentf-auto-cleanup 'never)
+     (recentf-keep nil)
      :init
      (setq
        recentf-save-file "~/.cache/emacs-recentf"
@@ -3795,7 +4006,9 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    Real good debugger.
    #+begin_src emacs-lisp
-     (use-package realgud)
+     (use-package realgud
+       :custom
+       (realgud-populate-common-fn-keys-function nil))
    #+end_src
 
 ** COMMENT prettier (replaced with Aphelia mode)
@@ -4262,6 +4475,8 @@ https://github.com/thndrbrrr/gtasks-org-tools
 ** bm - bookmarks
    #+begin_src emacs-lisp
    (use-package bm
+   :custom
+   (bm-cycle-all-buffers t)
    :bind (
    ("C-z b" . bm-toggle)
    ("C-z <up>" . bm-previous)
@@ -4498,6 +4713,38 @@ https://github.com/thndrbrrr/gtasks-org-tools
  #+begin_src emacs-lisp
  (use-package flycheck
    :ensure t
+   :custom
+   (flycheck-checker-error-threshold 550)
+   (flycheck-checkers
+    '(lsp tsx-tide typescript-tide javascript-eslint ada-gnat asciidoctor
+          asciidoc c/c++-clang c/c++-gcc c/c++-cppcheck cfengine
+          chef-foodcritic coffee coffee-coffeelint coq css-csslint
+          css-stylelint cuda-nvcc cwl d-dmd dockerfile-hadolint
+          emacs-lisp emacs-lisp-checkdoc erlang-rebar3 erlang
+          eruby-erubis fortran-gfortran go-gofmt go-golint go-vet
+          go-build go-test go-errcheck go-unconvert go-megacheck
+          go-staticcheck groovy haml handlebars haskell-stack-ghc
+          haskell-ghc haskell-hlint html-tidy javascript-jshint
+          javascript-standard json-jsonlint json-python-json json-jq
+          jsonnet less less-stylelint llvm-llc lua-luacheck lua
+          markdown-markdownlint-cli markdown-mdl nix nix-linter opam perl
+          perl-perlcritic php php-phpmd php-phpcs processing proselint
+          protobuf-protoc pug puppet-parser puppet-lint python-pylint
+          python-flake8 python-ruff python-pycompile python-mypy r-lintr
+          racket rpm-rpmlint rst-sphinx rst ruby-rubocop ruby-reek
+          ruby-rubylint ruby ruby-jruby rust-cargo rust rust-clippy scala
+          scala-scalastyle scheme-chicken scss-lint scss-stylelint
+          sass/scss-sass-lint sass scss sh-bash sh-posix-dash
+          sh-posix-bash sh-zsh sh-shellcheck slim slim-lint sql-sqlint
+          systemd-analyze tcl-nagelfar tex-chktex tex-lacheck texinfo
+          textlint typescript-tslint verilog-verilator vhdl-ghdl
+          xml-xmlstarlet xml-xmllint yaml-jsyaml yaml-ruby
+          javascript-tide jsx-tide))
+   (flycheck-disabled-checkers '(lsp python-mypy))
+   (flycheck-global-modes
+    '(python-mode python-ts-mode typescript-mode typescript-ts-mode
+                  js-mode web-mode))
+   (flycheck-idle-change-delay 5)
    :config
    (global-flycheck-mode t)
    (flycheck-add-mode 'javascript-eslint 'typescript-mode)
@@ -4764,6 +5011,9 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
        ;; Emacs 31.1+: don't rebind C-x <left>/<right> (and C-x C-<left>/<right>)
        ;; from previous-buffer/next-buffer to tab-line-switch-to-prev/next-tab.
        (tab-line-define-keys nil)
+       (tab-line-tabs-function 'tab-line-tabs-mode-buffers)
+       :config
+       (global-tab-line-mode 1)
        ;; :init
        ;; (defvar-keymap tab-line-mode-map
        ;;   :doc "Keymap for keys of `tab-line-mode'."
@@ -4893,6 +5143,8 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+begin_src emacs-lisp
    (use-package consult
      :pin gnu
+     :custom
+     (consult-narrow-key "<")
      )
    #+end_src
 
@@ -6216,6 +6468,12 @@ Format: \"/full/path/file.el:L42\"."
      ;; survives a restart; the C-z-is-a-prefix fix for it lives in the
      ;; "ghostel" section above.
      :custom (claude-code-ide-terminal-backend 'ghostel)
+     (claude-code-ide-eat-preserve-position nil)
+     (claude-code-ide-show-claude-window-in-ediff nil)
+     (claude-code-ide-use-ide-diff nil)
+     (claude-code-ide-use-side-window nil)
+     (claude-code-ide-window-height 40)
+     (claude-code-ide-window-side 'bottom)
      :config
      (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
 
@@ -7149,7 +7407,9 @@ moving through the list — the chosen theme is applied only on RET."
 ** web-mode
 
  #+begin_src emacs-lisp
- (use-package web-mode)
+ (use-package web-mode
+   :custom
+   (web-mode-script-padding 0))
 
  (setq web-mode-markup-indent-offset 2)
  (setq web-mode-css-indent-offset 2)
@@ -7208,7 +7468,9 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+begin_src emacs-lisp
 
-     (use-package typescript-mode)
+     (use-package typescript-mode
+       :custom
+       (typescript-indent-level 2))
      (use-package tide
        :ensure t
        :after (typescript-mode)
