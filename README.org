@@ -879,7 +879,13 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
                                         (unpackaged/smerge-hydra/body)))))
  #+end_src
 
-* Basic keybindings and configuration settings
+* Core (built-ins)
+
+  Built-in Emacs behaviour.  Several blocks here came from Customize: it keeps saving to the
+  private =custom-file=, and a value saved there overrides the ~:custom~ value set in this file
+  (Customize's user theme has priority over the use-package theme), but not a plain ~setq~.
+  Saved entries are moved into this file from time to time.
+
 ** Disable ~tool-bar~
 
    Disable ~tool-bar~
@@ -907,14 +913,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    file literally."
      'raw)
    #+end_src
-
-* Core settings
-
-  Settings that lived only in Customize until October 2026 and have no package section of
-  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
-  overrides the ~:custom~ value set here (Customize's user theme has priority over the
-  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
-  time to time.
 
 ** Built-in editing, display and scrolling behaviour
 
@@ -999,6 +997,418 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
       "grep --color=never -nHr -e * | grep -v .svn --color=never")
      (grep-use-null-device nil))
    #+end_src
+
+** Backups
+
+   This is  one of  the things  people usually  want to  change right  away. By
+   default, Emacs  saves backup files in  the current directory. These  are the
+   files ending in =~= that are cluttering up your directory lists. The following
+   code stashes them all in =~/.emacs.d/backups=,  where I can find them with =C-x
+   C-f= (=find-file=) if I really need to.
+
+   ///#+BEGIN_SRC emacs-lisp :results output none
+   //;;  (setq backup-directory-alist '(("." . "~/.emacs.d/backup")))
+   //#+END_SRC
+
+   Disk space is cheap. Save lots.
+
+   #+begin_src emacs-lisp
+     (setq delete-old-versions nil
+	   kept-new-versions 100
+	   kept-old-versions 100
+	   version-control t)
+     (setq version-control t)
+     (setq vc-make-backup-files t)
+     ;;(setq auto-save-file-name-transforms '((".*" "~/.emacs.d/auto-save-list/" t)))
+   #+end_src
+
+** Unique file names ('uniquify)
+
+   #+begin_src emacs-lisp
+     (require 'uniquify)
+     (custom-set-variables
+      '(uniquify-buffer-name-style (quote post-forward) nil (uniquify)))
+   #+end_src
+
+** dired
+
+   #+begin_src emacs-lisp
+     ;; (dired-async-mode 1)
+     (setq dired-omit-files "^\\...+$")
+     ;; two-panel behaviour: C / R default to the dir of another visible dired
+     (setq dired-dwim-target t)
+     ;;(defun avk-dired-mode-hook ()
+     ;; (local-set-key [(tab)] 'other-window))
+
+     ;; (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
+     (defun open-file-externally(arg)
+       "Open ARG with the OS default application."
+       (let ((opener (if (eq system-type 'darwin) "open" "xdg-open")))
+	 (async-shell-command (format "%s %s" opener (shell-quote-argument arg))))
+       )
+
+     (defun open-files-externally()
+       "Open marked files (or current one) to edit via ansible-vault."
+       (interactive)
+       (mapc 'open-file-externally (dired-get-marked-files t))
+       )
+
+     (global-set-key (kbd "C-c e") 'open-files-externally)
+
+     (add-to-list 'auto-mode-alist '("all.open" . yaml-mode))
+
+     (define-key dired-mode-map ";" 'dired-subtree-toggle)
+
+     (defun dired-get-size ()
+       (interactive)
+       (let ((files (dired-get-marked-files)))
+	 (with-temp-buffer
+	   (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+	   (message "Size of all marked files: %s"
+		    (progn
+		      (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+		      (match-string 1))))))
+
+     (define-key dired-mode-map (kbd "?") 'dired-get-size)
+     (define-key global-map  "\C-xj"         'dired-jump)
+     (define-key global-map  "\C-cfd"         'find-dired)
+
+     (autoload 'dired-async-mode "dired-async.el" nil t)
+     ;;(add-hook 'dired-mode-hook
+     ;;     (lambda ()
+     ;;       (dired-hide-details-mode)
+     ;;       ))
+   #+end_src
+
+   Ansible/DevOps related - edit ~vault~ files with emacsclient.
+
+   #+begin_src emacs-lisp
+     (defun open-vault-file(arg)
+       "Decrypt vault file specified in ARG by calling ansible-vault and .vaultfile password
+        from any upper directory"
+       (let ((vaultfile ".vaultfile"))
+	 (let ((vault-file-dir (locate-dominating-file default-directory vaultfile)))
+	   (if vault-file-dir
+	       (call-process "ansible-vault" nil 0 nil
+			     "edit" arg
+			     "--vault-password-file"
+			     (concat vault-file-dir ".vaultfile")
+			     )
+	     (message (format "%s not found in current or upper directories" vaultfile)))
+	   ))
+       )
+     (defun open-vault-files()
+       "Open marked files (or current one) to edit via ansible-vault."
+       (interactive)
+       (require 'server)
+       (unless (server-running-p)
+	 (server-start))
+       (setenv "EDITOR" "emacsclient")
+       (message "open vault file")
+       (mapc 'open-vault-file (dired-get-marked-files t))
+       )
+
+     (global-set-key (kbd "C-z v") 'open-vault-files)
+   #+end_src
+
+*** coloring
+
+    #+begin_src emacs-lisp
+      (use-package diredfl
+        :ensure t
+        :config
+        (diredfl-global-mode 1))
+    #+end_src
+
+
+*** dired-sidebar
+
+    Interesting alternative to treemacs
+    #+begin_src emacs-lisp
+      (use-package all-the-icons-dired)
+
+      (use-package dired-sidebar
+        :custom
+        (dired-sidebar-cycle-subtree-on-click nil)
+        (dired-sidebar-delay-auto-revert-updates nil)
+        (dired-sidebar-theme 'icons)
+        :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
+        :ensure t
+        :commands (dired-sidebar-toggle-sidebar)
+        :init
+        (add-hook 'dired-sidebar-mode-hook
+		  (lambda ()
+		    (unless (file-remote-p default-directory)
+		      (auto-revert-mode))))
+        :config
+        (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
+        (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
+
+        ;; (setq dired-sidebar-subtree-line-prefix "__")
+        ;; (setq dired-sidebar-theme 'vscode)
+        (setq dired-sidebar-use-term-integration t)
+        ;;(setq dired-sidebar-use-custom-font t)
+        )
+    #+end_src
+
+*** git info
+
+    #+begin_src emacs-lisp
+      (use-package dired-git-info
+        :ensure t
+        :bind (:map dired-mode-map
+		    (")" . dired-git-info-mode)))
+    #+end_src
+
+** tramp
+
+   #+begin_src emacs-lisp
+      ;; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
+      (require 'tramp)
+      (require 'password-cache)
+      (setq password-cache-expiry nil)
+
+      ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
+      ;; (push
+      ;;  (cons
+      ;;   "docker"
+      ;;   '((tramp-login-program "docker")
+      ;;     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
+      ;;     (tramp-remote-shell "/bin/sh")
+      ;;     (tramp-remote-shell-args ("-i") ("-c"))))
+      ;;  tramp-methods)
+
+      (defadvice tramp-completion-handle-file-name-all-completions
+          (around dotemacs-completion-docker activate)
+        "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
+          a list of active Docker container names, followed by colons."
+        (if (equal (ad-get-arg 1) "/docker:")
+            (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
+         	  (dockernames (cl-remove-if-not
+         		        #'(lambda (dockerline) (string-match ":$" dockerline))
+         		        (split-string dockernames-raw "\n"))))
+              (setq ad-return-value dockernames)
+              (message dockernames)
+              )
+          ad-do-it))
+
+      ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
+      ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
+      ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
+      (push
+       (cons
+        "sush"
+        '((tramp-login-program "su")
+          (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
+          (tramp-remote-shell "/bin/sh")
+          (tramp-remote-shell-login
+           ("-l"))
+          (tramp-remote-shell-args
+           ("-c"))
+          (tramp-connection-timeout 10)))
+       tramp-methods)
+      ;;
+
+      ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
+      (setq remote-file-name-inhibit-cache nil)
+      (setq vc-ignore-dir-regexp
+            (format "%s\\|%s"
+         	   vc-ignore-dir-regexp
+         	   tramp-file-name-regexp))
+      (setq tramp-verbose 1)
+
+
+      (push
+       (cons
+        "ocrsh"
+        '((tramp-login-program "oc")
+          (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
+          (tramp-remote-shell "/bin/sh")
+          (tramp-remote-shell-args ("-i"))))
+       tramp-methods)
+
+      ;; (push
+      ;;  (cons
+      ;;   "kube"
+      ;;   '((tramp-login-program "kubectl")
+      ;;     (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
+      ;;     (tramp-remote-shell "/bin/sh")
+      ;;     (tramp-remote-shell-args ("-i"))))
+      ;;  tramp-methods)
+
+
+
+
+      (defun tramp-refresh ()
+        (interactive)
+        ;; (recentf-cleanup)
+        (tramp-cleanup-all-buffers)
+        (tramp-cleanup-all-connections))
+
+      ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
+      (add-to-list 'backup-directory-alist
+         	  (cons tramp-file-name-regexp nil))
+
+
+      (add-to-list 'tramp-connection-properties
+         	  (list (regexp-quote "/sudo:")
+         	        "session-timeout" nil)
+         	  )
+
+      (add-to-list 'tramp-connection-properties
+         	  (list (regexp-quote "/ssh:")
+         	        "session-timeout" nil)
+         	  )
+
+
+      (use-package friendly-tramp-path
+        :after tramp)
+
+
+    ;; Default (local) shell = zsh
+    (setq shell-file-name "/bin/zsh"
+          explicit-shell-file-name "/bin/zsh")
+
+    (with-eval-after-load 'tramp
+      ;; For any TRAMP connection, override to bash
+      (connection-local-set-profile-variables
+       'remote-bash
+       '((shell-file-name . "/bin/bash")
+         (explicit-shell-file-name . "/bin/bash")
+         ;; optional: args for interactive shells
+         (explicit-bash-args . ("-i"))
+         ;; optional: make TRAMP itself talk bash
+         (tramp-remote-shell . "/bin/bash")))
+      (connection-local-set-profiles '(:application tramp) 'remote-bash))
+
+
+   #+end_src
+
+** recentf
+   Since yesterday emacs update [2019-03-07 Thu] recentf started aggressive cleanup
+   of all tramp-related buffers, and no controls affect it (auto cleanup was always
+   disabled).
+
+   Quick workaround:
+
+   #+begin_src emacs-lisp
+   (use-package recentf
+     :custom
+     (recentf-auto-cleanup 'never)
+     (recentf-keep nil)
+     :init
+     (setq
+       recentf-save-file "~/.cache/emacs-recentf"
+       recentf-max-saved-items 10000
+       recentf-max-menu-items 5000
+       )
+     (recentf-mode 1)
+     (run-at-time (current-time) (* 5 60) 'recentf-save-list)
+     )
+   (load "~/.cache/emacs-recentf" t)
+   #+end_src
+
+** compilation colors
+
+   #+begin_src emacs-lisp
+   (require 'ansi-color)
+   (defun colorize-compilation-buffer ()
+     (ansi-color-apply-on-region compilation-filter-start (point-max)))
+   (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
+   #+end_src
+
+** yesno
+
+     I am too lazy to answer 'yes' and 'no' in full notation, lets shortcut:
+     #+begin_src emacs-lisp
+     (fset 'yes-or-no-p 'y-or-n-p)
+     #+end_src
+
+** Enable ibuffer
+
+ #+begin_src emacs-lisp
+ (require 'ibuffer)
+ (global-set-key [f9]  'ibuffer)
+ #+end_src
+
+** ediff
+ Ediff - diffing framework within emacs. Some useful extensions here, like choosing both variants (frequent case),
+ from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-ediff-how-can-i-take-the-changes-of-both-version
+ #+begin_src emacs-lisp
+ (defun ediff-copy-both-to-C ()
+   (interactive)
+   (ediff-copy-diff ediff-current-difference nil 'C nil
+                    (concat
+                     (ediff-get-region-contents ediff-current-difference 'A ediff-control-buffer)
+                     (ediff-get-region-contents ediff-current-difference 'B ediff-control-buffer))))
+ (defun add-d-to-ediff-mode-map () (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
+ (add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
+ #+end_src
+
+** COMMENT dirvish
+
+   #+begin_src emacs-lisp
+   (use-package dirvish
+     )
+   (dirvish-override-dired-mode)
+   #+end_src
+
+** COMMENT emacs calc
+
+   #+begin_src emacs-lisp
+   (use-package casual
+     :ensure t
+     :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+   #+end_src
+
+** COMMENT dired-casual
+
+   #+begin_src emacs-lisp
+   (use-package casual-dired
+   :ensure t
+   :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
+   #+end_src
+
+** shr.el settings
+
+   #+begin_src emacs-lisp
+   (setq
+     shr-image-animate nil    ;  Disable animation
+     shr-use-fonts nil        ;  Don't use custom fonts
+     shr-width    120        ;  Word wrap at 70 chars
+     shr-bullet    "• "       ;  Character for an <li> list item
+     shr-hr-line   "—"        ;  Character for an <hr/> line
+     shr-indentation 2        ;  Left margin
+     shr-cookie-policy t)     ;  Always accept cookies
+   (setq mm-inline-text-html-with-images t)
+   #+end_src
+
+   #+RESULTS:
+   : t
+
+** auto revert
+
+   #+begin_src emacs-lisp
+      ;; Silently auto-reload unmodified buffers when files change on disk
+   (global-auto-revert-mode 1)
+   (setq auto-revert-verbose nil)            ; suppress "Reverting..." messages
+   (setq global-auto-revert-non-file-buffers t) ; refresh Dired, etc. (optional)
+
+   ;; Efficiency (usually defaults are fine)
+   (setq auto-revert-use-notify t)  ; use file notifications when available
+   (setq auto-revert-interval 1)    ; poll fallback interval (seconds)
+   #+end_src
+
+   #+RESULTS:
+   : 1
+
+* Core settings
+
+  Settings that lived only in Customize until October 2026 and have no package section of
+  their own yet.  Customize keeps saving to the private =custom-file=; a value saved there
+  overrides the ~:custom~ value set here (Customize's user theme has priority over the
+  use-package theme), but not a plain ~setq~.  Saved entries are moved into this file from
+  time to time.
 
 ** Indentation and interpreters of built-in programming modes
 
@@ -3064,30 +3474,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+RESULTS:
 
-** Backups
-
-   This is  one of  the things  people usually  want to  change right  away. By
-   default, Emacs  saves backup files in  the current directory. These  are the
-   files ending in =~= that are cluttering up your directory lists. The following
-   code stashes them all in =~/.emacs.d/backups=,  where I can find them with =C-x
-   C-f= (=find-file=) if I really need to.
-
-   ///#+BEGIN_SRC emacs-lisp :results output none
-   //;;  (setq backup-directory-alist '(("." . "~/.emacs.d/backup")))
-   //#+END_SRC
-
-   Disk space is cheap. Save lots.
-
-   #+begin_src emacs-lisp
-     (setq delete-old-versions nil
-	   kept-new-versions 100
-	   kept-old-versions 100
-	   version-control t)
-     (setq version-control t)
-     (setq vc-make-backup-files t)
-     ;;(setq auto-save-file-name-transforms '((".*" "~/.emacs.d/auto-save-list/" t)))
-   #+end_src
-
 ** verb
 
    #+begin_src emacs-lisp
@@ -3099,14 +3485,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;; (org-babel-do-load-languages
    ;;  'org-babel-load-languages
    ;;  '((verb . t)))
-   #+end_src
-
-** Unique file names ('uniquify)
-
-   #+begin_src emacs-lisp
-     (require 'uniquify)
-     (custom-set-variables
-      '(uniquify-buffer-name-style (quote post-forward) nil (uniquify)))
    #+end_src
 
 ** lsp-mode
@@ -3288,136 +3666,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
              )
             ))
    #+end_src
-
-** dired
-
-   #+begin_src emacs-lisp
-     ;; (dired-async-mode 1)
-     (setq dired-omit-files "^\\...+$")
-     ;; two-panel behaviour: C / R default to the dir of another visible dired
-     (setq dired-dwim-target t)
-     ;;(defun avk-dired-mode-hook ()
-     ;; (local-set-key [(tab)] 'other-window))
-
-     ;; (add-hook 'dired-mode-hook 'avk-dired-mode-hook)
-     (defun open-file-externally(arg)
-       "Open ARG with the OS default application."
-       (let ((opener (if (eq system-type 'darwin) "open" "xdg-open")))
-	 (async-shell-command (format "%s %s" opener (shell-quote-argument arg))))
-       )
-
-     (defun open-files-externally()
-       "Open marked files (or current one) to edit via ansible-vault."
-       (interactive)
-       (mapc 'open-file-externally (dired-get-marked-files t))
-       )
-
-     (global-set-key (kbd "C-c e") 'open-files-externally)
-
-     (add-to-list 'auto-mode-alist '("all.open" . yaml-mode))
-
-     (define-key dired-mode-map ";" 'dired-subtree-toggle)
-
-     (defun dired-get-size ()
-       (interactive)
-       (let ((files (dired-get-marked-files)))
-	 (with-temp-buffer
-	   (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
-	   (message "Size of all marked files: %s"
-		    (progn
-		      (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
-		      (match-string 1))))))
-
-     (define-key dired-mode-map (kbd "?") 'dired-get-size)
-     (define-key global-map  "\C-xj"         'dired-jump)
-     (define-key global-map  "\C-cfd"         'find-dired)
-
-     (autoload 'dired-async-mode "dired-async.el" nil t)
-     ;;(add-hook 'dired-mode-hook
-     ;;     (lambda ()
-     ;;       (dired-hide-details-mode)
-     ;;       ))
-   #+end_src
-
-   Ansible/DevOps related - edit ~vault~ files with emacsclient.
-
-   #+begin_src emacs-lisp
-     (defun open-vault-file(arg)
-       "Decrypt vault file specified in ARG by calling ansible-vault and .vaultfile password
-        from any upper directory"
-       (let ((vaultfile ".vaultfile"))
-	 (let ((vault-file-dir (locate-dominating-file default-directory vaultfile)))
-	   (if vault-file-dir
-	       (call-process "ansible-vault" nil 0 nil
-			     "edit" arg
-			     "--vault-password-file"
-			     (concat vault-file-dir ".vaultfile")
-			     )
-	     (message (format "%s not found in current or upper directories" vaultfile)))
-	   ))
-       )
-     (defun open-vault-files()
-       "Open marked files (or current one) to edit via ansible-vault."
-       (interactive)
-       (require 'server)
-       (unless (server-running-p)
-	 (server-start))
-       (setenv "EDITOR" "emacsclient")
-       (message "open vault file")
-       (mapc 'open-vault-file (dired-get-marked-files t))
-       )
-
-     (global-set-key (kbd "C-z v") 'open-vault-files)
-   #+end_src
-
-*** coloring
-
-    #+begin_src emacs-lisp
-      (use-package diredfl
-        :ensure t
-        :config
-        (diredfl-global-mode 1))
-    #+end_src
-
-
-*** dired-sidebar
-
-    Interesting alternative to treemacs
-    #+begin_src emacs-lisp
-      (use-package all-the-icons-dired)
-
-      (use-package dired-sidebar
-        :custom
-        (dired-sidebar-cycle-subtree-on-click nil)
-        (dired-sidebar-delay-auto-revert-updates nil)
-        (dired-sidebar-theme 'icons)
-        :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
-        :ensure t
-        :commands (dired-sidebar-toggle-sidebar)
-        :init
-        (add-hook 'dired-sidebar-mode-hook
-		  (lambda ()
-		    (unless (file-remote-p default-directory)
-		      (auto-revert-mode))))
-        :config
-        (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
-        (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
-
-        ;; (setq dired-sidebar-subtree-line-prefix "__")
-        ;; (setq dired-sidebar-theme 'vscode)
-        (setq dired-sidebar-use-term-integration t)
-        ;;(setq dired-sidebar-use-custom-font t)
-        )
-    #+end_src
-
-*** git info
-
-    #+begin_src emacs-lisp
-      (use-package dired-git-info
-        :ensure t
-        :bind (:map dired-mode-map
-		    (")" . dired-git-info-mode)))
-    #+end_src
 
 ** COMMENT elfeed
 
@@ -3877,130 +4125,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 	      ))
    #+end_src
 
-** tramp
-
-   #+begin_src emacs-lisp
-      ;; from http://stackoverflow.com/questions/840279/passwords-in-emacs-tramp-mode-editing
-      (require 'tramp)
-      (require 'password-cache)
-      (setq password-cache-expiry nil)
-
-      ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
-      ;; (push
-      ;;  (cons
-      ;;   "docker"
-      ;;   '((tramp-login-program "docker")
-      ;;     (tramp-login-args (("exec" "-it") ("%h") ("/bin/sh")))
-      ;;     (tramp-remote-shell "/bin/sh")
-      ;;     (tramp-remote-shell-args ("-i") ("-c"))))
-      ;;  tramp-methods)
-
-      (defadvice tramp-completion-handle-file-name-all-completions
-          (around dotemacs-completion-docker activate)
-        "(tramp-completion-handle-file-name-all-completions \"\" \"/docker:\" returns
-          a list of active Docker container names, followed by colons."
-        (if (equal (ad-get-arg 1) "/docker:")
-            (let* ((dockernames-raw (shell-command-to-string "docker ps | awk '$NF != \"NAMES\" { print $NF \":\" }'"))
-         	  (dockernames (cl-remove-if-not
-         		        #'(lambda (dockerline) (string-match ":$" dockerline))
-         		        (split-string dockernames-raw "\n"))))
-              (setq ad-return-value dockernames)
-              (message dockernames)
-              )
-          ad-do-it))
-
-      ;; Problem with su: often many system accounts are hidden under /sbin/nologin due to reasons explained here:
-      ;; https://unix.stackexchange.com/questions/155139/does-usr-sbin-nologin-as-a-login-shell-serve-a-security-purpose
-      ;; ... as result 'su' won't work, but with lisp it is easy to define 'sush' which will do -s /bin/sh
-      (push
-       (cons
-        "sush"
-        '((tramp-login-program "su")
-          (tramp-login-args (("-") ("%u") ("-s" "/bin/sh")))
-          (tramp-remote-shell "/bin/sh")
-          (tramp-remote-shell-login
-           ("-l"))
-          (tramp-remote-shell-args
-           ("-c"))
-          (tramp-connection-timeout 10)))
-       tramp-methods)
-      ;;
-
-      ;; from https://emacs.stackexchange.com/questions/17543/tramp-mode-is-much-slower-than-using-terminal-to-ssh
-      (setq remote-file-name-inhibit-cache nil)
-      (setq vc-ignore-dir-regexp
-            (format "%s\\|%s"
-         	   vc-ignore-dir-regexp
-         	   tramp-file-name-regexp))
-      (setq tramp-verbose 1)
-
-
-      (push
-       (cons
-        "ocrsh"
-        '((tramp-login-program "oc")
-          (tramp-login-args (("rsh") ("%h") ("/bin/sh")))
-          (tramp-remote-shell "/bin/sh")
-          (tramp-remote-shell-args ("-i"))))
-       tramp-methods)
-
-      ;; (push
-      ;;  (cons
-      ;;   "kube"
-      ;;   '((tramp-login-program "kubectl")
-      ;;     (tramp-login-args (("exec") ("%h") ("-it") ("/bin/sh")))
-      ;;     (tramp-remote-shell "/bin/sh")
-      ;;     (tramp-remote-shell-args ("-i"))))
-      ;;  tramp-methods)
-
-
-
-
-      (defun tramp-refresh ()
-        (interactive)
-        ;; (recentf-cleanup)
-        (tramp-cleanup-all-buffers)
-        (tramp-cleanup-all-connections))
-
-      ;; https://www.gnu.org/software/emacs/manual/html_node/tramp/Auto_002dsave-and-Backup.html
-      (add-to-list 'backup-directory-alist
-         	  (cons tramp-file-name-regexp nil))
-
-
-      (add-to-list 'tramp-connection-properties
-         	  (list (regexp-quote "/sudo:")
-         	        "session-timeout" nil)
-         	  )
-
-      (add-to-list 'tramp-connection-properties
-         	  (list (regexp-quote "/ssh:")
-         	        "session-timeout" nil)
-         	  )
-
-
-      (use-package friendly-tramp-path
-        :after tramp)
-
-
-    ;; Default (local) shell = zsh
-    (setq shell-file-name "/bin/zsh"
-          explicit-shell-file-name "/bin/zsh")
-
-    (with-eval-after-load 'tramp
-      ;; For any TRAMP connection, override to bash
-      (connection-local-set-profile-variables
-       'remote-bash
-       '((shell-file-name . "/bin/bash")
-         (explicit-shell-file-name . "/bin/bash")
-         ;; optional: args for interactive shells
-         (explicit-bash-args . ("-i"))
-         ;; optional: make TRAMP itself talk bash
-         (tramp-remote-shell . "/bin/bash")))
-      (connection-local-set-profiles '(:application tramp) 'remote-bash))
-
-
-   #+end_src
-
 ** yasnippet
 
    Snippets for various languages
@@ -4040,30 +4164,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        (which-key-mode 1)
        (setq which-key-idle-delay 0.7)
        )
-   #+end_src
-
-** recentf
-   Since yesterday emacs update [2019-03-07 Thu] recentf started aggressive cleanup
-   of all tramp-related buffers, and no controls affect it (auto cleanup was always
-   disabled).
-
-   Quick workaround:
-
-   #+begin_src emacs-lisp
-   (use-package recentf
-     :custom
-     (recentf-auto-cleanup 'never)
-     (recentf-keep nil)
-     :init
-     (setq
-       recentf-save-file "~/.cache/emacs-recentf"
-       recentf-max-saved-items 10000
-       recentf-max-menu-items 5000
-       )
-     (recentf-mode 1)
-     (run-at-time (current-time) (* 5 60) 'recentf-save-list)
-     )
-   (load "~/.cache/emacs-recentf" t)
    #+end_src
 
 ** realgud
@@ -4393,15 +4493,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    #+end_src
 
-** compilation colors
-
-   #+begin_src emacs-lisp
-   (require 'ansi-color)
-   (defun colorize-compilation-buffer ()
-     (ansi-color-apply-on-region compilation-filter-start (point-max)))
-   (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
-   #+end_src
-
 ** projectile
 
  Easy way to select file in your project.
@@ -4507,20 +4598,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    )
    #+end_src
 
-** yesno
-
-     I am too lazy to answer 'yes' and 'no' in full notation, lets shortcut:
-     #+begin_src emacs-lisp
-     (fset 'yes-or-no-p 'y-or-n-p)
-     #+end_src
-
-** Enable ibuffer
-
- #+begin_src emacs-lisp
- (require 'ibuffer)
- (global-set-key [f9]  'ibuffer)
- #+end_src
-
 ** Always display file name in frame title
 
  http://www.emacswiki.org/emacs/FrameTitle
@@ -4538,20 +4615,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
  (fix-frame-title)
  ;(add-hook 'after-make-frame-functions 'fix-frame-title)
  (define-key global-map  "\C-cft" 'fix-frame-title)
- #+end_src
-
-** ediff
- Ediff - diffing framework within emacs. Some useful extensions here, like choosing both variants (frequent case),
- from http://stackoverflow.com/questions/9656311/conflict-resolution-with-emacs-ediff-how-can-i-take-the-changes-of-both-version
- #+begin_src emacs-lisp
- (defun ediff-copy-both-to-C ()
-   (interactive)
-   (ediff-copy-diff ediff-current-difference nil 'C nil
-                    (concat
-                     (ediff-get-region-contents ediff-current-difference 'A ediff-control-buffer)
-                     (ediff-get-region-contents ediff-current-difference 'B ediff-control-buffer))))
- (defun add-d-to-ediff-mode-map () (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
- (add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
  #+end_src
 
 ** switch buffers
@@ -4967,22 +5030,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      )
    #+end_src
 
-** COMMENT dirvish
-
-   #+begin_src emacs-lisp
-   (use-package dirvish
-     )
-   (dirvish-override-dired-mode)
-   #+end_src
-
-** COMMENT emacs calc
-
-   #+begin_src emacs-lisp
-   (use-package casual
-     :ensure t
-     :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
-   #+end_src
-
 ** COMMENT consult imenu
 
    #+begin_src emacs-lisp
@@ -5083,14 +5130,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (use-package counsel-ag-popup
      :ensure t
      :bind ("C-c M-c" . 'counsel-ag))
-   #+end_src
-
-** COMMENT dired-casual
-
-   #+begin_src emacs-lisp
-   (use-package casual-dired
-   :ensure t
-   :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
    #+end_src
 
 ** COMMENT dslide
@@ -5884,23 +5923,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
   (openwith-mode t)
   (setq openwith-associations '(("\\.mp4\\'" "mpv" (file))))
   #+end_src
-
-** shr.el settings
-
-   #+begin_src emacs-lisp
-   (setq
-     shr-image-animate nil    ;  Disable animation
-     shr-use-fonts nil        ;  Don't use custom fonts
-     shr-width    120        ;  Word wrap at 70 chars
-     shr-bullet    "• "       ;  Character for an <li> list item
-     shr-hr-line   "—"        ;  Character for an <hr/> line
-     shr-indentation 2        ;  Left margin
-     shr-cookie-policy t)     ;  Always accept cookies
-   (setq mm-inline-text-html-with-images t)
-   #+end_src
-
-   #+RESULTS:
-   : t
 
 ** nvm
 
@@ -7717,22 +7739,6 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+RESULTS:
    : minibuffer-previous-completion
-
-** auto revert
-
-   #+begin_src emacs-lisp
-      ;; Silently auto-reload unmodified buffers when files change on disk
-   (global-auto-revert-mode 1)
-   (setq auto-revert-verbose nil)            ; suppress "Reverting..." messages
-   (setq global-auto-revert-non-file-buffers t) ; refresh Dired, etc. (optional)
-
-   ;; Efficiency (usually defaults are fine)
-   (setq auto-revert-use-notify t)  ; use file notifications when available
-   (setq auto-revert-interval 1)    ; poll fallback interval (seconds)
-   #+end_src
-
-   #+RESULTS:
-   : 1
 
 * Small emacs functions of mine
 ** execute thunar here
