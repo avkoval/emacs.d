@@ -180,39 +180,6 @@
          (display-buffer (current-buffer)))))
    #+end_src
 
-** COMMENT Straight
-
-   #+begin_src emacs-lisp
-   (defvar bootstrap-version)
-   (let ((bootstrap-file
-          (expand-file-name
-           "straight/repos/straight.el/bootstrap.el"
-           (or (bound-and-true-p straight-base-dir)
-               user-emacs-directory)))
-         (bootstrap-version 7))
-     (unless (file-exists-p bootstrap-file)
-       (with-current-buffer
-           (url-retrieve-synchronously
-            "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
-            'silent 'inhibit-cookies)
-         (goto-char (point-max))
-         (eval-print-last-sexp)))
-     (load bootstrap-file nil 'nomessage))
-   #+end_src
-
-** COMMENT cond-let
-
-Provided by the ELPA package (also pulled in as a magit/forge dependency).
-Managed via use-package so it is an explicitly-selected package — do NOT
-vendor a copy under =lisp/=, which would shadow the package on load-path
-and cause version-skew macro errors after magit/forge upgrades.
-
-#+begin_src emacs-lisp
-(use-package cond-let)
-#+end_src
-
-#+RESULTS:
-
 ** Dash
 
    A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
@@ -824,61 +791,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
     (global-set-key "\M-s" 'alt_s_hydras_menu/body)
     #+end_src
 
-** COMMENT Hydra + smerge
-
- /I found it less useful and it often prevents me from doing right thing. I prefer ediff/
-
- This configuration automatically activates a helpful ~smerge-mode~ hydra when a file containing merge conflicts is visited from a Magit diff section.  You can manually activate the hydra with the command ~unpackaged/smerge-hydra/body~.  (Inspired by [[https://github.com/kaushalmodi/.emacs.d/blob/master/setup-files/setup-diff.el][Kaushal Modi's Emacs config]].)
-
- *Requires*:
- +  [[https://github.com/abo-abo/hydra][hydra]]
- +  [[https://magit.vc/][Magit]]
-
- https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
-
- #+begin_src emacs-lisp
-   (require 'hydra)
-
-   (use-package smerge-mode
-     :config
-     (defhydra unpackaged/smerge-hydra
-       (:color pink :hint nil :post (smerge-auto-leave))
-       "
-   ^Move^       ^Keep^               ^Diff^                 ^Other^
-   ^^-----------^^-------------------^^---------------------^^-------
-   _n_ext       _b_ase               _<_: upper/base        _C_ombine
-   _p_rev       _u_pper              _=_: upper/lower       _r_esolve
-   ^^           _l_ower              _>_: base/lower        _k_ill current
-   ^^           _a_ll                _R_efine
-   ^^           _RET_: current       _E_diff
-   "
-       ("n" smerge-next)
-       ("p" smerge-prev)
-       ("b" smerge-keep-base)
-       ("u" smerge-keep-upper)
-       ("l" smerge-keep-lower)
-       ("a" smerge-keep-all)
-       ("RET" smerge-keep-current)
-       ("\C-m" smerge-keep-current)
-       ("<" smerge-diff-base-upper)
-       ("=" smerge-diff-upper-lower)
-       (">" smerge-diff-base-lower)
-       ("R" smerge-refine)
-       ("E" smerge-ediff)
-       ("C" smerge-combine-with-next)
-       ("r" smerge-resolve)
-       ("k" smerge-kill-current)
-       ("ZZ" (lambda ()
-               (interactive)
-               (save-buffer)
-               (bury-buffer))
-        "Save and bury buffer" :color blue)
-       ("q" nil "cancel" :color blue))
-     :hook (magit-diff-visit-file . (lambda ()
-                                      (when smerge-mode
-                                        (unpackaged/smerge-hydra/body)))))
- #+end_src
-
 * Core (built-ins)
 
   Built-in Emacs behaviour.  Several blocks here came from Customize: it keeps saving to the
@@ -1345,30 +1257,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
  (add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
  #+end_src
 
-** COMMENT dirvish
-
-   #+begin_src emacs-lisp
-   (use-package dirvish
-     )
-   (dirvish-override-dired-mode)
-   #+end_src
-
-** COMMENT emacs calc
-
-   #+begin_src emacs-lisp
-   (use-package casual
-     :ensure t
-     :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
-   #+end_src
-
-** COMMENT dired-casual
-
-   #+begin_src emacs-lisp
-   (use-package casual-dired
-   :ensure t
-   :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
-   #+end_src
-
 ** shr.el settings
 
    #+begin_src emacs-lisp
@@ -1771,36 +1659,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
  (advice-add #'org-agenda-filter :around #'org-enforce-basic-completion)
  #+end_src
 
-** COMMENT ivy
-
- #+begin_src emacs-lisp
- ;; (use-package counsel
- ;;   :after ivy
- ;;   :config (counsel-mode))
-
- (use-package ivy
-   :defer 0.3
-   :diminish
-   :bind (
-          ;; ("C-c C-r" . ivy-resume)
-          ("C-x B" . ivy-switch-buffer-other-window)
-          ("C-c m i" . ivy-mode)
-	  ([C-f12] . ivy-mode)
-	  )
-   :custom
-   (ivy-count-format "(%d/%d) ")
-   (ivy-use-virtual-buffers t)
-   :config (ivy-mode nil))
-
- #+end_src
-
-** COMMENT icomplete
-
- #+begin_src emacs-lisp
- (global-set-key [s-f11] 'icomplete-mode)
- (icomplete-mode nil)
- #+end_src
-
 ** deadgrep
 
    Another method to search
@@ -1961,24 +1819,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    (use-package helm-systemd)
    #+end_src
 
-** COMMENT consult imenu
-
-   #+begin_src emacs-lisp
-   (global-set-key [M-f2] 'consult-imenu)
-   (add-to-list 'consult-imenu-config
-                '(python-mode
-                  :toplevel "Function"
-                  :types
-                  ((?f "Function" font-lock-function-name-face)
-                   (?m "Method" font-lock-function-name-face)
-                   (?c "Class" font-lock-property-use-face)
-                   (?M "Module" font-lock-builtin-face)
-                   (?F "Field" font-lock-regexp-face)
-                   (?v "Variable" font-lock-constant-face))))
-
-   (global-set-key [M-f7] 'consult-ripgrep)
-   #+end_src
-
 ** counsel-ag
 
    #+begin_src emacs-lisp
@@ -1995,179 +1835,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      :custom
      (consult-narrow-key "<")
      )
-   #+end_src
-
-** COMMENT consult-omni
-
-   #+begin_src emacs-lisp
-     (global-unset-key (kbd "C-x /"))
-     (use-package browser-hist)
-     (use-package consult-omni
-       :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
-       :after consult
-       :bind (
-              ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
-              ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
-              ("C-x / p r y" . consult-omni-rg-yourtrack-task)
-              ("C-x / p r t" . consult-omni-rg-yourtrack-task)
-              ;;("C-x / p f f" . consult-omni-example)
-              ;;("C-x / p f j" . consult-omni-example-jira-task)
-              ;;("C-x / p f b" . consult-omni-example-bitbucket-prs)
-              ("C-x / p u t" . consult-omni-ua2web-redmine-task)
-              ("C-x / s g" . consult-omni-my-global-search)
-              )
-       ;;:custom
-       ;; General settings that apply to all sources
-       ;;(consult-omni-show-preview t) ;;; show previews
-       ;;(consult-omni-preview-key "C-o") ;;; set the preview key to C-o
-       ;; :config
-       )
-     ;; Load Sources Core code
-     (require 'consult-omni-sources)
-     (require 'consult-omni-apps)
-     (require 'consult-omni-browser-history)
-     (require 'consult-omni-buffer)
-     (require 'consult-omni-calc)
-     (require 'consult-omni-grep)
-     (require 'consult-omni-gptel)
-     (require 'consult-omni-elfeed)
-     (require 'consult-omni-ripgrep)
-     (require 'consult-omni-notmuch)
-     (require 'consult-omni-org-agenda)
-     (require 'consult-omni-google)
-
-     (consult-omni-define-source "Example Jira task"
-                                 :type 'sync
-                                 :request
-                                 #'my-fh-jira-task-results)
-
-     (defun my-fh-jira-task-results (input &rest args)
-       "return jira task link"
-       (let ((jira_url (concat "https://example.atlassian.net/browse/" input))
-             (bitbucket_search_url (concat "https://bitbucket.org/example/repo/pull-requests/?state=OPEN&query=" input))
-             )
-         (list
-          (propertize (format "Jira %s" jira_url) :url jira_url :source "Task References")  ;; first result - link to Jira task itself
-          (propertize (format "Bitbucket search %s" bitbucket_search_url) :url bitbucket_search_url :source "Task References")
-          )
-         )
-       )
-
-      (consult-omni-define-source "Example Bitbucket PRs"
-                                  :type 'async
-                                  :request
-                                  #'my-fh-open-bitbucket-prs)
-
-      (defun my-fh-open-bitbucket-prs (input &rest args)
-        "bitbucket PR"
-            (let ((url-request-method "GET")
-                (url-request-extra-headers (list (cons "Authorization" example-basic-auth)))
-                (url "https://api.bitbucket.org/2.0/repositories/example/repo/pullrequests"))
-            (with-current-buffer (url-retrieve-synchronously url)
-              (goto-char (point-min))
-              (re-search-forward "\n\n" nil 'noerror)
-              (delete-region (point-min) (point))
-              (let* ((json-result (lsp-json-read-buffer))
-                     (values (gethash "values" json-result))
-                     (titles (delq nil (mapcar (lambda (val) (let* ((title (gethash "title" val))
-                                                                    (links (gethash "links" val))
-                                                                    (html_link (gethash "href" (gethash "html" links)))
-                                                                    ) (if (string-match (concat ".*" input ".*") title) (propertize title :url html_link :source "BB Pull Request") nil))) values)))
-                     )
-                titles
-                )))
-            )
-
-   ;; (consult-omni-define-source "fh-bb2"
-   ;;                             :type 'async
-   ;;                             :require-match nil
-   ;;                             :face 'consult-omni-engine-title-face
-   ;;                             :request #'my-fh-open-bitbucket-prs
-   ;;                             )
-
-
-
-     (consult-omni-define-source "Example Jira Tickets"
-                                  :type 'async
-                                  :request
-                                  #'my-fh-jira-search)
-
-         (defun my-fh-jira-search (input &rest args)
-             "search jira tickets"
-                 (let ((url-request-method "GET")
-                     (url-request-extra-headers (list (cons "Authorization" fielhub-jira-basic-auth)))
-                     (url (concat "https://example.atlassian.net/rest/api/2/issue/picker?query=" input)))
-                 (with-current-buffer (url-retrieve-synchronously url)
-                   (goto-char (point-min))
-                   (re-search-forward "\n\n" nil 'noerror)
-                   (delete-region (point-min) (point))
-                   (let* ((json-result (lsp-json-read-buffer))
-                          (sections (gethash "sections" json-result))
-                          (issues (gethash "issues" (aref sections 0)))
-                           (titles (mapcar (lambda (val) (let* ((key (gethash "key" val))
-                                                                (summaryText (concat key " - " (gethash "summaryText" val)))
-                                                                (url (concat "https://example.atlassian.net/browse/" key)))
-                                                           (message summaryText)
-                                                          (propertize summaryText :url url :source "Jira"))) issues))
-                     )
-                     titles
-                     ))
-                 ))
-
-
-     (defun consult-omni-example (&optional initial
-                                             al no-callback &rest args)
-       "My omni"
-       (interactive "P")
-       (let ((consult-async-split-style 'comma))
-         (consult-omni-multi initial "Example 🌍:" '("notmuch" "Example Jira Tickets" "Example Bitbucket PRs") no-callback args)))
-
-
-      (consult-omni-define-source "UA2WEB Redmine task"
-                                  :type 'sync
-                                  :request
-                                  #'my-ua2web-redmine-task)
-
-
-     (defun my-ua2web-redmine-task (input &rest args)
-       "return UA2WEB task link"
-       (let ((ua2web_redmine_url (concat "https://redmine.example.com/" input))
-             )
-         (list
-          (propertize (format "Ua2Task %s" ua2web_redmine_url) :url ua2web_redmine_url :source "UA2WEB Redmine Task Reference")
-          )
-         )
-       )
-
-      (consult-omni-define-source "My Global Search"
-                                  :type 'sync
-                                  :request
-                                  #'my-global-search)
-
-     (defun my-global-search (input &rest args)
-       "My Global Search"
-       (let ((google_search_url (concat "https://www.google.com/search?q=" input))
-             (duckduckgo_search_url (concat "https://duckduckgo.com/?t=h_&q=" input))
-             )
-         (list
-          (propertize (format "Google Search %s" google_search_url) :url google_search_url :source "global search")
-          (propertize (format "Duck Duck Go Search %s" duckduckgo_search_url) :url duckduckgo_search_url :source "global search")
-          )
-         )
-       )
-
-   ;; RG
-   (consult-omni-define-source "RG DPA Merge Request"
-                               :type 'sync
-                               :request
-                               #'consult-omni-dpa-merge-request-url)
-
-   (consult-omni-define-source "RG DPA YourTrack Task"
-                               :type 'sync
-                               :request
-                               #'rg-dpa-yourtrack-url)
-
-
    #+end_src
 
 ** el-search
@@ -2189,16 +1856,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
    #+RESULTS:
    : denote
-
-** COMMENT p-search
-
-   #+begin_src emacs-lisp
-   (quelpa '(p-search :repo "zkry/p-search" :fetcher github))
-   (require 'p-search)
-   #+end_src
-
-   #+RESULTS:
-   : p-search
 
 ** imenu
 
@@ -2369,12 +2026,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
    #+RESULTS:
 
-** COMMENT minimap
-
-   #+begin_src emacs-lisp
-   (use-package minimap)
-   #+end_src
-
 ** which-key - Discover key bindings
 
    #+begin_src emacs-lisp
@@ -2516,38 +2167,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
   (setq prefix-help-command #'repeated-prefix-help-command)
    #+end_src
-
-** COMMENT theme
-
-   #+begin_src emacs-lisp
-   (use-package org-html-themify
-     :straight
-     (org-html-themify
-      :type git
-      :host github
-      :repo "DogLooksGood/org-html-themify"
-      :files ("*.el" "*.js" "*.css"))
-     :hook (org-mode . org-html-themify-mode)
-     :custom
-     (org-html-themify-themes
-      '((dark . modus-vivendi)
-        (light . modus-operandi))))
-   #+end_src
-
-   #+RESULTS:
-   | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
-
-** COMMENT minimap
-
-   Lets try it (again), but I found that it does not work well in org-mode for example.
-
-   #+begin_src emacs-lisp
-   (use-package minimap
-     :ensure t)
-   (define-key esc-map [f12] #'minimap-mode)
-   #+end_src
-
-   - Comment from [2025-01-29 Wed] - its still buggy and sometimes won't exit from this mode
 
 ** next/prev buffer
 
@@ -2858,47 +2477,6 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+end_src
 
-** COMMENT combobulate
-
-   #+begin_src emacs-lisp
-   (use-package combobulate
-       :preface
-       ;; You can customize Combobulate's key prefix here.
-       ;; Note that you may have to restart Emacs for this to take effect!
-       (setq combobulate-key-prefix "C-z .")
-
-       ;; Optional, but recommended.
-       ;;
-       ;; You can manually enable Combobulate with `M-x
-       ;; combobulate-mode'.
-       :hook
-         ((python-ts-mode . combobulate-mode)
-          (js-ts-mode . combobulate-mode)
-          (html-ts-mode . combobulate-mode)
-          (css-ts-mode . combobulate-mode)
-          (yaml-ts-mode . combobulate-mode)
-          (typescript-ts-mode . combobulate-mode)
-          (json-ts-mode . combobulate-mode)
-          (tsx-ts-mode . combobulate-mode))
-       ;; Amend this to the directory where you keep Combobulate's source
-       ;; code.
-       :load-path "~/.emacs.d/lisp/combobulate/"
-       )
-   #+end_src
-
-** COMMENT outline-ident
-
-   #+begin_src emacs-lisp
-   (use-package outline-indent
-     :ensure t
-     :straight (outline-indent
-                :type git
-                :host github
-                :repo "jamescherti/outline-indent.el")
-     :custom
-     (outline-indent-ellipsis " ▼ "))
-   #+end_src
-
 ** ident-tools
 
 
@@ -2912,25 +2490,6 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+RESULTS:
    : indent-tools-hydra/body
-
-** COMMENT grammarly
-
-   #+begin_src emacs-lisp
-       (use-package grammarly
-         )
-       (grammarly-load-from-authinfo)
-
-     (use-package lsp-grammarly
-       :ensure t
-       :hook (text-mode . (lambda ()
-                            (require 'lsp-grammarly)
-                            (lsp))))  ; or lsp-deferred
-
-
-   #+end_src
-
-
-   #+RESULTS:
 
 ** yank with indent
 
@@ -4623,60 +4182,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
       'org-src-lang-modes '("plantuml" . plantuml))
    #+end_src
 
-** COMMENT org-roam (replaced with ~denote~)
-
-   #+begin_src emacs-lisp
-   (use-package org-roam
-     :ensure t
-     :custom(org-roam-directory "~/org-roam")
-     :bind (("C-c n l" . org-roam-buffer-toggle)
-	    ("C-c n f" . org-roam-node-find)
-	    ("C-c n t" . org-roam-tag-add)
-	    ("C-c n r" . org-roam-tag-remove)
-	    ("C-c n i" . org-roam-node-insert))
-     :config
-     (org-roam-setup)
-     )
-
-   (setq org-roam-node-display-template
-	 (concat "${title:*} "
-		 (propertize "${tags:10}" 'face 'org-tag)))
-
-   ;; https://www.reddit.com/r/emacs/comments/123gu1l/how_to_have_history_suggestion_in_vertico_for_mx/
-   (use-package consult
-     :bind (
-	    :map minibuffer-local-map
-		 ("M-s" . consult-history)                 ;; orig. next-matching-history-element
-		 ("M-r" . consult-history)))
-
-   (use-package consult-org-roam
-     :ensure t
-     :after org-roam
-     :init
-     (require 'consult-org-roam)
-     ;; Activate the minor mode
-     (consult-org-roam-mode 1)
-     :custom
-     ;; Use `ripgrep' for searching with `consult-org-roam-search'
-     (consult-org-roam-grep-func #'consult-ripgrep)
-     ;; Configure a custom narrow key for `consult-buffer'
-     (consult-org-roam-buffer-narrow-key ?r)
-     ;; Display org-roam buffers right after non-org-roam buffers
-     ;; in consult-buffer (and not down at the bottom)
-     (consult-org-roam-buffer-after-buffers t)
-     :config
-     ;; Eventually suppress previewing for certain functions
-     (consult-customize
-      consult-org-roam-forward-links
-      :preview-key (kbd "M-."))
-     :bind
-     ;; Define some convenient keybindings as an addition
-     ("C-c n e" . consult-org-roam-file-find)
-     ("C-c n b" . consult-org-roam-backlinks)
-     ("C-c n l" . consult-org-roam-forward-links)
-     ("C-c n r" . consult-org-roam-search))
-   #+end_src
-
 ** htmlize
 
    #+begin_src emacs-lisp
@@ -4690,15 +4195,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (interactive)
      (async-shell-command "my-publish-file")
      )
-   #+end_src
-
-** COMMENT dslide
-
-   #+begin_src emacs-lisp
-     ;; package-vc
-     ;; (package-vc-install
-     ;;  '(dslide
-     ;;    :url "https://github.com/positron-solutions/dslide.git"))
    #+end_src
 
 ** org-pdftools
@@ -5065,12 +4561,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
                                   (append org-babel-load-languages '((d2 . t)))))
    #+end_src
 
-** COMMENT org-present
-
-   #+begin_src emacs-lisp
-   (use-package org-present)
-   #+end_src
-
 ** review & annotate videos in emacs org-mode
 
 
@@ -5190,14 +4680,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (define-key global-map  "\C-zd"         'docker)
    #+end_src
 
-** COMMENT poetry
-   I don't plan to use Poetry anymore - replaced with ~uv~
-
-   #+begin_src emacs-lisp
-     (use-package poetry
-       :ensure t)
-   #+end_src
-
 ** git & magit & github
 
      Special keybinding is not set as its rarely used operation, and so use ~M-x git-l~
@@ -5293,19 +4775,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        (define-key code-review-mode-map (kbd "C-c C-p") 'code-review-comment-jump-previous))
      #+end_src
 
-** COMMENT pylookup
-   I don't use it anymore as LSP has great documentation support.
-
-   https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
-
-   #+begin_src emacs-lisp
-     ;; load pylookup when compile time
-     (eval-when-compile (require 'pylookup))
-     (setq pylookup-program "~/.emacs.d/pylookup.py")
-     (setq pylookup-db-file "~/var/pylookup/pylookup.db")
-     (global-set-key [(control shift menu)] 'pylookup-lookup)
-   #+end_src
-
 ** realgud
 
    Real good debugger.
@@ -5314,47 +4783,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
        :custom
        (realgud-populate-common-fn-keys-function nil))
    #+end_src
-
-** COMMENT prettier (replaced with Aphelia mode)
-
-   https://github.com/jscheid/prettier.el
-
-   #+begin_src emacs-lisp
-   (use-package prettier
-     :bind (
-	    ("C-c m e" . prettier-mode))
-     )
-   #+end_src
-
-   I also enable it where its needed by this in .dir-locals, as in example below:
-   #+begin_example
-   (
-    (js-mode . ((eval . (prettier-mode t))))
-    (typescript-mode . ((eval . (prettier-mode t))))
-   )
-   #+end_example
-
-** COMMENT moldable emacs
-   :LOGBOOK:
-   - State "TODO"       from              [2023-01-21 сб 13:55]
-   :END:
-
- #+begin_src emacs-lisp
- (use-package moldable-emacs
-   :load-path "~/.emacs.d/lisp/moldable-emacs/"
-   :bind (("C-c m m" . me-mold)
-          ("C-c m f" . me-go-forward)
-          ("C-c m b" . me-go-back)
-          ("C-c m o" . me-open-at-point)
-          ("C-c m d" . me-mold-docs)
-          ("C-c m g" . me-goto-mold-source)
-          ("C-c m e a" . me-mold-add-last-example)
-          )
-   :config
-   (require 'moldable-emacs)
-   (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
-   (me-setup-molds))
- #+end_src
 
 ** dap mode
 
@@ -5367,113 +4795,6 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;; (dap-node-setup)
 
    #+end_src
-
-** COMMENT tree-sitter settings
-
-   #+begin_src emacs-lisp
-
-   #+end_src
-
-** COMMENT lsp-bridge
-
-   Fast & more automated LSP support
-
-   #+begin_src emacs-lisp
-     (use-package posframe)
-     (add-to-list 'load-path "~/.emacs.d/lisp/lsp-bridge/")
-     (require 'lsp-bridge)
-     ;; (global-lsp-bridge-mode)
-
-     (defun my-enable-lsp-bridge-for-typescript ()
-       (interactive)
-       (add-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
-       (add-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-typescript ()
-       (interactive)
-       (remove-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
-       (remove-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-enable-lsp-bridge-for-python ()
-       (interactive)
-       (add-hook 'python-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-python ()
-       (interactive)
-       (remove-hook 'python-ts-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-project-current (d)
-       (message d)
-       (cdr (project-current))
-       )
-
-
-     (defun my-enable-lsp-bridge-for-clojure ()
-       (interactive)
-       (add-hook 'clojure-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-clojure ()
-       (interactive)
-       (remove-hook 'clojure-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-enable-lsp-bridge-for-js2 ()
-       (interactive)
-       (add-hook 'js2-mode-hook #'lsp-bridge-mode)
-       )
-
-     (defun my-disable-lsp-bridge-for-js2 ()
-       (interactive)
-       (remove-hook 'js2-mode-hook #'lsp-bridge-mode)
-       )
-
-   (define-key lsp-bridge-mode-map (kbd "M-.") #'lsp-bridge-find-def)
-   (define-key lsp-bridge-mode-map (kbd "M-,") #'lsp-bridge-find-def-return)
-   (define-key lsp-bridge-mode-map [(shift f1)] #'lsp-bridge-popup-documentation)
-   (define-key lsp-bridge-mode-map [f8] #'lsp-bridge-diagnostic-jump-next)
-   (define-key lsp-bridge-mode-map [(shift f8)] #'lsp-bridge-diagnostic-jump-prev)
-   (define-key lsp-bridge-mode-map [(control shift f8)] #'lsp-bridge-diagnostic-list)
-
-
-   (my-enable-lsp-bridge-for-js2)
-   ;; (my-enable-lsp-bridge-for-typescript)
-   ;; (my-enable-lsp-bridge-for-clojure)
-   (my-enable-lsp-bridge-for-python)
-
-   ;; https://github.com/manateelazycat/lsp-bridge/issues/636
-   (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer)
-   #+end_src
-
-** COMMENT sql-mysql
-
-   #+begin_src emacs-lisp
-   ;; https://stackoverflow.com/questions/12613/specify-a-port-number-in-emacs-sql-mysql
-   (setq sql-mysql-login-params (append sql-mysql-login-params '(port)))
-   (setq sql-port 3306) ;; default MySQL port
-   #+end_src
-
-   #+RESULTS:
-   : 3306
-
-** COMMENT eslint                                                       :WIP:
-
-   #+begin_src emacs-lisp
-     (add-hook 'js2-mode-hook
-	       (defun my-js2-mode-setup ()
-		 (flycheck-mode t)
-		 (when (executable-find "eslint")
-		   (flycheck-select-checker 'javascript-eslint))))
-
-   (with-eval-after-load 'flycheck
-     (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
-   #+end_src
-
-   P.S. may be try: http://codewinds.com/blog/2015-04-02-emacs-flycheck-eslint-jsx.html
 
 ** eslint for tide
 
@@ -5593,29 +4914,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+end_src
 
-** COMMENT python auto virtualenv for python-ts-mode
-
-   #+begin_src emacs-lisp
-        (use-package auto-virtualenv
-          :load-path "path/to/auto-virtualenv"
-          :config
-          (setq auto-virtualenv-verbose t)
-          (auto-virtualenv-setup))
-        ;; my custom version of PR
-        ;; (defun auto-virtualenv-find-local-venv (project-root)
-        ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
-        ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
-        ;;   (catch 'found-virtualenv
-        ;;     (dolist (dir auto-virtualenv-local-env-dirs)
-        ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
-        ;;         (when (file-directory-p maybe-virtualenv-in)
-        ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
-        ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
-        (defun auto-virtualenv-update-mode-line ()
-          )
-
-   #+end_src
-
 ** auto-virtualenvwrapper
 
    #+begin_src emacs-lisp
@@ -5664,20 +4962,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      )
    #+end_src
 
-** COMMENT pgmacs
-   https://github.com/emarsden/pgmacs.git
-
-   #+begin_src emacs-lisp
-   (use-package pgmacs
-     :load-path "~/.emacs.d/lisp/pgmacs/"
-     :init
-     (unless (package-installed-p 'pg)
-       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
-     (unless (package-installed-p 'pgmacs)
-       (package-vc-install "https://github.com/emarsden/pgmacs"))
-     (require 'pgmacs))
-   #+end_src
-
 ** nvm
 
    #+begin_src emacs-lisp
@@ -5710,43 +4994,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    : flycheck-ruff
 
-** COMMENT flyover
-
-   https://github.com/konrad1977/flyover
-   #+begin_src emacs-lisp
-   (require 'flyover)
-   ;; Enable flyover-mode globally
-   (add-hook 'flycheck-mode-hook #'flyover-mode)
-
-   ;; Configure which error levels to display
-   ;; Possible values: error, warning, info
-   (setq flyover-levels '(error warning info))  ; Show all levels
-   ;; (setq flyover-levels '(error warning))    ; Show only errors and warnings
-   ;; (setq flyover-levels '(error))            ; Show only errors
-
-
-   ;; Use theme colors for error/warning/info faces
-   (setq flyover-use-theme-colors t)
-
-   ;; Adjust background lightness (lower values = darker)
-   ;;(setq flyover-background-lightness 45)
-
-   ;; Make icon background darker than foreground
-   ;;(setq flyover-percent-darker 40)
-
-   ;;(setq flyover-text-tint 'lighter) ;; or 'darker or nil
-
-   ;; "Percentage to lighten or darken the text when tinting is enabled."
-   ;;(setq flyover-text-tint-percent 50)
-
-   ;; Choose which checkers to use (flycheck, flymake, or both)
-   (setq flyover-checkers '(flycheck flymake))
-
-   #+end_src
-
-   #+RESULTS:
-   | flycheck | flymake |
-
 ** k8s
 
 *** COMMENT kele
@@ -5760,73 +5007,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
     #+RESULTS:
     : t
-
-** COMMENT kubernetes
-
-   Built into Tramp since Emacs 29 (=tramp-container.el=). It registers a
-   full ~kubernetes~ method — no external package and no manual
-   ~tramp-methods~ push required. It supersedes ~kubernetes-tramp~.
-
-   Path syntax:
-   - =/kubernetes:POD:/path= — shell into POD.
-   - =/kubernetes:CONTAINER.POD:/path= — pick a specific container.
-
-   #+begin_src emacs-lisp
-
-   1. [@1]  ~tramp-kubernetes-namespace~ defaults to ="default"=, and Tramp
-      then forces =--namespace=default= onto every ~kubectl exec=,
-      overriding the namespace baked into the current context. With our
-      context (=oleksii.koval-rgk8s-prod-eu=) already pointing at the right
-      namespace, that override made pods "not found" and the connection
-      failed. Setting the variable to nil makes Tramp omit =--namespace= and
-      defer to the context — matching how the old bare ~kubectl~ method
-      behaved.
-
-   2. [@2]  The ~%x~ (context + namespace) argument is expanded via a
-      connection-local variable (~tramp-extra-expand-args~) carried by
-      ~tramp-kubernetes-connection-local-default-profile~. Tramp registers
-      this profile at startup, but something later in our init rebuilds the
-      connection-local alists and drops it, giving =Invalid format character
-      '%x'= — but *only* on a fresh start; re-evaluating the two
-      ~connection-local-set-*~ forms makes it work. The offending rebuild
-      isn't in our own files (nothing here touches
-      ~connection-local-criteria-alist~ / ~connection-local-profile-alist~;
-      the stray ~<host>-vars~ profiles are created by Emacs/Tramp at
-      runtime), so instead of chasing it we re-assert the profile from
-      ~emacs-startup-hook~, which fires after the whole init — the same
-      point a manual re-eval would. Registering it inline does *not*
-      survive; the hook does.
-
-   #+begin_src emacs-lisp
-   (require 'tramp-container)
-
-   ;; (1) Don't force --namespace=default; defer to the current kube context.
-   (setq tramp-kubernetes-namespace nil)
-
-   ;; (2) Re-assert the kubernetes connection-local profile that teaches
-   ;; Tramp to expand %x / %a / %h. Tramp registers it at startup, but
-   ;; something later in our init rebuilds the connection-local alists and
-   ;; drops it — symptom: "Invalid format character '%x'" only on a FRESH
-   ;; start, and it goes away as soon as the two forms below are re-eval'ed.
-   ;; So we register from `emacs-startup-hook', which runs AFTER the whole
-   ;; init (org-babel-load-file, custom, everything that clobbers it), the
-   ;; same moment a manual re-eval would happen. Running it inline here does
-   ;; NOT survive; the hook is what makes it stick across restarts.
-   (defun my-tramp-register-kubernetes-profile ()
-     "(Re)register the tramp-container kubernetes connection-local profile."
-     (connection-local-set-profile-variables
-      'tramp-kubernetes-connection-local-default-profile
-      '((tramp-config-check . tramp-kubernetes--current-context-data)
-        (tramp-extra-expand-args
-         . (?a (tramp-kubernetes--container       (car tramp-current-connection))
-            ?h (tramp-kubernetes--pod             (car tramp-current-connection))
-            ?x (tramp-kubernetes--context-namespace (car tramp-current-connection))))))
-     (connection-local-set-profiles
-      '(:application tramp :protocol "kubernetes")
-      'tramp-kubernetes-connection-local-default-profile))
-
-   (add-hook 'emacs-startup-hook #'my-tramp-register-kubernetes-profile)
-   #+end_src
 
 ** kubernetes (old — kubernetes-tramp, obsoleted)
 
@@ -5963,58 +5143,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      (setq js-indent-level 2)
 
    #+end_src
-
-** COMMENT Javascript
-   :LOGBOOK:
-   - State "BUGFIXED"   from              [2023-03-07 Tue 20:35]
-   :END:
-
-   #+begin_src emacs-lisp
-     ;; (autoload 'javascript-mode "javascript" nil t)
-     ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
-     (use-package js2-mode)
-     ;; (use-package js3-mode)
-     (use-package js2-refactor)
-     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
-     (setq js-indent-level 2)
-
-     ;; jslint
-     ;; (use-package flymake-jslint)
-     ;; (use-package flymake-cursor)
-     (require 'json)
-     ;; (require 'flycheck)
-     ;; (defun my-parse-jslinter-warning (warning)
-     ;;   (flycheck-error-new
-     ;;    :line (1+ (cdr (assoc 'line warning)))
-     ;;    :column (1+ (cdr (assoc 'column warning)))
-     ;;    :message (cdr (assoc 'message warning))
-     ;;    :level 'error
-     ;;    :buffer (current-buffer)
-     ;;    :checker 'javascript-jslinter))
-     ;; (defun jslinter-error-parser (output checker buffer)
-     ;;   (mapcar 'parse-jslinter-warning
-     ;;           (cdr (assoc 'warnings (aref (json-read-from-string output) 0)))))
-     ;; (flycheck-define-checker javascript-jslinter
-     ;;   "A JavaScript syntax and style checker based on JSLinter.
-
-     ;; See URL `https://github.com/tensor5/JSLinter'."
-     ;;   :command ("jslint" "--raw" source)
-     ;;   :error-parser jslinter-error-parser
-     ;;   :modes (js-mode js2-mode js3-mode))
-
-
-     (add-hook 'js2-mode-hook
-	       (defun my-js2-mode-setup ()
-		 (flycheck-mode t)
-		 (when (executable-find "eslint")
-		   (flycheck-select-checker 'javascript-eslint))))
-   #+end_src
-
-** COMMENT React
-
- #+begin_src emacs-lisp
- (use-package rjsx-mode)
- #+end_src
 
 ** json-mode
 
@@ -6350,12 +5478,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    )
    #+end_src
 
-** COMMENT typescript-ts-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-ts-mode))
-   #+end_src
-
 ** typescript-mode
 
    #+begin_src emacs-lisp
@@ -6475,18 +5597,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (my-enable-tide)
    #+end_src
 
-** COMMENT python-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-   #+end_src
-
-** COMMENT python-ts-mode
-
-   #+begin_src emacs-lisp
-   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
-   #+end_src
-
 ** conf-mode
    #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.env" . conf-mode))
@@ -6505,16 +5615,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.mjml" . sgml-mode))
    #+end_src
-
-** COMMENT org postgres / sql
-
-   #+begin_src emacs-lisp
-   (org-babel-do-load-languages
-    'org-babel-load-languages
-    '((sql . t)))
-   #+end_src
-
-   #+RESULTS:
 
 ** tree-sitter
 
@@ -7078,27 +6178,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
                       (window-width . 90)))
    #+end_src
 
-** COMMENT claude-code.el
-
-   #+begin_src emacs-lisp
-   (use-package claude-code :ensure t
-     :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
-     :config
-     ;; optional IDE integration with Monet
-     ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
-     ;; (monet-mode 1)
-
-     (claude-code-mode)
-     :bind-keymap ("C-c c" . claude-code-command-map)
-
-     ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
-     :bind
-     (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
-   #+end_src
-
-   #+RESULTS:
-   : claude-code-cycle-mode
-
 ** vterm
 
  #+begin_src emacs-lisp
@@ -7117,20 +6196,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 * Integrations
 
   Mail, passwords, PDFs, issue tracking, Hyperbole links and other external tools.
-
-** COMMENT elfeed
-
-   #+begin_src emacs-lisp
-     (defalias 'elfeed-mark-read
-       (kmacro "<return> q"))
-
-     (use-package elfeed
-       :bind (:map elfeed-search-mode-map
-		   ("r" . elfeed-mark-read)
-		   ("`" . elfeed-mark-read)
-		   )
-       )
-   #+end_src
 
 ** ledger
    #+begin_src emacs-lisp
@@ -7320,18 +6385,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
      (add-hook 'notmuch-show-hook 'my-notmuch-show-local-bindings)
      #+end_src
-
-** COMMENT lastpass
-
-   #+begin_src emacs-lisp
-   (use-package lastpass
-     :init
-     (setq lastpass-multifactor-use-passcode t)
-     :config
-     ;; Set lastpass user
-     ;; Enable lastpass custom auth-source
-     (lastpass-auth-source-enable))
-   #+end_src
 
 ** ztree
 
@@ -7536,6 +6589,1011 @@ Format: \"/full/path/file.el:L42\"."
      #+begin_src emacs-lisp
 
      #+end_src
+
+** External browser
+
+Links opened from Emacs always go to Vivaldi, regardless of the macOS default
+browser.  The system default has to be flipped to Safari for the VPN tunnel
+(=defbrowser= toggles it), and Emacs should not follow it there.  macOS only —
+on Linux the stock =browse-url= default is kept.
+
+#+begin_src emacs-lisp
+(when (eq system-type 'darwin)
+  (setq browse-url-browser-function #'browse-url-generic
+        browse-url-generic-program "open"
+        browse-url-generic-args '("-a" "Vivaldi")))
+#+end_src
+
+* My functions
+
+  Small helper commands.
+
+** execute thunar here
+
+   #+begin_src emacs-lisp
+   (defun exec-thunar ()
+     (interactive)
+     "Execute thunar here"
+     (shell-command "thunar")
+     )
+   (global-set-key (kbd "C-x !") 'exec-thunar)
+   #+end_src
+
+   #+RESULTS:
+   : exec-thunar
+
+** calculate via bc
+
+#+begin_src emacs-lisp
+(defun bc-on-region (beg end)
+  "Clean region, run `bc -l`, and insert result."
+  (interactive "r")
+  (let* ((raw-text (buffer-substring-no-properties beg end))
+         ;; Clean the text for bc: trim whitespace and remove trailing '='
+         (expr (let ((trimmed (string-trim raw-text)))
+                 (if (string-suffix-p "=" trimmed)
+                     (substring trimmed 0 -1)
+                   trimmed)))
+         (result (shell-command-to-string
+                  (format "echo %s | bc -l" (shell-quote-argument expr)))))
+    ;; (goto-char end)
+    (end-of-line)
+    (insert (string-trim-right result))))
+#+end_src
+
+#+RESULTS:
+: bc-on-region
+
+* Archive
+
+  Disabled configuration (=COMMENT= subtrees), kept for reference.  Nothing here is loaded.
+
+** COMMENT Straight
+
+   #+begin_src emacs-lisp
+   (defvar bootstrap-version)
+   (let ((bootstrap-file
+          (expand-file-name
+           "straight/repos/straight.el/bootstrap.el"
+           (or (bound-and-true-p straight-base-dir)
+               user-emacs-directory)))
+         (bootstrap-version 7))
+     (unless (file-exists-p bootstrap-file)
+       (with-current-buffer
+           (url-retrieve-synchronously
+            "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+            'silent 'inhibit-cookies)
+         (goto-char (point-max))
+         (eval-print-last-sexp)))
+     (load bootstrap-file nil 'nomessage))
+   #+end_src
+
+** COMMENT cond-let
+
+Provided by the ELPA package (also pulled in as a magit/forge dependency).
+Managed via use-package so it is an explicitly-selected package — do NOT
+vendor a copy under =lisp/=, which would shadow the package on load-path
+and cause version-skew macro errors after magit/forge upgrades.
+
+#+begin_src emacs-lisp
+(use-package cond-let)
+#+end_src
+
+#+RESULTS:
+
+** COMMENT Hydra + smerge
+
+ /I found it less useful and it often prevents me from doing right thing. I prefer ediff/
+
+ This configuration automatically activates a helpful ~smerge-mode~ hydra when a file containing merge conflicts is visited from a Magit diff section.  You can manually activate the hydra with the command ~unpackaged/smerge-hydra/body~.  (Inspired by [[https://github.com/kaushalmodi/.emacs.d/blob/master/setup-files/setup-diff.el][Kaushal Modi's Emacs config]].)
+
+ *Requires*:
+ +  [[https://github.com/abo-abo/hydra][hydra]]
+ +  [[https://magit.vc/][Magit]]
+
+ https://protesilaos.com/codelog/2020-04-10-emacs-smerge-ediff/
+
+ #+begin_src emacs-lisp
+   (require 'hydra)
+
+   (use-package smerge-mode
+     :config
+     (defhydra unpackaged/smerge-hydra
+       (:color pink :hint nil :post (smerge-auto-leave))
+       "
+   ^Move^       ^Keep^               ^Diff^                 ^Other^
+   ^^-----------^^-------------------^^---------------------^^-------
+   _n_ext       _b_ase               _<_: upper/base        _C_ombine
+   _p_rev       _u_pper              _=_: upper/lower       _r_esolve
+   ^^           _l_ower              _>_: base/lower        _k_ill current
+   ^^           _a_ll                _R_efine
+   ^^           _RET_: current       _E_diff
+   "
+       ("n" smerge-next)
+       ("p" smerge-prev)
+       ("b" smerge-keep-base)
+       ("u" smerge-keep-upper)
+       ("l" smerge-keep-lower)
+       ("a" smerge-keep-all)
+       ("RET" smerge-keep-current)
+       ("\C-m" smerge-keep-current)
+       ("<" smerge-diff-base-upper)
+       ("=" smerge-diff-upper-lower)
+       (">" smerge-diff-base-lower)
+       ("R" smerge-refine)
+       ("E" smerge-ediff)
+       ("C" smerge-combine-with-next)
+       ("r" smerge-resolve)
+       ("k" smerge-kill-current)
+       ("ZZ" (lambda ()
+               (interactive)
+               (save-buffer)
+               (bury-buffer))
+        "Save and bury buffer" :color blue)
+       ("q" nil "cancel" :color blue))
+     :hook (magit-diff-visit-file . (lambda ()
+                                      (when smerge-mode
+                                        (unpackaged/smerge-hydra/body)))))
+ #+end_src
+
+** COMMENT dirvish
+
+   #+begin_src emacs-lisp
+   (use-package dirvish
+     )
+   (dirvish-override-dired-mode)
+   #+end_src
+
+** COMMENT emacs calc
+
+   #+begin_src emacs-lisp
+   (use-package casual
+     :ensure t
+     :bind (:map calc-mode-map ("C-o" . 'casual-main-menu)))
+   #+end_src
+
+** COMMENT dired-casual
+
+   #+begin_src emacs-lisp
+   (use-package casual-dired
+   :ensure t
+   :bind (:map dired-mode-map ("C-o" . 'casual-dired-tmenu)))
+   #+end_src
+
+** COMMENT ivy
+
+ #+begin_src emacs-lisp
+ ;; (use-package counsel
+ ;;   :after ivy
+ ;;   :config (counsel-mode))
+
+ (use-package ivy
+   :defer 0.3
+   :diminish
+   :bind (
+          ;; ("C-c C-r" . ivy-resume)
+          ("C-x B" . ivy-switch-buffer-other-window)
+          ("C-c m i" . ivy-mode)
+	  ([C-f12] . ivy-mode)
+	  )
+   :custom
+   (ivy-count-format "(%d/%d) ")
+   (ivy-use-virtual-buffers t)
+   :config (ivy-mode nil))
+
+ #+end_src
+
+** COMMENT icomplete
+
+ #+begin_src emacs-lisp
+ (global-set-key [s-f11] 'icomplete-mode)
+ (icomplete-mode nil)
+ #+end_src
+
+** COMMENT consult imenu
+
+   #+begin_src emacs-lisp
+   (global-set-key [M-f2] 'consult-imenu)
+   (add-to-list 'consult-imenu-config
+                '(python-mode
+                  :toplevel "Function"
+                  :types
+                  ((?f "Function" font-lock-function-name-face)
+                   (?m "Method" font-lock-function-name-face)
+                   (?c "Class" font-lock-property-use-face)
+                   (?M "Module" font-lock-builtin-face)
+                   (?F "Field" font-lock-regexp-face)
+                   (?v "Variable" font-lock-constant-face))))
+
+   (global-set-key [M-f7] 'consult-ripgrep)
+   #+end_src
+
+** COMMENT consult-omni
+
+   #+begin_src emacs-lisp
+     (global-unset-key (kbd "C-x /"))
+     (use-package browser-hist)
+     (use-package consult-omni
+       :straight (consult-omni :type git :host github :repo "armindarvish/consult-omni" :branch "main" :files (:defaults "sources/*.el"))
+       :after consult
+       :bind (
+              ("C-x / p d r" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p d m" . consult-omni-rg-dpa-merge-request)
+              ("C-x / p r y" . consult-omni-rg-yourtrack-task)
+              ("C-x / p r t" . consult-omni-rg-yourtrack-task)
+              ;;("C-x / p f f" . consult-omni-example)
+              ;;("C-x / p f j" . consult-omni-example-jira-task)
+              ;;("C-x / p f b" . consult-omni-example-bitbucket-prs)
+              ("C-x / p u t" . consult-omni-ua2web-redmine-task)
+              ("C-x / s g" . consult-omni-my-global-search)
+              )
+       ;;:custom
+       ;; General settings that apply to all sources
+       ;;(consult-omni-show-preview t) ;;; show previews
+       ;;(consult-omni-preview-key "C-o") ;;; set the preview key to C-o
+       ;; :config
+       )
+     ;; Load Sources Core code
+     (require 'consult-omni-sources)
+     (require 'consult-omni-apps)
+     (require 'consult-omni-browser-history)
+     (require 'consult-omni-buffer)
+     (require 'consult-omni-calc)
+     (require 'consult-omni-grep)
+     (require 'consult-omni-gptel)
+     (require 'consult-omni-elfeed)
+     (require 'consult-omni-ripgrep)
+     (require 'consult-omni-notmuch)
+     (require 'consult-omni-org-agenda)
+     (require 'consult-omni-google)
+
+     (consult-omni-define-source "Example Jira task"
+                                 :type 'sync
+                                 :request
+                                 #'my-fh-jira-task-results)
+
+     (defun my-fh-jira-task-results (input &rest args)
+       "return jira task link"
+       (let ((jira_url (concat "https://example.atlassian.net/browse/" input))
+             (bitbucket_search_url (concat "https://bitbucket.org/example/repo/pull-requests/?state=OPEN&query=" input))
+             )
+         (list
+          (propertize (format "Jira %s" jira_url) :url jira_url :source "Task References")  ;; first result - link to Jira task itself
+          (propertize (format "Bitbucket search %s" bitbucket_search_url) :url bitbucket_search_url :source "Task References")
+          )
+         )
+       )
+
+      (consult-omni-define-source "Example Bitbucket PRs"
+                                  :type 'async
+                                  :request
+                                  #'my-fh-open-bitbucket-prs)
+
+      (defun my-fh-open-bitbucket-prs (input &rest args)
+        "bitbucket PR"
+            (let ((url-request-method "GET")
+                (url-request-extra-headers (list (cons "Authorization" example-basic-auth)))
+                (url "https://api.bitbucket.org/2.0/repositories/example/repo/pullrequests"))
+            (with-current-buffer (url-retrieve-synchronously url)
+              (goto-char (point-min))
+              (re-search-forward "\n\n" nil 'noerror)
+              (delete-region (point-min) (point))
+              (let* ((json-result (lsp-json-read-buffer))
+                     (values (gethash "values" json-result))
+                     (titles (delq nil (mapcar (lambda (val) (let* ((title (gethash "title" val))
+                                                                    (links (gethash "links" val))
+                                                                    (html_link (gethash "href" (gethash "html" links)))
+                                                                    ) (if (string-match (concat ".*" input ".*") title) (propertize title :url html_link :source "BB Pull Request") nil))) values)))
+                     )
+                titles
+                )))
+            )
+
+   ;; (consult-omni-define-source "fh-bb2"
+   ;;                             :type 'async
+   ;;                             :require-match nil
+   ;;                             :face 'consult-omni-engine-title-face
+   ;;                             :request #'my-fh-open-bitbucket-prs
+   ;;                             )
+
+
+
+     (consult-omni-define-source "Example Jira Tickets"
+                                  :type 'async
+                                  :request
+                                  #'my-fh-jira-search)
+
+         (defun my-fh-jira-search (input &rest args)
+             "search jira tickets"
+                 (let ((url-request-method "GET")
+                     (url-request-extra-headers (list (cons "Authorization" fielhub-jira-basic-auth)))
+                     (url (concat "https://example.atlassian.net/rest/api/2/issue/picker?query=" input)))
+                 (with-current-buffer (url-retrieve-synchronously url)
+                   (goto-char (point-min))
+                   (re-search-forward "\n\n" nil 'noerror)
+                   (delete-region (point-min) (point))
+                   (let* ((json-result (lsp-json-read-buffer))
+                          (sections (gethash "sections" json-result))
+                          (issues (gethash "issues" (aref sections 0)))
+                           (titles (mapcar (lambda (val) (let* ((key (gethash "key" val))
+                                                                (summaryText (concat key " - " (gethash "summaryText" val)))
+                                                                (url (concat "https://example.atlassian.net/browse/" key)))
+                                                           (message summaryText)
+                                                          (propertize summaryText :url url :source "Jira"))) issues))
+                     )
+                     titles
+                     ))
+                 ))
+
+
+     (defun consult-omni-example (&optional initial
+                                             al no-callback &rest args)
+       "My omni"
+       (interactive "P")
+       (let ((consult-async-split-style 'comma))
+         (consult-omni-multi initial "Example 🌍:" '("notmuch" "Example Jira Tickets" "Example Bitbucket PRs") no-callback args)))
+
+
+      (consult-omni-define-source "UA2WEB Redmine task"
+                                  :type 'sync
+                                  :request
+                                  #'my-ua2web-redmine-task)
+
+
+     (defun my-ua2web-redmine-task (input &rest args)
+       "return UA2WEB task link"
+       (let ((ua2web_redmine_url (concat "https://redmine.example.com/" input))
+             )
+         (list
+          (propertize (format "Ua2Task %s" ua2web_redmine_url) :url ua2web_redmine_url :source "UA2WEB Redmine Task Reference")
+          )
+         )
+       )
+
+      (consult-omni-define-source "My Global Search"
+                                  :type 'sync
+                                  :request
+                                  #'my-global-search)
+
+     (defun my-global-search (input &rest args)
+       "My Global Search"
+       (let ((google_search_url (concat "https://www.google.com/search?q=" input))
+             (duckduckgo_search_url (concat "https://duckduckgo.com/?t=h_&q=" input))
+             )
+         (list
+          (propertize (format "Google Search %s" google_search_url) :url google_search_url :source "global search")
+          (propertize (format "Duck Duck Go Search %s" duckduckgo_search_url) :url duckduckgo_search_url :source "global search")
+          )
+         )
+       )
+
+   ;; RG
+   (consult-omni-define-source "RG DPA Merge Request"
+                               :type 'sync
+                               :request
+                               #'consult-omni-dpa-merge-request-url)
+
+   (consult-omni-define-source "RG DPA YourTrack Task"
+                               :type 'sync
+                               :request
+                               #'rg-dpa-yourtrack-url)
+
+
+   #+end_src
+
+** COMMENT p-search
+
+   #+begin_src emacs-lisp
+   (quelpa '(p-search :repo "zkry/p-search" :fetcher github))
+   (require 'p-search)
+   #+end_src
+
+   #+RESULTS:
+   : p-search
+
+** COMMENT minimap
+
+   #+begin_src emacs-lisp
+   (use-package minimap)
+   #+end_src
+
+** COMMENT theme
+
+   #+begin_src emacs-lisp
+   (use-package org-html-themify
+     :straight
+     (org-html-themify
+      :type git
+      :host github
+      :repo "DogLooksGood/org-html-themify"
+      :files ("*.el" "*.js" "*.css"))
+     :hook (org-mode . org-html-themify-mode)
+     :custom
+     (org-html-themify-themes
+      '((dark . modus-vivendi)
+        (light . modus-operandi))))
+   #+end_src
+
+   #+RESULTS:
+   | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
+
+** COMMENT minimap
+
+   Lets try it (again), but I found that it does not work well in org-mode for example.
+
+   #+begin_src emacs-lisp
+   (use-package minimap
+     :ensure t)
+   (define-key esc-map [f12] #'minimap-mode)
+   #+end_src
+
+   - Comment from [2025-01-29 Wed] - its still buggy and sometimes won't exit from this mode
+
+** COMMENT combobulate
+
+   #+begin_src emacs-lisp
+   (use-package combobulate
+       :preface
+       ;; You can customize Combobulate's key prefix here.
+       ;; Note that you may have to restart Emacs for this to take effect!
+       (setq combobulate-key-prefix "C-z .")
+
+       ;; Optional, but recommended.
+       ;;
+       ;; You can manually enable Combobulate with `M-x
+       ;; combobulate-mode'.
+       :hook
+         ((python-ts-mode . combobulate-mode)
+          (js-ts-mode . combobulate-mode)
+          (html-ts-mode . combobulate-mode)
+          (css-ts-mode . combobulate-mode)
+          (yaml-ts-mode . combobulate-mode)
+          (typescript-ts-mode . combobulate-mode)
+          (json-ts-mode . combobulate-mode)
+          (tsx-ts-mode . combobulate-mode))
+       ;; Amend this to the directory where you keep Combobulate's source
+       ;; code.
+       :load-path "~/.emacs.d/lisp/combobulate/"
+       )
+   #+end_src
+
+** COMMENT outline-ident
+
+   #+begin_src emacs-lisp
+   (use-package outline-indent
+     :ensure t
+     :straight (outline-indent
+                :type git
+                :host github
+                :repo "jamescherti/outline-indent.el")
+     :custom
+     (outline-indent-ellipsis " ▼ "))
+   #+end_src
+
+** COMMENT grammarly
+
+   #+begin_src emacs-lisp
+       (use-package grammarly
+         )
+       (grammarly-load-from-authinfo)
+
+     (use-package lsp-grammarly
+       :ensure t
+       :hook (text-mode . (lambda ()
+                            (require 'lsp-grammarly)
+                            (lsp))))  ; or lsp-deferred
+
+
+   #+end_src
+
+
+   #+RESULTS:
+
+** COMMENT org-roam (replaced with ~denote~)
+
+   #+begin_src emacs-lisp
+   (use-package org-roam
+     :ensure t
+     :custom(org-roam-directory "~/org-roam")
+     :bind (("C-c n l" . org-roam-buffer-toggle)
+	    ("C-c n f" . org-roam-node-find)
+	    ("C-c n t" . org-roam-tag-add)
+	    ("C-c n r" . org-roam-tag-remove)
+	    ("C-c n i" . org-roam-node-insert))
+     :config
+     (org-roam-setup)
+     )
+
+   (setq org-roam-node-display-template
+	 (concat "${title:*} "
+		 (propertize "${tags:10}" 'face 'org-tag)))
+
+   ;; https://www.reddit.com/r/emacs/comments/123gu1l/how_to_have_history_suggestion_in_vertico_for_mx/
+   (use-package consult
+     :bind (
+	    :map minibuffer-local-map
+		 ("M-s" . consult-history)                 ;; orig. next-matching-history-element
+		 ("M-r" . consult-history)))
+
+   (use-package consult-org-roam
+     :ensure t
+     :after org-roam
+     :init
+     (require 'consult-org-roam)
+     ;; Activate the minor mode
+     (consult-org-roam-mode 1)
+     :custom
+     ;; Use `ripgrep' for searching with `consult-org-roam-search'
+     (consult-org-roam-grep-func #'consult-ripgrep)
+     ;; Configure a custom narrow key for `consult-buffer'
+     (consult-org-roam-buffer-narrow-key ?r)
+     ;; Display org-roam buffers right after non-org-roam buffers
+     ;; in consult-buffer (and not down at the bottom)
+     (consult-org-roam-buffer-after-buffers t)
+     :config
+     ;; Eventually suppress previewing for certain functions
+     (consult-customize
+      consult-org-roam-forward-links
+      :preview-key (kbd "M-."))
+     :bind
+     ;; Define some convenient keybindings as an addition
+     ("C-c n e" . consult-org-roam-file-find)
+     ("C-c n b" . consult-org-roam-backlinks)
+     ("C-c n l" . consult-org-roam-forward-links)
+     ("C-c n r" . consult-org-roam-search))
+   #+end_src
+
+** COMMENT dslide
+
+   #+begin_src emacs-lisp
+     ;; package-vc
+     ;; (package-vc-install
+     ;;  '(dslide
+     ;;    :url "https://github.com/positron-solutions/dslide.git"))
+   #+end_src
+
+** COMMENT org-present
+
+   #+begin_src emacs-lisp
+   (use-package org-present)
+   #+end_src
+
+** COMMENT poetry
+   I don't plan to use Poetry anymore - replaced with ~uv~
+
+   #+begin_src emacs-lisp
+     (use-package poetry
+       :ensure t)
+   #+end_src
+
+** COMMENT pylookup
+   I don't use it anymore as LSP has great documentation support.
+
+   https://github.com/tsgates/pylookup - Python sphinx documenation engine indexing & access form Emacs.
+
+   #+begin_src emacs-lisp
+     ;; load pylookup when compile time
+     (eval-when-compile (require 'pylookup))
+     (setq pylookup-program "~/.emacs.d/pylookup.py")
+     (setq pylookup-db-file "~/var/pylookup/pylookup.db")
+     (global-set-key [(control shift menu)] 'pylookup-lookup)
+   #+end_src
+
+** COMMENT prettier (replaced with Aphelia mode)
+
+   https://github.com/jscheid/prettier.el
+
+   #+begin_src emacs-lisp
+   (use-package prettier
+     :bind (
+	    ("C-c m e" . prettier-mode))
+     )
+   #+end_src
+
+   I also enable it where its needed by this in .dir-locals, as in example below:
+   #+begin_example
+   (
+    (js-mode . ((eval . (prettier-mode t))))
+    (typescript-mode . ((eval . (prettier-mode t))))
+   )
+   #+end_example
+
+** COMMENT moldable emacs
+   :LOGBOOK:
+   - State "TODO"       from              [2023-01-21 сб 13:55]
+   :END:
+
+ #+begin_src emacs-lisp
+ (use-package moldable-emacs
+   :load-path "~/.emacs.d/lisp/moldable-emacs/"
+   :bind (("C-c m m" . me-mold)
+          ("C-c m f" . me-go-forward)
+          ("C-c m b" . me-go-back)
+          ("C-c m o" . me-open-at-point)
+          ("C-c m d" . me-mold-docs)
+          ("C-c m g" . me-goto-mold-source)
+          ("C-c m e a" . me-mold-add-last-example)
+          )
+   :config
+   (require 'moldable-emacs)
+   (add-to-list 'me-files-with-molds (concat (file-name-directory (symbol-file 'me-mold)) "molds/experiments.el")) ;; TODO this is relevant only if you have private molds
+   (me-setup-molds))
+ #+end_src
+
+** COMMENT tree-sitter settings
+
+   #+begin_src emacs-lisp
+
+   #+end_src
+
+** COMMENT lsp-bridge
+
+   Fast & more automated LSP support
+
+   #+begin_src emacs-lisp
+     (use-package posframe)
+     (add-to-list 'load-path "~/.emacs.d/lisp/lsp-bridge/")
+     (require 'lsp-bridge)
+     ;; (global-lsp-bridge-mode)
+
+     (defun my-enable-lsp-bridge-for-typescript ()
+       (interactive)
+       (add-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
+       (add-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-typescript ()
+       (interactive)
+       (remove-hook 'typescript-ts-mode-hook #'lsp-bridge-mode)
+       (remove-hook 'tsx-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-enable-lsp-bridge-for-python ()
+       (interactive)
+       (add-hook 'python-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-python ()
+       (interactive)
+       (remove-hook 'python-ts-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-project-current (d)
+       (message d)
+       (cdr (project-current))
+       )
+
+
+     (defun my-enable-lsp-bridge-for-clojure ()
+       (interactive)
+       (add-hook 'clojure-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-clojure ()
+       (interactive)
+       (remove-hook 'clojure-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-enable-lsp-bridge-for-js2 ()
+       (interactive)
+       (add-hook 'js2-mode-hook #'lsp-bridge-mode)
+       )
+
+     (defun my-disable-lsp-bridge-for-js2 ()
+       (interactive)
+       (remove-hook 'js2-mode-hook #'lsp-bridge-mode)
+       )
+
+   (define-key lsp-bridge-mode-map (kbd "M-.") #'lsp-bridge-find-def)
+   (define-key lsp-bridge-mode-map (kbd "M-,") #'lsp-bridge-find-def-return)
+   (define-key lsp-bridge-mode-map [(shift f1)] #'lsp-bridge-popup-documentation)
+   (define-key lsp-bridge-mode-map [f8] #'lsp-bridge-diagnostic-jump-next)
+   (define-key lsp-bridge-mode-map [(shift f8)] #'lsp-bridge-diagnostic-jump-prev)
+   (define-key lsp-bridge-mode-map [(control shift f8)] #'lsp-bridge-diagnostic-list)
+
+
+   (my-enable-lsp-bridge-for-js2)
+   ;; (my-enable-lsp-bridge-for-typescript)
+   ;; (my-enable-lsp-bridge-for-clojure)
+   (my-enable-lsp-bridge-for-python)
+
+   ;; https://github.com/manateelazycat/lsp-bridge/issues/636
+   (remove-hook 'minibuffer-setup-hook #'lsp-bridge-enable-in-minibuffer)
+   #+end_src
+
+** COMMENT sql-mysql
+
+   #+begin_src emacs-lisp
+   ;; https://stackoverflow.com/questions/12613/specify-a-port-number-in-emacs-sql-mysql
+   (setq sql-mysql-login-params (append sql-mysql-login-params '(port)))
+   (setq sql-port 3306) ;; default MySQL port
+   #+end_src
+
+   #+RESULTS:
+   : 3306
+
+** COMMENT eslint                                                       :WIP:
+
+   #+begin_src emacs-lisp
+     (add-hook 'js2-mode-hook
+	       (defun my-js2-mode-setup ()
+		 (flycheck-mode t)
+		 (when (executable-find "eslint")
+		   (flycheck-select-checker 'javascript-eslint))))
+
+   (with-eval-after-load 'flycheck
+     (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
+   #+end_src
+
+   P.S. may be try: http://codewinds.com/blog/2015-04-02-emacs-flycheck-eslint-jsx.html
+
+** COMMENT python auto virtualenv for python-ts-mode
+
+   #+begin_src emacs-lisp
+        (use-package auto-virtualenv
+          :load-path "path/to/auto-virtualenv"
+          :config
+          (setq auto-virtualenv-verbose t)
+          (auto-virtualenv-setup))
+        ;; my custom version of PR
+        ;; (defun auto-virtualenv-find-local-venv (project-root)
+        ;;   "Check for a local virtual environment in PROJECT-ROOT. Return the path if found, otherwise nil."
+        ;;   (auto-virtualenv--debug "Checking for local virtualenv in %s" project-root)
+        ;;   (catch 'found-virtualenv
+        ;;     (dolist (dir auto-virtualenv-local-env-dirs)
+        ;;       (let ((maybe-virtualenv-in (expand-file-name dir project-root)))
+        ;;         (when (file-directory-p maybe-virtualenv-in)
+        ;;           (auto-virtualenv--debug "Found local virtualenv at %s" maybe-virtualenv-in)
+        ;;           (throw 'found-virtualenv maybe-virtualenv-in))))))
+        (defun auto-virtualenv-update-mode-line ()
+          )
+
+   #+end_src
+
+** COMMENT pgmacs
+   https://github.com/emarsden/pgmacs.git
+
+   #+begin_src emacs-lisp
+   (use-package pgmacs
+     :load-path "~/.emacs.d/lisp/pgmacs/"
+     :init
+     (unless (package-installed-p 'pg)
+       (package-vc-install "https://github.com/emarsden/pg-el" nil nil 'pg))
+     (unless (package-installed-p 'pgmacs)
+       (package-vc-install "https://github.com/emarsden/pgmacs"))
+     (require 'pgmacs))
+   #+end_src
+
+** COMMENT flyover
+
+   https://github.com/konrad1977/flyover
+   #+begin_src emacs-lisp
+   (require 'flyover)
+   ;; Enable flyover-mode globally
+   (add-hook 'flycheck-mode-hook #'flyover-mode)
+
+   ;; Configure which error levels to display
+   ;; Possible values: error, warning, info
+   (setq flyover-levels '(error warning info))  ; Show all levels
+   ;; (setq flyover-levels '(error warning))    ; Show only errors and warnings
+   ;; (setq flyover-levels '(error))            ; Show only errors
+
+
+   ;; Use theme colors for error/warning/info faces
+   (setq flyover-use-theme-colors t)
+
+   ;; Adjust background lightness (lower values = darker)
+   ;;(setq flyover-background-lightness 45)
+
+   ;; Make icon background darker than foreground
+   ;;(setq flyover-percent-darker 40)
+
+   ;;(setq flyover-text-tint 'lighter) ;; or 'darker or nil
+
+   ;; "Percentage to lighten or darken the text when tinting is enabled."
+   ;;(setq flyover-text-tint-percent 50)
+
+   ;; Choose which checkers to use (flycheck, flymake, or both)
+   (setq flyover-checkers '(flycheck flymake))
+
+   #+end_src
+
+   #+RESULTS:
+   | flycheck | flymake |
+
+** COMMENT kubernetes
+
+   Built into Tramp since Emacs 29 (=tramp-container.el=). It registers a
+   full ~kubernetes~ method — no external package and no manual
+   ~tramp-methods~ push required. It supersedes ~kubernetes-tramp~.
+
+   Path syntax:
+   - =/kubernetes:POD:/path= — shell into POD.
+   - =/kubernetes:CONTAINER.POD:/path= — pick a specific container.
+
+   #+begin_src emacs-lisp
+
+   1. [@1]  ~tramp-kubernetes-namespace~ defaults to ="default"=, and Tramp
+      then forces =--namespace=default= onto every ~kubectl exec=,
+      overriding the namespace baked into the current context. With our
+      context (=oleksii.koval-rgk8s-prod-eu=) already pointing at the right
+      namespace, that override made pods "not found" and the connection
+      failed. Setting the variable to nil makes Tramp omit =--namespace= and
+      defer to the context — matching how the old bare ~kubectl~ method
+      behaved.
+
+   2. [@2]  The ~%x~ (context + namespace) argument is expanded via a
+      connection-local variable (~tramp-extra-expand-args~) carried by
+      ~tramp-kubernetes-connection-local-default-profile~. Tramp registers
+      this profile at startup, but something later in our init rebuilds the
+      connection-local alists and drops it, giving =Invalid format character
+      '%x'= — but *only* on a fresh start; re-evaluating the two
+      ~connection-local-set-*~ forms makes it work. The offending rebuild
+      isn't in our own files (nothing here touches
+      ~connection-local-criteria-alist~ / ~connection-local-profile-alist~;
+      the stray ~<host>-vars~ profiles are created by Emacs/Tramp at
+      runtime), so instead of chasing it we re-assert the profile from
+      ~emacs-startup-hook~, which fires after the whole init — the same
+      point a manual re-eval would. Registering it inline does *not*
+      survive; the hook does.
+
+   #+begin_src emacs-lisp
+   (require 'tramp-container)
+
+   ;; (1) Don't force --namespace=default; defer to the current kube context.
+   (setq tramp-kubernetes-namespace nil)
+
+   ;; (2) Re-assert the kubernetes connection-local profile that teaches
+   ;; Tramp to expand %x / %a / %h. Tramp registers it at startup, but
+   ;; something later in our init rebuilds the connection-local alists and
+   ;; drops it — symptom: "Invalid format character '%x'" only on a FRESH
+   ;; start, and it goes away as soon as the two forms below are re-eval'ed.
+   ;; So we register from `emacs-startup-hook', which runs AFTER the whole
+   ;; init (org-babel-load-file, custom, everything that clobbers it), the
+   ;; same moment a manual re-eval would happen. Running it inline here does
+   ;; NOT survive; the hook is what makes it stick across restarts.
+   (defun my-tramp-register-kubernetes-profile ()
+     "(Re)register the tramp-container kubernetes connection-local profile."
+     (connection-local-set-profile-variables
+      'tramp-kubernetes-connection-local-default-profile
+      '((tramp-config-check . tramp-kubernetes--current-context-data)
+        (tramp-extra-expand-args
+         . (?a (tramp-kubernetes--container       (car tramp-current-connection))
+            ?h (tramp-kubernetes--pod             (car tramp-current-connection))
+            ?x (tramp-kubernetes--context-namespace (car tramp-current-connection))))))
+     (connection-local-set-profiles
+      '(:application tramp :protocol "kubernetes")
+      'tramp-kubernetes-connection-local-default-profile))
+
+   (add-hook 'emacs-startup-hook #'my-tramp-register-kubernetes-profile)
+   #+end_src
+
+** COMMENT Javascript
+   :LOGBOOK:
+   - State "BUGFIXED"   from              [2023-03-07 Tue 20:35]
+   :END:
+
+   #+begin_src emacs-lisp
+     ;; (autoload 'javascript-mode "javascript" nil t)
+     ;; (add-to-list 'auto-mode-alist '("\\.js$" . javascript-mode))
+     (use-package js2-mode)
+     ;; (use-package js3-mode)
+     (use-package js2-refactor)
+     (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+     (setq js-indent-level 2)
+
+     ;; jslint
+     ;; (use-package flymake-jslint)
+     ;; (use-package flymake-cursor)
+     (require 'json)
+     ;; (require 'flycheck)
+     ;; (defun my-parse-jslinter-warning (warning)
+     ;;   (flycheck-error-new
+     ;;    :line (1+ (cdr (assoc 'line warning)))
+     ;;    :column (1+ (cdr (assoc 'column warning)))
+     ;;    :message (cdr (assoc 'message warning))
+     ;;    :level 'error
+     ;;    :buffer (current-buffer)
+     ;;    :checker 'javascript-jslinter))
+     ;; (defun jslinter-error-parser (output checker buffer)
+     ;;   (mapcar 'parse-jslinter-warning
+     ;;           (cdr (assoc 'warnings (aref (json-read-from-string output) 0)))))
+     ;; (flycheck-define-checker javascript-jslinter
+     ;;   "A JavaScript syntax and style checker based on JSLinter.
+
+     ;; See URL `https://github.com/tensor5/JSLinter'."
+     ;;   :command ("jslint" "--raw" source)
+     ;;   :error-parser jslinter-error-parser
+     ;;   :modes (js-mode js2-mode js3-mode))
+
+
+     (add-hook 'js2-mode-hook
+	       (defun my-js2-mode-setup ()
+		 (flycheck-mode t)
+		 (when (executable-find "eslint")
+		   (flycheck-select-checker 'javascript-eslint))))
+   #+end_src
+
+** COMMENT React
+
+ #+begin_src emacs-lisp
+ (use-package rjsx-mode)
+ #+end_src
+
+** COMMENT typescript-ts-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.ts" . typescript-ts-mode))
+   #+end_src
+
+** COMMENT python-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+   #+end_src
+
+** COMMENT python-ts-mode
+
+   #+begin_src emacs-lisp
+   (add-to-list 'auto-mode-alist '("\\.py\\'" . python-ts-mode))
+   #+end_src
+
+** COMMENT org postgres / sql
+
+   #+begin_src emacs-lisp
+   (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((sql . t)))
+   #+end_src
+
+   #+RESULTS:
+
+** COMMENT claude-code.el
+
+   #+begin_src emacs-lisp
+   (use-package claude-code :ensure t
+     :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+     :config
+     ;; optional IDE integration with Monet
+     ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+     ;; (monet-mode 1)
+
+     (claude-code-mode)
+     :bind-keymap ("C-c c" . claude-code-command-map)
+
+     ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+     :bind
+     (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+   #+end_src
+
+   #+RESULTS:
+   : claude-code-cycle-mode
+
+** COMMENT elfeed
+
+   #+begin_src emacs-lisp
+     (defalias 'elfeed-mark-read
+       (kmacro "<return> q"))
+
+     (use-package elfeed
+       :bind (:map elfeed-search-mode-map
+		   ("r" . elfeed-mark-read)
+		   ("`" . elfeed-mark-read)
+		   )
+       )
+   #+end_src
+
+** COMMENT lastpass
+
+   #+begin_src emacs-lisp
+   (use-package lastpass
+     :init
+     (setq lastpass-multifactor-use-passcode t)
+     :config
+     ;; Set lastpass user
+     ;; Enable lastpass custom auth-source
+     (lastpass-auth-source-enable))
+   #+end_src
 
 ** COMMENT Hubstaff
 
@@ -7758,57 +7816,3 @@ Format: \"/full/path/file.el:L42\"."
   #+end_src
 
   #+RESULTS:
-
-** External browser
-
-Links opened from Emacs always go to Vivaldi, regardless of the macOS default
-browser.  The system default has to be flipped to Safari for the VPN tunnel
-(=defbrowser= toggles it), and Emacs should not follow it there.  macOS only —
-on Linux the stock =browse-url= default is kept.
-
-#+begin_src emacs-lisp
-(when (eq system-type 'darwin)
-  (setq browse-url-browser-function #'browse-url-generic
-        browse-url-generic-program "open"
-        browse-url-generic-args '("-a" "Vivaldi")))
-#+end_src
-
-* My functions
-
-  Small helper commands.
-
-** execute thunar here
-
-   #+begin_src emacs-lisp
-   (defun exec-thunar ()
-     (interactive)
-     "Execute thunar here"
-     (shell-command "thunar")
-     )
-   (global-set-key (kbd "C-x !") 'exec-thunar)
-   #+end_src
-
-   #+RESULTS:
-   : exec-thunar
-
-** calculate via bc
-
-#+begin_src emacs-lisp
-(defun bc-on-region (beg end)
-  "Clean region, run `bc -l`, and insert result."
-  (interactive "r")
-  (let* ((raw-text (buffer-substring-no-properties beg end))
-         ;; Clean the text for bc: trim whitespace and remove trailing '='
-         (expr (let ((trimmed (string-trim raw-text)))
-                 (if (string-suffix-p "=" trimmed)
-                     (substring trimmed 0 -1)
-                   trimmed)))
-         (result (shell-command-to-string
-                  (format "echo %s | bc -l" (shell-quote-argument expr)))))
-    ;; (goto-char end)
-    (end-of-line)
-    (insert (string-trim-right result))))
-#+end_src
-
-#+RESULTS:
-: bc-on-region
