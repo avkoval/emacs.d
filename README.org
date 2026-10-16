@@ -4,7 +4,10 @@
 #+PROPERTY: header-args:emacs-lisp :results none
 #+TITLE: Oleksii Koval (ok) emacs configuration file
 
-* Basic keybindings and configuration settings
+* Bootstrap
+
+  Package archives, use-package, credentials helpers and my own packages; everything else depends on this.
+
 ** ~PATH~ for CLI tools
 
    A GUI Emacs inherits whatever environment it was launched with, which on
@@ -22,6 +25,203 @@
            (setenv "PATH" (concat dir path-separator (getenv "PATH"))))))
    #+end_src
 
+** Package sources
+   Custom package sources. Also I've read somewhere that emacs default TLS configuration is not
+   ideal and  reconfigured it according the recipe.
+
+   #+begin_src emacs-lisp
+     (package-initialize)
+     (unless (assoc-default "melpa" package-archives)
+       (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
+     (unless (assoc-default "gnu" package-archives)
+       (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
+     (unless (assoc-default "ox-odt" package-archives)
+       (add-to-list 'package-archives '("ox-odt" . "https://kjambunathan.github.io/elpa/") t))
+
+     (setq tls-program
+	   '("gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h"
+	     "gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h --protocols ssl3"
+	     "openssl s_client -connect %h:%p -CAfile /etc/ssl/certs/ca-certificates.crt -no_ssl2 -ign_eof"))
+   #+end_src
+
+** Use-package
+
+   There are several (to ~package.el~) alternative/additional package managers, I use ~use-package~.
+
+   #+begin_src emacs-lisp
+   (setq use-package-always-ensure t)
+
+   (unless (package-installed-p 'use-package)
+     (package-refresh-contents)
+     (package-install 'use-package))
+   (setq use-package-verbose t)
+   (setq use-package-always-ensure t)
+   (eval-when-compile
+     (require 'use-package))
+   (use-package auto-compile
+     :config (auto-compile-on-load-mode))
+   #+end_src
+
+** Secrets (auth-source helpers)
+
+   Credentials never live in this file or in =~/.emacs=: they are stored in [[~/.authinfo.gpg]]
+   (one =machine HOST login USER password SECRET= line per credential) and looked up by host.
+   Decryption happens on the first lookup; gpg-agent caches the passphrase afterwards.
+
+   - ~ok/secret~ returns the secret string or nil.
+   - ~ok/setenv-from-secret~ exports it for child processes (Claude/Codex CLIs, shells).  A
+     missing entry leaves the existing environment value untouched.
+   - ~ok/basic-auth~ builds an HTTP =Basic …= header value from login + secret.
+
+   Packages that accept a key /function/ (gptel: ~gptel-api-key-from-auth-source~) should get
+   the function rather than a string, so nothing is decrypted until the key is actually used.
+
+   #+begin_src emacs-lisp
+   (require 'auth-source)
+   (setq auth-sources '("~/.authinfo.gpg"))
+
+   (defun ok/auth-entry (host &optional user)
+     "Return the first `auth-sources' entry for HOST (and USER, if given)."
+     (car (apply #'auth-source-search :host host :max 1
+                 (and user (list :user user)))))
+
+   (defun ok/auth-secret-value (entry)
+     "Return ENTRY's :secret as a string; it may be stored as a function."
+     (let ((secret (plist-get entry :secret)))
+       (if (functionp secret) (funcall secret) secret)))
+
+   (defun ok/secret (host &optional user)
+     "Return the secret for HOST (and USER) from `auth-sources', or nil."
+     (when-let* ((entry (ok/auth-entry host user)))
+       (ok/auth-secret-value entry)))
+
+   (defun ok/setenv-from-secret (var host &optional user)
+     "Set environment variable VAR from the HOST (and USER) secret.
+   If there is no matching entry, the current value of VAR is left alone."
+     (when-let* ((secret (ok/secret host user)))
+       (setenv var secret)
+       t))
+
+   (defun ok/basic-auth (host &optional user)
+     "Return an HTTP \"Basic ...\" header value from HOST's login and secret, or nil."
+     (when-let* ((entry (ok/auth-entry host user))
+                 (login (plist-get entry :user))
+                 (secret (ok/auth-secret-value entry)))
+       (concat "Basic " (base64-encode-string (concat login ":" secret) t))))
+   #+end_src
+
+** Own packages (github.com/avkoval)
+
+   My packages live as git checkouts in =~/.emacs.d/<name>=, where I also develop and push them:
+   [[https://github.com/avkoval/ok-gtasks][ok-gtasks]], [[https://github.com/avkoval/okorg2slides][okorg2slides]],
+   [[https://github.com/avkoval/org-qa-walk][org-qa-walk]], [[https://github.com/avkoval/org-browser-run][org-browser-run]],
+   [[https://github.com/avkoval/org2docx][org2docx]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
+   (checked out as =youtrack/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
+   machine needs nothing but this file.  The clone fetches over HTTPS (no key needed) and pushes over SSH.
+
+   ~M-x my/own-packages-update~ runs ~git pull --ff-only~ in every checkout and reports the result per package.  A
+   checkout with local commits or edits that conflict is left as it is; re-evaluate the package's section (or restart)
+   to load the new code.
+
+   #+begin_src emacs-lisp
+   (defvar my/own-packages
+     '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx"
+       ("youtrack" . "emacs-org-mode-youtrack"))
+     "My packages, kept as git checkouts in `user-emacs-directory'.
+   Each entry is a folder name that equals the GitHub repo name under
+   github.com/avkoval, or (FOLDER . REPO) when they differ.")
+
+   (defun my/own-package--repo (name)
+     "GitHub repo name of the package checked out in folder NAME."
+     (or (cdr (assoc name (seq-filter #'consp my/own-packages))) name))
+
+   (defun my/own-package--git (dir &rest args)
+     "Run git ARGS in DIR; return (EXIT-CODE . OUTPUT)."
+     (with-temp-buffer
+       (let ((default-directory dir))
+         (cons (apply #'call-process "git" nil t nil args)
+               (string-trim (buffer-string))))))
+
+   (defun my/own-package (name)
+     "Return the checkout directory of my package NAME.
+   Clone it from GitHub first when it is missing."
+     (let ((dir (expand-file-name name user-emacs-directory)))
+       (unless (file-directory-p dir)
+         (message "Cloning %s from GitHub…" name)
+         (let ((res (my/own-package--git user-emacs-directory "clone"
+                                         (format "https://github.com/avkoval/%s.git"
+                                                 (my/own-package--repo name))
+                                         dir)))
+           (if (zerop (car res))
+               (my/own-package--git dir "remote" "set-url" "--push" "origin"
+                                    (format "git@github.com:avkoval/%s.git"
+                                            (my/own-package--repo name)))
+             (display-warning 'my/own-package (format "git clone %s failed:\n%s" name (cdr res))))))
+       dir))
+
+   (defun my/own-packages-update ()
+     "Clone missing checkouts of `my/own-packages' and fast-forward the others."
+     (interactive)
+     (let ((lines
+            (mapcar (lambda (name)
+                      (let ((dir (expand-file-name name user-emacs-directory)))
+                        (if (not (file-directory-p dir))
+                            (progn (my/own-package name)
+                                   (format "%-16s cloned" name))
+                          (let ((res (my/own-package--git dir "pull" "--ff-only")))
+                            (format "%-16s %s %s" name (if (zerop (car res)) "ok    " "FAILED")
+                                    (car (last (split-string (cdr res) "\n" t))))))))
+                    (mapcar (lambda (p) (if (consp p) (car p) p)) my/own-packages))))
+       (with-current-buffer (get-buffer-create "*my-own-packages*")
+         (let ((inhibit-read-only t))
+           (erase-buffer)
+           (insert (string-join lines "\n") "\n\nRe-evaluate a package's section or restart Emacs to load new code.\n"))
+         (special-mode)
+         (display-buffer (current-buffer)))))
+   #+end_src
+
+** COMMENT Straight
+
+   #+begin_src emacs-lisp
+   (defvar bootstrap-version)
+   (let ((bootstrap-file
+          (expand-file-name
+           "straight/repos/straight.el/bootstrap.el"
+           (or (bound-and-true-p straight-base-dir)
+               user-emacs-directory)))
+         (bootstrap-version 7))
+     (unless (file-exists-p bootstrap-file)
+       (with-current-buffer
+           (url-retrieve-synchronously
+            "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+            'silent 'inhibit-cookies)
+         (goto-char (point-max))
+         (eval-print-last-sexp)))
+     (load bootstrap-file nil 'nomessage))
+   #+end_src
+
+** COMMENT cond-let
+
+Provided by the ELPA package (also pulled in as a magit/forge dependency).
+Managed via use-package so it is an explicitly-selected package — do NOT
+vendor a copy under =lisp/=, which would shadow the package on load-path
+and cause version-skew macro errors after magit/forge upgrades.
+
+#+begin_src emacs-lisp
+(use-package cond-let)
+#+end_src
+
+#+RESULTS:
+
+** Dash
+
+   A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
+
+   #+begin_src emacs-lisp
+   (use-package dash)
+   #+end_src
+
+* Basic keybindings and configuration settings
 ** Disable ~tool-bar~
 
    Disable ~tool-bar~
@@ -557,6 +757,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    (global-set-key (kbd "s-<drag-mouse-3>")  'delete-window)
    (global-set-key (kbd "s-<drag-mouse-1>")  'geosoft-kill-buffer)
    #+end_src
+
 ** large files
    Do not ask for confirmation for opening large file, because Helm will freeze with follow mode enabled (TBD report a bug?)
    #+begin_src emacs-lisp
@@ -569,182 +770,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    If OFFER-RAW is true, give user the additional option to open the
    file literally."
      'raw)
-   #+end_src
-
-* Package managers configuration
-** Package sources
-   Custom package sources. Also I've read somewhere that emacs default TLS configuration is not
-   ideal and  reconfigured it according the recipe.
-
-   #+begin_src emacs-lisp
-     (package-initialize)
-     (unless (assoc-default "melpa" package-archives)
-       (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
-     (unless (assoc-default "gnu" package-archives)
-       (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
-     (unless (assoc-default "ox-odt" package-archives)
-       (add-to-list 'package-archives '("ox-odt" . "https://kjambunathan.github.io/elpa/") t))
-
-     (setq tls-program
-	   '("gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h"
-	     "gnutls-cli --x509cafile /etc/ssl/certs/ca-certificates.crt -p %p %h --protocols ssl3"
-	     "openssl s_client -connect %h:%p -CAfile /etc/ssl/certs/ca-certificates.crt -no_ssl2 -ign_eof"))
-   #+end_src
-
-** Use-package
-
-   There are several (to ~package.el~) alternative/additional package managers, I use ~use-package~.
-
-   #+begin_src emacs-lisp
-   (setq use-package-always-ensure t)
-
-   (unless (package-installed-p 'use-package)
-     (package-refresh-contents)
-     (package-install 'use-package))
-   (setq use-package-verbose t)
-   (setq use-package-always-ensure t)
-   (eval-when-compile
-     (require 'use-package))
-   (use-package auto-compile
-     :config (auto-compile-on-load-mode))
-   #+end_src
-
-** Secrets (auth-source helpers)
-
-   Credentials never live in this file or in =~/.emacs=: they are stored in [[~/.authinfo.gpg]]
-   (one =machine HOST login USER password SECRET= line per credential) and looked up by host.
-   Decryption happens on the first lookup; gpg-agent caches the passphrase afterwards.
-
-   - ~ok/secret~ returns the secret string or nil.
-   - ~ok/setenv-from-secret~ exports it for child processes (Claude/Codex CLIs, shells).  A
-     missing entry leaves the existing environment value untouched.
-   - ~ok/basic-auth~ builds an HTTP =Basic …= header value from login + secret.
-
-   Packages that accept a key /function/ (gptel: ~gptel-api-key-from-auth-source~) should get
-   the function rather than a string, so nothing is decrypted until the key is actually used.
-
-   #+begin_src emacs-lisp
-   (require 'auth-source)
-   (setq auth-sources '("~/.authinfo.gpg"))
-
-   (defun ok/auth-entry (host &optional user)
-     "Return the first `auth-sources' entry for HOST (and USER, if given)."
-     (car (apply #'auth-source-search :host host :max 1
-                 (and user (list :user user)))))
-
-   (defun ok/auth-secret-value (entry)
-     "Return ENTRY's :secret as a string; it may be stored as a function."
-     (let ((secret (plist-get entry :secret)))
-       (if (functionp secret) (funcall secret) secret)))
-
-   (defun ok/secret (host &optional user)
-     "Return the secret for HOST (and USER) from `auth-sources', or nil."
-     (when-let* ((entry (ok/auth-entry host user)))
-       (ok/auth-secret-value entry)))
-
-   (defun ok/setenv-from-secret (var host &optional user)
-     "Set environment variable VAR from the HOST (and USER) secret.
-   If there is no matching entry, the current value of VAR is left alone."
-     (when-let* ((secret (ok/secret host user)))
-       (setenv var secret)
-       t))
-
-   (defun ok/basic-auth (host &optional user)
-     "Return an HTTP \"Basic ...\" header value from HOST's login and secret, or nil."
-     (when-let* ((entry (ok/auth-entry host user))
-                 (login (plist-get entry :user))
-                 (secret (ok/auth-secret-value entry)))
-       (concat "Basic " (base64-encode-string (concat login ":" secret) t))))
-   #+end_src
-
-** Own packages (github.com/avkoval)
-
-   My packages live as git checkouts in =~/.emacs.d/<name>=, where I also develop and push them:
-   [[https://github.com/avkoval/ok-gtasks][ok-gtasks]], [[https://github.com/avkoval/okorg2slides][okorg2slides]],
-   [[https://github.com/avkoval/org-qa-walk][org-qa-walk]], [[https://github.com/avkoval/org-browser-run][org-browser-run]],
-   [[https://github.com/avkoval/org2docx][org2docx]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
-   (checked out as =youtrack/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
-   machine needs nothing but this file.  The clone fetches over HTTPS (no key needed) and pushes over SSH.
-
-   ~M-x my/own-packages-update~ runs ~git pull --ff-only~ in every checkout and reports the result per package.  A
-   checkout with local commits or edits that conflict is left as it is; re-evaluate the package's section (or restart)
-   to load the new code.
-
-   #+begin_src emacs-lisp
-   (defvar my/own-packages
-     '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx"
-       ("youtrack" . "emacs-org-mode-youtrack"))
-     "My packages, kept as git checkouts in `user-emacs-directory'.
-   Each entry is a folder name that equals the GitHub repo name under
-   github.com/avkoval, or (FOLDER . REPO) when they differ.")
-
-   (defun my/own-package--repo (name)
-     "GitHub repo name of the package checked out in folder NAME."
-     (or (cdr (assoc name (seq-filter #'consp my/own-packages))) name))
-
-   (defun my/own-package--git (dir &rest args)
-     "Run git ARGS in DIR; return (EXIT-CODE . OUTPUT)."
-     (with-temp-buffer
-       (let ((default-directory dir))
-         (cons (apply #'call-process "git" nil t nil args)
-               (string-trim (buffer-string))))))
-
-   (defun my/own-package (name)
-     "Return the checkout directory of my package NAME.
-   Clone it from GitHub first when it is missing."
-     (let ((dir (expand-file-name name user-emacs-directory)))
-       (unless (file-directory-p dir)
-         (message "Cloning %s from GitHub…" name)
-         (let ((res (my/own-package--git user-emacs-directory "clone"
-                                         (format "https://github.com/avkoval/%s.git"
-                                                 (my/own-package--repo name))
-                                         dir)))
-           (if (zerop (car res))
-               (my/own-package--git dir "remote" "set-url" "--push" "origin"
-                                    (format "git@github.com:avkoval/%s.git"
-                                            (my/own-package--repo name)))
-             (display-warning 'my/own-package (format "git clone %s failed:\n%s" name (cdr res))))))
-       dir))
-
-   (defun my/own-packages-update ()
-     "Clone missing checkouts of `my/own-packages' and fast-forward the others."
-     (interactive)
-     (let ((lines
-            (mapcar (lambda (name)
-                      (let ((dir (expand-file-name name user-emacs-directory)))
-                        (if (not (file-directory-p dir))
-                            (progn (my/own-package name)
-                                   (format "%-16s cloned" name))
-                          (let ((res (my/own-package--git dir "pull" "--ff-only")))
-                            (format "%-16s %s %s" name (if (zerop (car res)) "ok    " "FAILED")
-                                    (car (last (split-string (cdr res) "\n" t))))))))
-                    (mapcar (lambda (p) (if (consp p) (car p) p)) my/own-packages))))
-       (with-current-buffer (get-buffer-create "*my-own-packages*")
-         (let ((inhibit-read-only t))
-           (erase-buffer)
-           (insert (string-join lines "\n") "\n\nRe-evaluate a package's section or restart Emacs to load new code.\n"))
-         (special-mode)
-         (display-buffer (current-buffer)))))
-   #+end_src
-
-** COMMENT Straight
-
-   #+begin_src emacs-lisp
-   (defvar bootstrap-version)
-   (let ((bootstrap-file
-          (expand-file-name
-           "straight/repos/straight.el/bootstrap.el"
-           (or (bound-and-true-p straight-base-dir)
-               user-emacs-directory)))
-         (bootstrap-version 7))
-     (unless (file-exists-p bootstrap-file)
-       (with-current-buffer
-           (url-retrieve-synchronously
-            "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
-            'silent 'inhibit-cookies)
-         (goto-char (point-max))
-         (eval-print-last-sexp)))
-     (load bootstrap-file nil 'nomessage))
    #+end_src
 
 * Core settings
@@ -915,28 +940,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    (use-package pyvenv
      :config
      (pyvenv-tracking-mode 1))
-   #+end_src
-
-* Internal dependencies
-** COMMENT cond-let
-
-Provided by the ELPA package (also pulled in as a magit/forge dependency).
-Managed via use-package so it is an explicitly-selected package — do NOT
-vendor a copy under =lisp/=, which would shadow the package on load-path
-and cause version-skew macro errors after magit/forge upgrades.
-
-#+begin_src emacs-lisp
-(use-package cond-let)
-#+end_src
-
-#+RESULTS:
-
-** Dash
-
-   A modern list library for Emacs. Its just required to be installed of the many packages as a dependency.
-
-   #+begin_src emacs-lisp
-   (use-package dash)
    #+end_src
 
 * Emacs tools and minor modes
@@ -3573,6 +3576,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    #+begin_src emacs-lisp
      (use-package imenu-list)
    #+end_src
+
 ** ledger
    #+begin_src emacs-lisp
      (use-package ledger-mode
@@ -3580,6 +3584,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
        (magit-todos-mode)
        )
    #+end_src
+
 ** COMMENT minimap
 
    #+begin_src emacs-lisp
@@ -4160,6 +4165,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
                                       (when smerge-mode
                                         (unpackaged/smerge-hydra/body)))))
  #+end_src
+
 ** shells
 
    #+begin_src emacs-lisp
@@ -4257,6 +4263,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
       (setq comint-input-ring-file-name "~/.histfile")
       (comint-read-input-ring t))
     #+end_src
+
 ** htmlize
 
    #+begin_src emacs-lisp
@@ -4390,6 +4397,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
      (ansi-color-apply-on-region compilation-filter-start (point-max)))
    (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
    #+end_src
+
 ** projectile
 
  Easy way to select file in your project.
@@ -4462,6 +4470,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
         (message "projectile-mode ON"))))
   ;; ------------------------------------------------------------------------
   #+end_src
+
 ** easy-kill
 
  #+begin_src emacs-lisp
@@ -4493,6 +4502,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    ;; (setq-default bm-buffer-persistence t)
    )
    #+end_src
+
 ** yesno
 
      I am too lazy to answer 'yes' and 'no' in full notation, lets shortcut:
@@ -4539,6 +4549,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
  (defun add-d-to-ediff-mode-map () (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
  (add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
  #+end_src
+
 ** switch buffers
 
  #+begin_src emacs-lisp
@@ -4789,7 +4800,6 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
   ((python-ts-mode                                                                                                                                
     . ((eval . (setq-local flycheck-disabled-checkers       
                            (remove 'python-mypy flycheck-disabled-checkers))))))                                                                  
- 
 
 ** Aphelia
 
@@ -4810,6 +4820,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
   (setf (alist-get 'python-ts-mode apheleia-mode-alist) 'ruff)
 
    #+end_src
+
 ** ident space
 
    also read: https://stackoverflow.com/questions/27731433/setting-per-project-indent-variables-in-emacs
@@ -4817,6 +4828,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+begin_src emacs-lisp
    (setq-default indent-tabs-mode nil)
    #+end_src
+
 ** marginalia & embark
 
    Marginalia adds annotations to minibuffer candidates; Embark adds actions on the thing at
@@ -4853,6 +4865,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      :after (embark consult)
      :hook (embark-collect-mode . consult-preview-at-point-mode))
    #+end_src
+
 ** COMMENT python auto virtualenv for python-ts-mode
 
    #+begin_src emacs-lisp
@@ -4912,6 +4925,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    | org-html-themify-mode | #[0 \301\211\207 [imenu-create-index-function org-imenu-get-tree] 2] | org-toggle-blocks | (lambda nil (visual-line-mode -1)) | org-plus-yasnippet | yas-minor-mode | org-tempo-setup | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-fold-show-all append local] 5] | #[0 \300\301\302\303\304$\207 [add-hook change-major-mode-hook org-babel-show-result-all append local] 5] | org-babel-result-hide-spec | org-babel-hide-all-hashes |
+
 ** dape
 
    #+begin_src emacs-lisp
@@ -4948,6 +4962,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      (setq dape-cwd-fn 'projectile-project-root)
      )
    #+end_src
+
 ** COMMENT dirvish
 
    #+begin_src emacs-lisp
@@ -5095,6 +5110,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
          )
 
    #+end_src
+
 ** COMMENT combobulate
 
    #+begin_src emacs-lisp
@@ -5138,6 +5154,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
                         :stream t
                         :key 'gptel-api-key-from-auth-source)))
 #+end_src
+
 ** consult
 
    #+begin_src emacs-lisp
@@ -5369,6 +5386,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
        (package-vc-install "https://github.com/emarsden/pgmacs"))
      (require 'pgmacs))
    #+end_src
+
 ** el-easydraw
 
    #+begin_src emacs-lisp
@@ -5785,6 +5803,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : indent-tools-hydra/body
+
 ** COMMENT grammarly
 
    #+begin_src emacs-lisp
@@ -5803,6 +5822,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 
    #+RESULTS:
+
 ** consult-denote
 
    #+begin_src emacs-lisp
@@ -5814,6 +5834,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : denote
+
 ** yank with indent
 
    Often needed, especially in org mode.
@@ -5838,6 +5859,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : yank-with-indent
+
 ** COMMENT p-search
 
    #+begin_src emacs-lisp
@@ -5847,6 +5869,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : p-search
+
 ** openwith
 
   https://stackoverflow.com/questions/51006855/open-mp4-files-from-orgmode
@@ -5874,6 +5897,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : t
+
 ** nvm
 
    #+begin_src emacs-lisp
@@ -5907,6 +5931,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
           "Marking window '%s' as dedicated"
         "Un-dedicating window '%s'") (current-buffer)))
    #+end_src
+
 ** Copy file name to clipboard
 
    #+begin_src emacs-lisp
@@ -6085,6 +6110,7 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : aidermacs-transient-menu
+
 ** Ruff
 
    #+begin_src emacs-lisp
@@ -6108,6 +6134,7 @@ Format: \"/full/path/file.el:L42\"."
 
    #+RESULTS:
    : flycheck-ruff
+
 ** COMMENT Hubstaff
 
  #+begin_src emacs-lisp
@@ -6678,7 +6705,6 @@ Format: \"/full/path/file.el:L42\"."
                       (window-width . 90)))
    #+end_src
 
-
 ** COMMENT claude-code.el
 
    #+begin_src emacs-lisp
@@ -6788,7 +6814,6 @@ Format: \"/full/path/file.el:L42\"."
    #+RESULTS:
    : eng
 
-
 ** TODO theme looper & custom looper
    :LOGBOOK:
    - State "TODO"       from              [2025-12-03 Wed 11:55]
@@ -6816,7 +6841,6 @@ moving through the list — the chosen theme is applied only on RET."
 
    #+RESULTS:
    : my-theme-looper-pick
-
 
 ** org-crypt
 
@@ -7389,6 +7413,7 @@ moving through the list — the chosen theme is applied only on RET."
    #+begin_src emacs-lisp
    (add-to-list 'auto-mode-alist '("\\.ts" . typescript-mode))
    #+end_src
+
 ** vterm
 
  #+begin_src emacs-lisp
@@ -7516,6 +7541,7 @@ moving through the list — the chosen theme is applied only on RET."
        )
    (my-enable-tide)
    #+end_src
+
 ** COMMENT python-mode
 
    #+begin_src emacs-lisp
@@ -7642,6 +7668,7 @@ moving through the list — the chosen theme is applied only on RET."
    #+end_src
 
    #+RESULTS:
+
 ** completion preview mode
    from: https://protesilaos.com/codelog/2026-08-29-emacs-completion-preview-mode/
    #+begin_src emacs-lisp
@@ -7739,8 +7766,6 @@ moving through the list — the chosen theme is applied only on RET."
 
 #+RESULTS:
 : bc-on-region
-
-* Unsorted (WIP)
 
 * External browser
 
