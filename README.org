@@ -5778,6 +5778,35 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
       (comint-read-input-ring t))
     #+end_src
 
+*** org-babel-runbook — reliable bash sessions for runbooks (C-z <f3>)
+
+    Runbooks as org files: =#+begin_src bash :session pi :dir /ssh:host:= blocks run with =C-c C-c= in named shell
+    buffers, locally or over TRAMP. Without help this breaks in three ways, and [[file:org-babel-runbook/][org-babel-runbook/]] (its own
+    package, README and tests in [[file:org-babel-runbook/README.md]]) fixes them:
+    - *sudo eats ob-shell's end marker.* sudo ≥ 1.9.14 (=use_pty=) takes the terminal's pending input, including the
+      =echo <marker>= line ob-shell types after the block, so the commands run but =#+RESULTS:= stays at the placeholder
+      uuid (async) or Emacs hangs (sync). The mode sends async session bodies as one =eval "$(cat <<'OB_BLOCK_END' …)"=
+      command line so nothing is left in the input queue. Use =:async yes= on blocks with sudo.
+    - *ob-async hijacks session blocks* (loaded in the org-babel section above): shell =:session= blocks are routed past
+      it to ob-shell's own async.
+    - *session buffers are invisible*: ~C-z <f3>~ lists them and switches to one.
+
+    The Claude Code skill for writing such runbooks lives in the same directory and is linked into
+    =~/.claude/skills/org-babel-runbook= (see the package README).
+
+    #+begin_src emacs-lisp
+    (add-to-list 'load-path (expand-file-name "org-babel-runbook" user-emacs-directory))
+    (with-eval-after-load 'ob-shell
+      ;; the first versions of these fixes lived here as my-ob-* functions; drop them if still loaded
+      (dolist (a '((org-babel-sh-evaluate . my-ob-sh-tty-guard)
+                   (ob-async-org-babel-execute-src-block . my-ob-async-skip-shell-sessions)))
+        (when (fboundp (car a)) (advice-remove (car a) (cdr a))))
+      (require 'org-babel-runbook)
+      (org-babel-runbook-mode 1))
+    (autoload 'org-babel-runbook-list-sessions "org-babel-runbook" nil t)
+    (global-set-key (kbd "C-z <f3>") #'org-babel-runbook-list-sessions)
+    #+end_src
+
 ** gptel
 
 #+begin_src emacs-lisp

@@ -1,0 +1,65 @@
+#+TITLE: org-babel-runbook demo: a tiny runbook on this machine and on itself over SSH
+#+PROPERTY: header-args:bash :results output :async yes
+#+PROPERTY: header-args:bash+ :var demo_dir="/tmp/obr-demo"
+#+PROPERTY: header-args:bash+ :var demo_ver="1.0"
+
+Everything here stays on this machine: the =local= session is a plain shell, the =remote= session is the same machine
+reached over TRAMP (=/ssh:localhost:=, needs key login to localhost). Nothing is installed; files go to
+=/tmp/obr-demo=. Steps 3 and 4 call =sudo true= (no changes) to show what the package fixes.
+
+Load the package first ([[file:../README.md][README]]): =(require 'org-babel-runbook)= and =(org-babel-runbook-mode 1)=.
+
+| Tag            | Meaning                                                         |
+|----------------+-----------------------------------------------------------------|
+| =:read_only:=  | changes nothing                                                 |
+| =:rerun_ok:=   | a second run converges to the same state                        |
+
+* TODO 1. Look around                                                  :read_only:
+#+begin_src bash :session local
+uname -sm; bash --version | head -1; sudo -V | head -1; echo "demo_dir=$demo_dir"
+#+end_src
+Expected: the OS, bash and sudo versions (≥ 1.9.14 is the one that eats the end marker), and the =:var= value.
+
+* TODO 2. Write a config file with a heredoc                           :rerun_ok:
+#+begin_src bash :session local
+mkdir -p "$demo_dir" && printf 'version = %s\n' "$demo_ver" > "$demo_dir/app.conf" && cat >> "$demo_dir/app.conf" <<'EOF'
+# written by demo.org — quoted heredoc: $HOME and {braces} stay literal
+paths { data = "/var/lib/app"; }
+EOF
+cat "$demo_dir/app.conf"
+#+end_src
+Expected: the file with =version = 1.0=. Run it twice: same file, same output.
+
+* TODO 3. sudo inside a block — with the guard                         :read_only:
+sudo asks for the password in the minibuffer (if it isn't cached).
+#+begin_src bash :session local
+sudo true && echo "sudo-ok"; echo "after sudo"
+#+end_src
+Expected: =sudo-ok= and =after sudo= under the block. In the =local= buffer (=M-x org-babel-runbook-list-sessions=)
+the block was sent as =eval "$(cat <<'OB_BLOCK_END'= … — that's the guard.
+
+* TODO 4. The same block without the guard                             :read_only:
+=:tty-guard no= switches the wrapper off for this block. sudo now takes the end-marker line ob-shell typed after the
+block, and the result stays a uuid forever (the commands still ran — see the session buffer). Kill the =local= buffer
+afterwards; its shell keeps waiting for the lost marker.
+#+begin_src bash :session local :tty-guard no
+sudo true && echo "sudo-ok"; echo "after sudo"
+#+end_src
+
+* TODO 5. The same steps on a "remote" host over TRAMP                 :rerun_ok:
+The first block opens the =remote= session; later blocks reuse it, variables persist between blocks.
+#+begin_src bash :session remote :dir /ssh:localhost:
+hostname 2>/dev/null || uname -n; remote_note="set in block 1"; ( cd /tmp && pwd ); pwd
+#+end_src
+
+#+begin_src bash :session remote :dir /ssh:localhost:
+echo "still here: $remote_note"; ls "$demo_dir"
+#+end_src
+Expected: the host name, =/tmp=, the home directory (the subshell =cd= didn't move the session), then
+=still here: set in block 1= and =app.conf=.
+
+* TODO 6. Check                                                        :read_only:
+#+begin_src bash :session local
+grep -c version "$demo_dir/app.conf"
+#+end_src
+Expected: =1=. Clean up: =rm -r /tmp/obr-demo=.
