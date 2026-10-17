@@ -797,6 +797,51 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
      (diary-entry-marker 'font-lock-variable-name-face))
    #+end_src
 
+   Google Calendar → diary: ~my-sync-google-calendar~ runs =~/org/get_ical.py= to download the
+   =.ics= files, then rebuilds the diary file (=~/.emacs.d/diary=, git-ignored) from them.
+
+   #+begin_src emacs-lisp
+   (defun my-sync-google-calendar ()
+     "Save google calender entries into dairy.
+   See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
+     (interactive)
+     ;; (call-process "~/org/get_ical.py" nil 0 nil)
+     (call-process "~/org/get_ical.py" nil nil)
+     ;; Clear the diary file on disk
+     (with-temp-file "~/.emacs.d/diary" (erase-buffer))
+     ;; Import all .ics files
+     (mapcar (
+              lambda (icsfile)
+              (icalendar-import-file icsfile "~/.emacs.d/diary")
+              )
+             (file-expand-wildcards "~/org/*.ics"))
+     ;; Revert the diary buffer from disk so it picks up fresh content
+     (let ((diary-buf (find-buffer-visiting "~/.emacs.d/diary")))
+       (when diary-buf
+         (with-current-buffer diary-buf
+           (revert-buffer t t t))))
+     ;; Kill cached fancy diary buffer to avoid stale entries
+     (let ((fancy-buf (get-buffer "*Fancy Diary Entries*")))
+       (when fancy-buf (kill-buffer fancy-buf)))
+     )
+
+   ;; icalendar-import-file generates both recurring rules (diary-cyclic/diary-block)
+   ;; and individual date entries for modified instances. When both match the same day,
+   ;; the event appears twice. Deduplicate by (date, string) after entries are collected.
+   (defun my-diary-deduplicate-entries ()
+     "Remove duplicate entries from diary-entries-list."
+     (when (boundp 'diary-entries-list)
+       (let ((seen (make-hash-table :test 'equal))
+             (deduped nil))
+         (dolist (entry diary-entries-list)
+           (let ((key (list (nth 0 entry) (nth 1 entry))))
+             (unless (gethash key seen)
+               (puthash key t seen)
+               (push entry deduped))))
+         (setq diary-entries-list (nreverse deduped)))))
+   (add-hook 'diary-list-entries-hook #'my-diary-deduplicate-entries t)
+   #+end_src
+
 ** ibuffer
 
    #+begin_src emacs-lisp
@@ -3648,45 +3693,6 @@ With prefix ARG, replace the converted text in place instead of copying it."
       '(markdown-command "/usr/bin/pandoc"))
 
 
-     (defun my-sync-google-calendar ()
-       "Save google calender entries into dairy.
-     See more about this approach at https://www.youtube.com/watch?v=cIzzjSaq2N8&t=339s"
-       (interactive)
-       ;; (call-process "~/org/get_ical.py" nil 0 nil)
-       (call-process "~/org/get_ical.py" nil nil)
-       ;; Clear the diary file on disk
-       (with-temp-file "~/.emacs.d/diary" (erase-buffer))
-       ;; Import all .ics files
-       (mapcar (
-                lambda (icsfile)
-                (icalendar-import-file icsfile "~/.emacs.d/diary")
-                )
-               (file-expand-wildcards "~/org/*.ics"))
-       ;; Revert the diary buffer from disk so it picks up fresh content
-       (let ((diary-buf (find-buffer-visiting "~/.emacs.d/diary")))
-         (when diary-buf
-           (with-current-buffer diary-buf
-             (revert-buffer t t t))))
-       ;; Kill cached fancy diary buffer to avoid stale entries
-       (let ((fancy-buf (get-buffer "*Fancy Diary Entries*")))
-         (when fancy-buf (kill-buffer fancy-buf)))
-       )
-
-     ;; icalendar-import-file generates both recurring rules (diary-cyclic/diary-block)
-     ;; and individual date entries for modified instances. When both match the same day,
-     ;; the event appears twice. Deduplicate by (date, string) after entries are collected.
-     (defun my-diary-deduplicate-entries ()
-       "Remove duplicate entries from diary-entries-list."
-       (when (boundp 'diary-entries-list)
-         (let ((seen (make-hash-table :test 'equal))
-               (deduped nil))
-           (dolist (entry diary-entries-list)
-             (let ((key (list (nth 0 entry) (nth 1 entry))))
-               (unless (gethash key seen)
-                 (puthash key t seen)
-                 (push entry deduped))))
-           (setq diary-entries-list (nreverse deduped)))))
-     (add-hook 'diary-list-entries-hook #'my-diary-deduplicate-entries t)
 
      ;;
 
