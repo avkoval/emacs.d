@@ -30,7 +30,8 @@
    ideal and  reconfigured it according the recipe.
 
    #+begin_src emacs-lisp
-     (package-initialize)
+     ;; Packages are already activated before init (`package-enable-at-startup'),
+     ;; and ~/.emacs calls `package-initialize'; a second call only adds a warning.
      (unless (assoc-default "melpa" package-archives)
        (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
      (unless (assoc-default "gnu" package-archives)
@@ -108,6 +109,22 @@
                  (login (plist-get entry :user))
                  (secret (ok/auth-secret-value entry)))
        (concat "Basic " (base64-encode-string (concat login ":" secret) t))))
+   #+end_src
+
+** Silenced warnings
+
+   Tramp warns "Package `kubernetes-tramp' has been obsoleted" every time it loads, and
+   Hyperbole loads Tramp early, so the filter must be installed before any later section.
+   Only that one message is dropped; other Tramp warnings are shown as usual.  See the
+   kubernetes-tramp section for why the package is kept.
+
+   #+begin_src emacs-lisp
+   (defun ok/tramp-drop-kubernetes-tramp-warning (orig vec-or-proc fmt-string &rest args)
+     "Call ORIG unless FMT-STRING is Tramp's kubernetes-tramp obsoletion notice."
+     (unless (and (stringp fmt-string)
+                  (string-prefix-p "Package `kubernetes-tramp' has been obsoleted" fmt-string))
+       (apply orig vec-or-proc fmt-string args)))
+   (advice-add 'tramp-warning :around #'ok/tramp-drop-kubernetes-tramp-warning)
    #+end_src
 
 ** Own packages (github.com/avkoval)
@@ -4956,10 +4973,10 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
 ** kubernetes (old — kubernetes-tramp, obsoleted)
 
-   Superseded by the built-in ~tramp-container~ ~kubernetes~ method (see
-   the section below). ~kubernetes-tramp~ has been obsoleted upstream, and
-   the hand-pushed ~kubectl~ method is redundant now that Tramp ships a
-   richer one.
+   Tramp ships a built-in ~kubernetes~ method (~tramp-container~, see the section below), but
+   ~kubernetes-tramp~ and the ~kubectl~ method below still work well for me, so they stay.
+   Tramp's "kubernetes-tramp has been obsoleted" warning is silenced in Bootstrap
+   ("Silenced warnings"), because it fires when Tramp loads, long before this section.
 
    #+begin_src emacs-lisp
    (use-package kubernetes-tramp)
