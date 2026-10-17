@@ -6328,8 +6328,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
         (custom-set-variables
          '(notmuch-search-oldest-first nil)
          '(notmuch-crypto-process-mime t)
-         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent")))
-         '(notmuch-fcc-dirs "ua2web/INBOX.sent"))
+         '(notmuch-message-headers (quote ("Subject" "To" "Cc" "Date" "X-Mailer" "User-Agent"))))
         (add-hook 'notmuch-show-hook 'hide-trailing-whitespace)
 
         (defun expand-only-unread-hook ()
@@ -6416,9 +6415,9 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    Integration with YouTrack: browse projects/issues, insert tasks into org-mode,
    submit org-clock time entries. See =~/.emacs.d/youtrack/youtrack.org= for details.
+   ~youtrack-host~ is private and is set in the =custom-file=.
 
    #+begin_src emacs-lisp
-   (setq youtrack-host "youtrack.example.com")
    (load (expand-file-name "youtrack.el" (my/own-package "youtrack")))
    (global-set-key (kbd "C-x / i") #'youtrack-insert-task)
    (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
@@ -6960,9 +6959,15 @@ and cause version-skew macro errors after magit/forge upgrades.
                                   #'my-ua2web-redmine-task)
 
 
+     (defcustom ok/redmine-url nil
+       "Base URL of the Redmine instance, with a trailing slash.
+   Private; set in the `custom-file'."
+       :type '(choice (const nil) string)
+       :group 'external)
+
      (defun my-ua2web-redmine-task (input &rest args)
        "return UA2WEB task link"
-       (let ((ua2web_redmine_url (concat "https://redmine.example.com/" input))
+       (let ((ua2web_redmine_url (concat ok/redmine-url input))
              )
          (list
           (propertize (format "Ua2Task %s" ua2web_redmine_url) :url ua2web_redmine_url :source "UA2WEB Redmine Task Reference")
