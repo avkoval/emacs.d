@@ -1459,7 +1459,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
         ;;             (setq helm-ag-base-command "rg --no-heading")
         (setq helm-ag-base-command "ag --nocolor --nogroup")
         )
-      (setq org-log-done 'time)
       :bind (("C-c h s r" . helm-rg)
 	     ("C-c h s R" . helm-projectile-rg)
 	     ))
@@ -1650,11 +1649,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 	      ))
    #+end_src
 
-** imenu
-   #+begin_src emacs-lisp
-     (use-package imenu-list)
-   #+end_src
-
 ** projectile
 
  Easy way to select file in your project.
@@ -1830,6 +1824,8 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 ** imenu
 
    #+begin_src emacs-lisp
+   (use-package imenu-list)
+
    (setq imenu-sort-function #'imenu--sort-by-position)
 
     (with-eval-after-load 'imenu
@@ -2524,8 +2520,7 @@ moving through the list — the chosen theme is applied only on RET."
      (org-fontify-quote-and-verse-blocks t)
      ;; Modules, babel, export
      (org-modules
-      '(org-bbdb org-bibtex org-docview org-gnus org-info org-irc org-mhe
-                 org-rmail org-w3m))
+      '(ol-bbdb ol-bibtex ol-docview ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m))
      (org-babel-python-command "python")
      (org-latex-default-packages-alist
       '(("utf8x" "inputenc" t ("pdflatex"))
@@ -3683,8 +3678,6 @@ With prefix ARG, replace the converted text in place instead of copying it."
      (define-key org-mode-map (kbd "C-x <insert>") 'org-meta-return)
      (define-key org-mode-map (kbd "C-c b") 'org-tree-to-indirect-buffer)
 
-     (custom-set-variables
-      '(markdown-command "/usr/bin/pandoc"))
 
 
 
@@ -4554,6 +4547,10 @@ https://github.com/thndrbrrr/gtasks-org-tools
    (use-package pyvenv
      :config
      (pyvenv-tracking-mode 1))
+   (use-package markdown-mode
+     :defer t
+     :custom
+     (markdown-command "/usr/bin/pandoc"))
    #+end_src
 
 ** verb
@@ -4993,7 +4990,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      :ensure nil
      :defer t
      :custom
-     (python-shell-interpreter "python3"))
+     (python-shell-interpreter "python"))
    (use-package css-mode
      :ensure nil
      :defer t
