@@ -919,6 +919,86 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
       '(uniquify-buffer-name-style (quote post-forward) nil (uniquify)))
    #+end_src
 
+** Usage history: recent and most used
+
+   Shared helpers for pickers that list what I used last, then what I use most, with the use count shown as =(N)=.
+   A usage history is a plist =(:recent (ITEM ...) :counts ((ITEM . N) ...))=, most recent first, stored as a
+   =.eld= file under [[file:var/]] (gitignored). Items are compared with ~equal~, so they can be symbols or strings.
+   Used by the theme picker (=C-z T=, see "theme looper & custom looper") and the directory picker (=C-z j=, see
+   "dired / recent directories").
+
+   #+begin_src emacs-lisp
+   (defun my-usage-load (file)
+     "Return the usage history stored in FILE, or nil."
+     (when (file-readable-p file)
+       (with-temp-buffer
+         (insert-file-contents file)
+         (ignore-errors (read (current-buffer))))))
+
+   (defun my-usage-save (file usage)
+     "Write the usage history USAGE to FILE."
+     (make-directory (file-name-directory file) t)
+     (with-temp-file file
+       (let ((print-length nil) (print-level nil))
+         (insert ";; -*- mode: lisp-data -*-\n;; Written by `my-usage-save'.\n")
+         (prin1 usage (current-buffer))
+         (insert "\n"))))
+
+   (defun my-usage-add (usage item &optional max-counts)
+     "Return USAGE with one more use of ITEM.
+   USAGE itself is returned when ITEM is already the most recent, so repeated
+   use without switching away is counted once. With MAX-COUNTS, only that many
+   of the most used items keep their count."
+     (let ((recent (plist-get usage :recent))
+           (counts (copy-alist (plist-get usage :counts))))
+       (if (equal item (car recent))
+           usage
+         (setf (alist-get item counts nil nil #'equal)
+               (1+ (alist-get item counts 0 nil #'equal)))
+         (when (and max-counts (> (length counts) max-counts))
+           (setq counts (seq-take (my-usage-by-count counts) max-counts)))
+         (list :recent (seq-take (cons item (remove item recent)) 50)
+               :counts counts))))
+
+   (defun my-usage-by-count (counts)
+     "Return a copy of the alist COUNTS, most used first."
+     (sort (copy-sequence counts) (lambda (a b) (> (cdr a) (cdr b)))))
+
+   (defun my-usage-completing-read (prompt groups counts &optional current)
+     "Read one of the strings in GROUPS with PROMPT, keeping their order.
+   GROUPS is a list of (GROUP-TITLE . NAMES); a name is listed only in the first
+   group that has it. COUNTS is an alist (NAME . N), shown as \" (N)\". CURRENT,
+   a name, is marked as current."
+     (let ((group-of (make-hash-table :test #'equal))
+           (count-of (make-hash-table :test #'equal))
+           (names nil))
+       (pcase-dolist (`(,title . ,members) groups)
+         (dolist (name members)
+           (unless (gethash name group-of)
+             (puthash name title group-of)
+             (push name names))))
+       (setq names (nreverse names))
+       (pcase-dolist (`(,name . ,n) counts)
+         (puthash name n count-of))
+       (let* ((annotate
+               (lambda (name)
+                 (let ((n (gethash name count-of)))
+                   (concat (and n (propertize (format " (%d)" n) 'face 'completions-annotations))
+                           (and (equal name current)
+                                (propertize "  current" 'face 'completions-annotations))))))
+              (table
+               (lambda (string pred action)
+                 (if (eq action 'metadata)
+                     `(metadata
+                       (display-sort-function . identity)
+                       (cycle-sort-function . identity)
+                       (annotation-function . ,annotate)
+                       (group-function . ,(lambda (name transform)
+                                            (if transform name (gethash name group-of)))))
+                   (complete-with-action action names string pred)))))
+         (completing-read prompt table nil t))))
+   #+end_src
+
 ** dired
 
    #+begin_src emacs-lisp
@@ -1047,6 +1127,91 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
         :ensure t
         :bind (:map dired-mode-map
 		    (")" . dired-git-info-mode)))
+    #+end_src
+
+*** recent directories
+
+    Every directory I stay in with dired is recorded, however I got there (~dired~, =C-x j=, RET on a subdirectory,
+    =^=, switching to an existing dired buffer or window). A directory counts once it has been shown in the selected
+    window for ~my-dired-record-delay~ seconds, so passing through directories on the way somewhere does not count,
+    and coming back to the directory that is already first in the recent list is not counted again.
+    ~dired-sidebar~ buffers are ignored. The history lives in [[file:var/dired-history.eld]].
+
+    ~my-dired-pick~ (=C-z j=, next to =C-x j= ~dired-jump~) lists /Recent/ (last ~my-dired-recent-count~) and then
+    /Most used/ (the next ~my-dired-most-used-count~ by count), with the count as =(N)=; RET opens the directory in
+    dired. Local directories that no longer exist are left out; remote (TRAMP) ones are listed without checking, to
+    avoid connecting.
+
+    #+begin_src emacs-lisp
+    (defvar my-dired-history-file (locate-user-emacs-file "var/dired-history.eld")
+      "File where `my-dired-history' is persisted.")
+
+    (defvar my-dired-recent-count 10
+      "Number of directories in the \"Recent\" group of `my-dired-pick'.")
+
+    (defvar my-dired-most-used-count 1000
+      "Number of directories in the \"Most used\" group of `my-dired-pick'.")
+
+    (defvar my-dired-record-delay 2
+      "Seconds a dired directory must stay selected before it is recorded.")
+
+    (defvar my-dired-history (my-usage-load my-dired-history-file)
+      "Usage history of dired directories, see `my-usage-add'.")
+
+    (defvar my-dired--record-timer nil)
+
+    (defun my-dired--directory (buffer)
+      "Return the directory BUFFER lists, if it is a dired buffer to record."
+      (with-current-buffer buffer
+        (and (derived-mode-p 'dired-mode)
+             (not (derived-mode-p 'dired-sidebar-mode))
+             (abbreviate-file-name (expand-file-name default-directory)))))
+
+    (defun my-dired--record-current ()
+      "Record the directory of the selected dired window, retrying while a minibuffer is open."
+      (if (active-minibuffer-window)
+          (setq my-dired--record-timer
+                (run-at-time my-dired-record-delay nil #'my-dired--record-current))
+        (setq my-dired--record-timer nil)
+        (let* ((dir (my-dired--directory (window-buffer (selected-window))))
+               (usage (and dir (my-usage-add my-dired-history dir 5000))))
+          (when (and usage (not (eq usage my-dired-history)))
+            (setq my-dired-history usage)
+            (my-usage-save my-dired-history-file usage)))))
+
+    (defun my-dired--schedule-record (&rest _)
+      "Arrange for the selected dired directory to be recorded if I stay there."
+      (when (and after-init-time
+                 (my-dired--directory (window-buffer (selected-window))))
+        (when (timerp my-dired--record-timer)
+          (cancel-timer my-dired--record-timer))
+        (setq my-dired--record-timer
+              (run-at-time my-dired-record-delay nil #'my-dired--record-current))))
+
+    ;; Buffer shown in a window, window selected, or a dired buffer re-read
+    ;; with another directory (`dired-find-alternate-file').
+    (add-hook 'window-buffer-change-functions #'my-dired--schedule-record)
+    (add-hook 'window-selection-change-functions #'my-dired--schedule-record)
+    (add-hook 'dired-after-readin-hook #'my-dired--schedule-record)
+
+    (defun my-dired-pick ()
+      "Open a directory from the dired history: recent first, then most used."
+      (interactive)
+      (let* ((exists (lambda (dir) (or (file-remote-p dir) (file-directory-p dir))))
+             (recent (seq-filter exists (plist-get my-dired-history :recent)))
+             (by-count (seq-filter exists
+                                   (mapcar #'car (my-usage-by-count
+                                                  (plist-get my-dired-history :counts)))))
+             (recent (seq-take recent my-dired-recent-count))
+             (by-count (seq-take (seq-difference by-count recent) my-dired-most-used-count))
+             (current (my-dired--directory (current-buffer))))
+        (dired (my-usage-completing-read
+                "Directory: "
+                `(("Recent" . ,recent) ("Most used" . ,by-count))
+                (plist-get my-dired-history :counts)
+                current))))
+
+    (global-set-key (kbd "C-z j") #'my-dired-pick)
     #+end_src
 
 ** tramp
@@ -2266,19 +2431,87 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
    (theme-looper-set-favorite-themes my-favorite-themes)
 
-   (defun my-theme-looper-pick ()
-     "Pick a theme from `my-favorite-themes' via completion.
-Unlike `theme-looper-enable-next-theme', no theme is loaded while
-moving through the list — the chosen theme is applied only on RET."
-     (interactive)
-     (let* ((themes (mapcar #'symbol-name my-favorite-themes))
-            (choice (completing-read "Theme: " themes nil t)))
-       (mapc #'disable-theme custom-enabled-themes)
-       (load-theme (intern choice) t)))
    #+end_src
 
-   #+RESULTS:
-   : my-theme-looper-pick
+*** Theme history: recent and most used
+
+    Every theme switch is recorded, whatever command made it (~my-theme-pick~, ~consult-theme~, ~load-theme~,
+    ~ef-themes-select~, ~customize-themes~, ~theme-looper-enable-next-theme~), via ~enable-theme-functions~. A theme
+    is recorded only after it has stayed active for ~my-theme-record-delay~ seconds with no minibuffer open, so
+    ~consult-theme~ previews and fast cycling through the looper do not count. Switching back to the theme that is
+    already first in the recent list is not counted either (this is what cancelling a preview does).
+
+    The history lives in [[file:var/theme-history.eld]] (gitignored with the rest of ~var/~) and is written after
+    each recorded switch.
+
+    ~my-theme-pick~ (=C-z T=) offers all available themes in four groups: /Recent/ (last
+    ~my-theme-recent-count~), /Most used/ (by count), /Favorites/ (~my-favorite-themes~ not used yet) and /All
+    themes/. The count is shown as =(N)= next to each name. No theme is loaded while moving through the list; the
+    choice is applied only on RET.
+
+    #+begin_src emacs-lisp
+    (defvar my-theme-history-file (locate-user-emacs-file "var/theme-history.eld")
+      "File where `my-theme-history' is persisted.")
+
+    (defvar my-theme-recent-count 10
+      "Number of themes in the \"Recent\" group of `my-theme-pick'.")
+
+    (defvar my-theme-record-delay 3
+      "Seconds a theme must stay active before it is recorded.")
+
+    (defvar my-theme-history (my-usage-load my-theme-history-file)
+      "Usage history of themes (symbols), see `my-usage-add'.")
+
+    (defvar my-theme--record-timer nil)
+
+    (defun my-theme--record-current ()
+      "Record the active theme, or retry later while a minibuffer is open."
+      (if (active-minibuffer-window)
+          ;; Still choosing (e.g. a consult-theme preview): look again later.
+          (setq my-theme--record-timer
+                (run-at-time my-theme-record-delay nil #'my-theme--record-current))
+        (setq my-theme--record-timer nil)
+        (let* ((theme (car custom-enabled-themes))
+               (usage (and theme (my-usage-add my-theme-history theme))))
+          (when (and usage (not (eq usage my-theme-history)))
+            (setq my-theme-history usage)
+            (my-usage-save my-theme-history-file usage)))))
+
+    (defun my-theme--schedule-record (_theme)
+      "Arrange for the active theme to be recorded once the user settles on it."
+      ;; Themes restored during startup are not a choice.
+      (when after-init-time
+        (when (timerp my-theme--record-timer)
+          (cancel-timer my-theme--record-timer))
+        (setq my-theme--record-timer
+              (run-at-time my-theme-record-delay nil #'my-theme--record-current))))
+
+    (add-hook 'enable-theme-functions #'my-theme--schedule-record)
+
+    (defun my-theme-pick ()
+      "Pick a theme: recent first, then most used, favorites, and all the rest.
+    No theme is loaded while moving through the list — the chosen theme is
+    applied only on RET."
+      (interactive)
+      (let* ((available (custom-available-themes))
+             (names (lambda (themes)
+                      (mapcar #'symbol-name (seq-filter (lambda (th) (memq th available)) themes))))
+             (counts (plist-get my-theme-history :counts))
+             (choice (my-usage-completing-read
+                      "Theme: "
+                      `(("Recent" . ,(funcall names (seq-take (plist-get my-theme-history :recent)
+                                                              my-theme-recent-count)))
+                        ("Most used" . ,(funcall names (mapcar #'car (my-usage-by-count counts))))
+                        ("Favorites" . ,(funcall names my-favorite-themes))
+                        ("All themes" . ,(funcall names (sort (copy-sequence available) #'string<))))
+                      (mapcar (lambda (c) (cons (symbol-name (car c)) (cdr c))) counts)
+                      (and (car custom-enabled-themes) (symbol-name (car custom-enabled-themes))))))
+        (mapc #'disable-theme custom-enabled-themes)
+        (load-theme (intern choice) t)))
+
+    (defalias 'my-theme-looper-pick #'my-theme-pick)
+    (global-set-key (kbd "C-z T") #'my-theme-pick)
+    #+end_src
 
 * Editing
 
@@ -5941,6 +6174,81 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    (setq ghostel-module-auto-install 'download)
    #+end_src
+
+*** Keys that reach Emacs, not the terminal
+
+    Semi-char mode sends every F-key with the modifiers =S-=, =C-=, =M-=, =C-S-=, =M-S-= and =C-M-= to the
+    terminal, so global bindings such as =C-<f6>= (~bookmark-jump~) or =M-<f7>= (~query-replace-regexp~) did
+    nothing in a Claude window. Every *modified* F-key combination that has a global binding when ghostel loads is
+    added to ~ghostel-keymap-exceptions~. Unmodified =<f1>=…=<f12>= still go to the terminal, where TUIs such as
+    htop and mc use them. Keys that should pass through for another reason go into ~my-ghostel-extra-exceptions~.
+
+    =C-M-S-= keys belong to Emacs entirely: no terminal program needs them. ghostel does not bind them, but an
+    unbound =C-M-S-a= falls back to =C-M-a= (shift translation), which ghostel does send. So each =C-M-S-= letter,
+    digit, F-key and navigation key is bound in ~ghostel-mode-map~ to its global command, or to ~undefined~ (a
+    beep) when it has none. ~ghostel-mode-map~ is used rather than the semi-char map because ghostel rebuilds the
+    semi-char map whenever the exception list changes.
+
+    =M-x my-ghostel-describe-exceptions= lists the keys ghostel leaves to Emacs and what each one runs.
+
+    #+begin_src emacs-lisp
+    (defvar my-ghostel-extra-exceptions nil
+      "Keys (`kbd' strings) to add to `ghostel-keymap-exceptions' by hand.")
+
+    (defconst my-ghostel-special-keys
+      (append (mapcar (lambda (i) (format "<f%d>" i)) (number-sequence 1 12))
+              '("<return>" "<tab>" "<backspace>" "<escape>" "<up>" "<down>" "<right>" "<left>"
+                "<home>" "<end>" "<prior>" "<next>" "<deletechar>" "<insert>"))
+      "Non-character keys considered for the C-M-S- bindings.")
+
+    (defun my-ghostel-globally-bound-fkeys ()
+      "Return the modified F-key combinations ghostel grabs that have a global binding."
+      (let (keys)
+        (dotimes (i 12)
+          (dolist (mod '("S-" "C-" "M-" "C-S-" "M-S-" "C-M-"))
+            (let ((key (format "%s<f%d>" mod (1+ i))))
+              (when (commandp (lookup-key global-map (kbd key)))
+                (push key keys)))))
+        (nreverse keys)))
+
+    (defun my-ghostel-C-M-S-keys ()
+      "Return every C-M-S- key that `ghostel-mode-map' hands to the global map."
+      (mapcar (lambda (k) (concat "C-M-S-" k))
+              (append (mapcar #'char-to-string (number-sequence ?a ?z))
+                      (mapcar #'char-to-string (number-sequence ?0 ?9))
+                      my-ghostel-special-keys)))
+
+    (defun my-ghostel-global-binding (key)
+      "Return a dynamic binding that runs KEY's global command, or `undefined'."
+      `(menu-item "" nil
+                  :filter ,(lambda (_)
+                             (let ((cmd (lookup-key global-map (kbd key))))
+                               (if (or (commandp cmd) (keymapp cmd)) cmd #'undefined)))))
+
+    (defun my-ghostel-describe-exceptions ()
+      "Show the keys ghostel leaves to Emacs and the global command of each."
+      (interactive)
+      (with-help-window "*ghostel exceptions*"
+        (princ "ghostel-keymap-exceptions:\n")
+        (dolist (key ghostel-keymap-exceptions)
+          (let ((cmd (lookup-key global-map (kbd key))))
+            (princ (format "  %-14s %s\n" key (cond ((keymapp cmd) "prefix") (cmd) (t ""))))))
+        (princ "\nC-M-S- keys with a global binding (all C-M-S- keys stay in Emacs):\n")
+        (dolist (key (my-ghostel-C-M-S-keys))
+          (let ((cmd (lookup-key global-map (kbd key))))
+            (when (or (commandp cmd) (keymapp cmd))
+              (princ (format "  %-14s %s\n" key (if (keymapp cmd) "prefix" cmd))))))))
+
+    (with-eval-after-load 'ghostel
+      (let ((extra (seq-difference (append (my-ghostel-globally-bound-fkeys)
+                                           my-ghostel-extra-exceptions)
+                                   ghostel-keymap-exceptions)))
+        (when extra
+          ;; `setopt', not `setq': the :set function rebuilds the semi-char map.
+          (setopt ghostel-keymap-exceptions (append ghostel-keymap-exceptions extra))))
+      (dolist (key (my-ghostel-C-M-S-keys))
+        (define-key ghostel-mode-map (kbd key) (my-ghostel-global-binding key))))
+    #+end_src
 
 ** claude-code-ide
 
