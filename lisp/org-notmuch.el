@@ -1,4 +1,4 @@
-;;; org-notmuch.el --- Support for links to notmuch messages from within Org-mode
+;;; org-notmuch.el --- Support for links to notmuch messages from within Org-mode  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2010-2014  Matthieu Lemerre
 

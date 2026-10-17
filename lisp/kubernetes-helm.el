@@ -1,4 +1,4 @@
-;;; kubernetes-helm.el --- extension for controlling helm, the package manager for kubernetes
+;;; kubernetes-helm.el --- extension for controlling helm, the package manager for kubernetes  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018, Adrien Brochard
 

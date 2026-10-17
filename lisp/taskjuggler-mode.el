@@ -1,4 +1,4 @@
-;;; taskjuggler-mode.el --- Editing Taskjuggler Files
+;;; taskjuggler-mode.el --- Editing Taskjuggler Files  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2008 by Stefan Kamphausen
 ;; Author: Stefan Kamphausen <http://www.skamphausen.de>

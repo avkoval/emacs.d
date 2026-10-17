@@ -1,4 +1,4 @@
-;;; org-checklist.el --- org functions for checklist handling
+;;; org-checklist.el --- org functions for checklist handling  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2008-2014 James TD Smith
 
@@ -113,7 +113,9 @@ of checkbox items"
 		(when (and (org-at-item-checkbox-p)
 			   (or (string= (match-string 0) "[ ]")
 			       (string= (match-string 0) "[-]")))
-		  (add-to-list 'exported-lines (thing-at-point 'line) t))
+		  (let ((line (thing-at-point 'line)))
+		    (unless (member line exported-lines)
+		      (setq exported-lines (append exported-lines (list line))))))
 		(beginning-of-line 2)))
 	    (set-buffer (get-buffer-create export-file))
 	    (org-insert-heading)

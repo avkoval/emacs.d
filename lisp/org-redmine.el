@@ -1,4 +1,4 @@
-;;; org-redmine.el --- Redmine tools using Emacs OrgMode
+;;; org-redmine.el --- Redmine tools using Emacs OrgMode  -*- lexical-binding: t; -*-
 
 ;; Author: Wataru MIYAGUNI <gonngo@gmail.com>
 ;; Keywords: redmine
@@ -405,7 +405,7 @@ if ME is t, return issues are assigned to user.
 
     (condition-case err
         (progn
-          (if me (add-to-list 'querylist (cons "assigned_to_id" "me")))
+          (if me (push (cons "assigned_to_id" "me") querylist))
           (setq query (orutil-http-query querylist))
           (setq issue-all (org-redmine-curl-get
                            (concat org-redmine-uri "/issues.json?" query)))

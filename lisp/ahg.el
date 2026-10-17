@@ -1,4 +1,4 @@
-;;; ahg.el --- Alberto's Emacs interface for Mercurial (Hg)
+;;; ahg.el --- Alberto's Emacs interface for Mercurial (Hg)  -*- lexical-binding: nil; -*-
 
 ;; Copyright (C) 2008-2020 Alberto Griggio
 

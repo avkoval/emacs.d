@@ -1,4 +1,4 @@
-;;; clipboard2org.el --- paste html or images to an org file
+;;; clipboard2org.el --- paste html or images to an org file  -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 

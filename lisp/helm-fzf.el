@@ -1,4 +1,4 @@
-;;; helm-fzf.el --- helm binding for FZF
+;;; helm-fzf.el --- helm binding for FZF  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2011 Free Software Foundation, Inc.
 

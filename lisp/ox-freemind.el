@@ -1,4 +1,4 @@
-;;; ox-freemind.el --- Freemind Mindmap Back-End for Org Export Engine
+;;; ox-freemind.el --- Freemind Mindmap Back-End for Org Export Engine  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013-2016  Free Software Foundation, Inc.
 

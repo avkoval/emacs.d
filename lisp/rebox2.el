@@ -1,4 +1,4 @@
-;;; rebox2.el --- Handling of comment boxes in various styles.
+;;; rebox2.el --- Handling of comment boxes in various styles.  -*- lexical-binding: t; -*-
 
 ;; Filename: rebox2.el
 ;; Description:

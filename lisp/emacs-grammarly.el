@@ -1,4 +1,4 @@
-;;; emacs-grammarly.el --- a simple plugin to sent text to Grammarly
+;;; emacs-grammarly.el --- a simple plugin to sent text to Grammarly  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;   URL: https://github.com/mmagnus/emacs-grammarly
 ;;; Code:

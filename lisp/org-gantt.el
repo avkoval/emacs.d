@@ -1,4 +1,4 @@
-;;; org-gantt.el --- Create integrated pgf gantt charts from task headlines
+;;; org-gantt.el --- Create integrated pgf gantt charts from task headlines  -*- lexical-binding: t; -*-
 ;;
 
 ;; This file is not part of GNU Emacs.

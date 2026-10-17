@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t; -*-
 (defvar modi/htmlize-output-directory
   (let ((dir (concat temporary-file-directory
                      (getenv "USER") "/.htmlize/"))) ; must end with /

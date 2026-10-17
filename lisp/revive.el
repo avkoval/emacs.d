@@ -1,4 +1,4 @@
-;;; revive.el --- Resume Emacs -*- coding: euc-jp -*-
+;;; revive.el --- Resume Emacs -*- coding: euc-jp; lexical-binding: nil -*-
 ;;; (c) 1994-2019 by HIROSE Yuuji [yuuji>at<gentei.org]
 ;;; $Id: revive.el,v 2.25 2019/11/04 01:57:24 yuuji Exp $
 ;;; Last modified Mon Nov  4 10:57:11 2019 on firestorm

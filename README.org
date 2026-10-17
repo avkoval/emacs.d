@@ -8,6 +8,16 @@
 
   Package archives, use-package, credentials helpers and my own packages; everything else depends on this.
 
+** Lexical binding
+
+   =README.el= is tangled from this file and loaded by ~org-babel-load-file~. Org adds no file-local cookie, and
+   without one Emacs 30+ warns "Missing ‘lexical-binding’ cookie" and loads the file with dynamic binding. This block
+   must stay the first =emacs-lisp= block so the cookie lands on line 1 of =README.el=.
+
+   #+begin_src emacs-lisp
+     ;; -*- lexical-binding: t; -*-
+   #+end_src
+
 ** ~PATH~ for CLI tools
 
    A GUI Emacs inherits whatever environment it was launched with, which on
@@ -2321,7 +2331,7 @@ moving through the list — the chosen theme is applied only on RET."
 	      (node-end (ts-node-end-position node)))
 	 ;; Node fits the region exactly. Try its parent node instead.
 	 (when (and (= beg node-beg) (= end node-end))
-	   (when-let ((node (ts-get-parent node)))
+	   (when-let* ((node (ts-get-parent node)))
 	     (setq node-beg (ts-node-start-position node)
 		   node-end (ts-node-end-position node))))
 	 (set-mark node-end)
