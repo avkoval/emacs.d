@@ -888,16 +888,17 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    same directory as the edited file, which is the Emacs default; ~backup-directory-alist~ is not
    set for local files.  Remote (TRAMP) files follow the same rule, see the tramp section.
 
-   Disk space is cheap. Save lots.
+   Numbered backups (=file.~1~=, =file.~2~=, …) are made for every file, including files under
+   version control, and Emacs never deletes old ones: any value of ~delete-old-versions~ other
+   than ~t~ or ~nil~ disables trimming.  Clean up by hand in Dired: =~= flags all backup files in
+   the directory, =x= deletes the flagged ones (=.= would instead keep the newest
+   ~dired-kept-versions~ and flag the rest).
 
    #+begin_src emacs-lisp
-     (setq delete-old-versions nil
-	   kept-new-versions 100
-	   kept-old-versions 100
-	   version-control t)
-     (setq version-control t)
-     (setq vc-make-backup-files t)
-     ;;(setq auto-save-file-name-transforms '((".*" "~/.emacs.d/auto-save-list/" t)))
+   (setq version-control t          ; numbered backups
+         delete-old-versions 'keep  ; never delete old versions automatically
+         vc-make-backup-files t)    ; also for files tracked by git
+   ;;(setq auto-save-file-name-transforms '((".*" "~/.emacs.d/auto-save-list/" t)))
    #+end_src
 
 ** Unique file names ('uniquify)
