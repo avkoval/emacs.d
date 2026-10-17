@@ -6557,19 +6557,36 @@ on Linux the stock =browse-url= default is kept.
 
   Small helper commands.
 
-** execute thunar here
+** Open the current directory in the system file manager
+
+   =C-x != opens ~default-directory~ (the file's directory, or the directory shown in Dired) in
+   the system file manager, without waiting for it to exit.  The program comes from
+   ~ok/file-manager-command~: =open= on macOS, =explorer= on Windows, =thunar= elsewhere.  To use
+   a different one, set it in Customize (=M-x customize-variable RET ok/file-manager-command=)
+   or with ~setq~ in a private init file, e.g. ~(setq ok/file-manager-command '("nautilus"))~.
+   The value is a list: program first, then any arguments; the directory is appended last.
 
    #+begin_src emacs-lisp
-   (defun exec-thunar ()
-     (interactive)
-     "Execute thunar here"
-     (shell-command "thunar")
-     )
-   (global-set-key (kbd "C-x !") 'exec-thunar)
-   #+end_src
+   (defcustom ok/file-manager-command
+     (pcase system-type
+       ('darwin '("open"))
+       ('windows-nt '("explorer"))
+       (_ '("thunar")))
+     "Command that opens a directory in the system file manager.
+   A list of the program and its arguments; the directory is appended."
+     :type '(repeat string)
+     :group 'environment)
 
-   #+RESULTS:
-   : exec-thunar
+   (defun ok/open-file-manager ()
+     "Open `default-directory' in the program from `ok/file-manager-command'."
+     (interactive)
+     (let ((dir (expand-file-name default-directory)))
+       (apply #'call-process (car ok/file-manager-command) nil 0 nil
+              (append (cdr ok/file-manager-command) (list dir)))))
+
+   (defalias 'exec-thunar #'ok/open-file-manager)
+   (global-set-key (kbd "C-x !") #'ok/open-file-manager)
+   #+end_src
 
 ** calculate via bc
 
