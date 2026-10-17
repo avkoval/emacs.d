@@ -1,0 +1,78 @@
+#+TITLE: Embark — acting on files from several directories
+#+STARTUP: showall
+
+Embark adds "actions on the thing in front of you" to the minibuffer: the current completion
+candidate, a file name at point, a URL, a symbol.  For files spread over several directories the
+useful combination is *select* (collect candidates one by one, across directory changes) and
+*export* (turn the selection into one Dired buffer, where copy/move/delete work on all of them).
+
+Works with ~C-x C-f~ (Vertico) and other Vertico/consult prompts.  It does *not* work inside Helm
+(~C-z C-f~, =M-f3=): Helm has its own marking (=C-SPC=) and action menu (=TAB=).
+
+* Keys
+
+| Key            | Where             | What                                                        |
+|----------------+-------------------+-------------------------------------------------------------|
+| =C-.=          | anywhere          | ~embark-act~: action menu for the target (candidate, file at point, …) |
+| =C-. SPC=      | minibuffer        | ~embark-select~: add/remove the current candidate to the selection |
+| =C-. E=        | minibuffer        | ~embark-export~: selection (or, if empty, all candidates) → a real buffer; files → Dired |
+| =C-. A=        | minibuffer        | ~embark-act-all~: run one action on every selected candidate |
+| =C-. S=        | minibuffer        | ~embark-collect~: snapshot of the candidates in a buffer you can act on later |
+| =C-. C-h=      | in the menu       | list all actions for this target with completion           |
+| =C-h B=        | anywhere          | ~embark-bindings~: all key bindings, searchable              |
+| =M-A=          | minibuffer        | ~marginalia-cycle~: more/less annotation detail              |
+
+While a selection exists, the mode line shows =Embark:N= (number of selected candidates).
+Selecting does not close the minibuffer, so you keep typing and selecting.
+
+* Recipe 1 — pick files in different directories, then copy/move/delete them together
+
+1. [@1]  =C-x C-f=, go to the first directory (type or edit the path as usual).
+2. [@2]  Move to a file and press =C-. SPC=.  It gets highlighted; =Embark:1= appears.
+3. [@3]  Without leaving the prompt, change the directory (edit the path, or =C-a C-k= and type a
+   new one such as =~/other/dir/=) and select more files with =C-. SPC=.
+   The selection survives directory changes: each selected candidate keeps its full path.
+4. [@4]  Press =C-. E=.  The prompt closes and a buffer =*Embark Export Dired <dir>*= opens.  It
+   lists exactly the selected files, shown relative to their common parent directory.
+5. [@5]  That buffer is ordinary Dired.  Mark everything with =t= (toggle marks; nothing is marked
+   yet, so this marks all), then:
+   - =C= copy to a directory (one prompt for all files),
+   - =R= move/rename to a directory,
+   - =D= delete (one confirmation listing all files),
+   - =!= / =&= run a shell command on them, =Z= compress, =M= chmod, …
+   ~dired-dwim-target~ is on: if another Dired window is visible, its directory is offered as the
+   destination for =C= / =R=.
+6. [@6]  =C-x C-q= in the export buffer switches to WDired: edit file names (including the
+   directory part) as text, =C-c C-c= applies all renames at once.
+
+To deselect a file, select it again (=C-. SPC= toggles).  Quitting the prompt with =C-g= discards
+the selection.
+
+* Recipe 2 — find files by name across a whole tree
+
+1. [@1]  =M-x consult-find=, give the root directory, type a pattern (for example =\.log$=).
+   The candidate list holds matches from all subdirectories.
+2. [@2]  Either export *all* matches right away with =C-. E=, or first select a few with
+   =C-. SPC= — export then takes only the selection.
+3. [@3]  Continue in Dired as in Recipe 1, step 5.
+
+~consult-fd~ is the faster equivalent, but needs the =fd= program (=pacman -S fd=); it is not
+installed at the moment.  Recently used files work the same way: =M-x consult-recent-file=, select,
+=C-. E=.
+
+* Recipe 3 — one action directly from the prompt, without Dired
+
+=C-. A= on a selection asks for an action key and runs it once per selected file, e.g. =d=
+(~delete-file~).  Actions that need an argument (=c= ~copy-file~, =r= ~rename-file~) prompt once
+*per file*, so for copying or moving several files Recipe 1 (export to Dired) is quicker.
+
+Single file, no selection needed: on a candidate in =C-x C-f= press =C-.= and then =c= copy,
+=r= rename, =d= delete, =o= open in other window, =j= jump to it in Dired, =x= open with the
+system application, === ediff with another file, =I= insert relative path.
+
+* When something does not work
+
+- *No highlight after =C-. SPC=* — you are in Helm, not Vertico; use =C-x C-f=.
+- *Export shows all candidates instead of the selection* — the selection was empty (check for
+  =Embark:N= in the mode line before pressing =E=).
+- *Unsure which actions exist* — press =C-.= and then =C-h= to search the action list.
