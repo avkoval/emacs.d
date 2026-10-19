@@ -98,6 +98,17 @@ Bash sessions for short, non-interactive steps watched from Emacs. ob-tmux when 
 survive an Emacs restart (copies, migrations, backups), need a real terminal (less, htop, editors) or read secrets.
 Don't mass-convert a reviewed tmux runbook.
 
+ob-tmux passes `:var` the same way as ob-shell: it types `name="value"` assignments before the block (no textual
+substitution). So in tmux blocks too: no `~` in variable values (`archive_dir="~/x"` stays a literal `~`; use
+`$HOME/x`), and heredocs that use variables must be unquoted (`<<EOF`, with any other `$`, backticks and
+backslashes inside escaped) — a quoted `<<'EOF'` writes `$name` literally into the config.
+
+The sudo problem hits ob-tmux too: the block is pasted at once, and while a `sudo …` line runs, sudo takes the pasted
+lines still waiting — they are silently lost (seen: a `systemctl enable --now` after a `sudo tee <<EOF` heredoc never
+ran). Write every tmux block as ONE command chain: put commands that follow a heredoc on the heredoc's first line
+(`sudo tee f >/dev/null <<'EOF' && sudo systemctl daemon-reload && …`; several heredocs on one line work:
+`<<'EOF' && sudo tee g <<'EOF2' && …`), and give `read -rs` its own block (otherwise it reads the next pasted line).
+
 ## 5. Testing Emacs-side changes
 
 `cd <package> && emacs -Q --batch -L . -l test/org-babel-runbook-test.el -f ert-run-tests-batch-and-exit` (add
