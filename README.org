@@ -2346,6 +2346,11 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
        (tab-line-define-keys nil)
        (tab-line-tabs-function 'tab-line-tabs-mode-buffers)
        :config
+       ;; Emacs 30 has no `tab-line-define-keys' and hardcodes these keys in
+       ;; `tab-line-mode-map'; remove them so the global previous-buffer /
+       ;; next-buffer bindings apply.
+       (dolist (key '("C-x <left>" "C-x C-<left>" "C-x <right>" "C-x C-<right>"))
+         (keymap-unset tab-line-mode-map key t))
        (global-tab-line-mode 1)
        ;; :init
        ;; (defvar-keymap tab-line-mode-map
