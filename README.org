@@ -924,8 +924,8 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
    Shared helpers for pickers that list what I used last, then what I use most, with the use count shown as =(N)=.
    A usage history is a plist =(:recent (ITEM ...) :counts ((ITEM . N) ...))=, most recent first, stored as a
    =.eld= file under [[file:var/]] (gitignored). Items are compared with ~equal~, so they can be symbols or strings.
-   Used by the theme picker (=C-z T=, see "theme looper & custom looper") and the directory picker (=C-z j=, see
-   "dired / recent directories").
+   Used by the theme picker (=C-z T=, see "theme looper & custom looper"), the directory picker (=C-z j=, see
+   "dired / recent directories") and the file picker (=<f4>=, see "recent files").
 
    #+begin_src emacs-lisp
    (defun my-usage-load (file)
@@ -1338,28 +1338,120 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
 
    #+end_src
 
-** recentf
-   Since yesterday emacs update [2019-03-07 Thu] recentf started aggressive cleanup
-   of all tramp-related buffers, and no controls affect it (auto cleanup was always
-   disabled).
+** recent files
 
-   Quick workaround:
+   Replaces ~recentf~, which recorded every file Emacs opened, including the ones I never looked at: all agenda
+   files on each agenda build, backups, files opened by packages in the background. Its list ended up as one flat
+   list of a few hundred names with the files I actually work on buried in it. ~recentf-mode~ is off.
+
+   Every file I stay in is recorded the same way as directories (see "dired / recent directories"): a file buffer
+   counts once it has been shown in the selected window for ~my-file-record-delay~ seconds, and coming back to the
+   file that is already first in the recent list is not counted again. Files matching ~my-file-history-exclude~ are
+   never recorded. The history lives in [[file:var/file-history.eld]]; on first start it is seeded from the old
+   recentf list [[file:~/.cache/emacs-recentf]], each file with a count of 1.
+
+   ~my-file-pick~ (=<f4>=, also =C-z C-r=) lists /Recent/ (last ~my-file-recent-count~) and then /Most used/ (the
+   next ~my-file-most-used-count~ by count), with the count as =(N)=; RET visits the file. Local files that no longer
+   exist are left out; remote (TRAMP) ones are listed without checking, to avoid connecting.
 
    #+begin_src emacs-lisp
-   (use-package recentf
-     :custom
-     (recentf-auto-cleanup 'never)
-     (recentf-keep nil)
-     :init
-     (setq
-       recentf-save-file "~/.cache/emacs-recentf"
-       recentf-max-saved-items 10000
-       recentf-max-menu-items 5000
-       )
-     (recentf-mode 1)
-     (run-at-time (current-time) (* 5 60) 'recentf-save-list)
-     )
-   (load "~/.cache/emacs-recentf" t)
+   (with-eval-after-load 'recentf
+     (recentf-mode -1))
+
+   (defvar my-file-history-file (locate-user-emacs-file "var/file-history.eld")
+     "File where `my-file-history' is persisted.")
+
+   (defvar my-file-recent-count 15
+     "Number of files in the \"Recent\" group of `my-file-pick'.")
+
+   (defvar my-file-most-used-count 2000
+     "Number of files in the \"Most used\" group of `my-file-pick'.")
+
+   (defvar my-file-record-delay 2
+     "Seconds a file buffer must stay selected before it is recorded.")
+
+   (defvar my-file-history-exclude
+     (rx (or "/.git/" "COMMIT_EDITMSG" "/elpa/" "/var/file-history.eld"
+             (regexp "\\.~[0-9]+~\\'") (regexp "~\\'")))
+     "Files matching this regexp are not recorded in `my-file-history'.")
+
+   (defun my-file--seed-from-recentf ()
+     "Return a usage history built from the old recentf save file, or nil."
+     (let ((file "~/.cache/emacs-recentf"))
+       (when (file-readable-p file)
+         (with-temp-buffer
+           (insert-file-contents file)
+           (let (files form)
+             (while (and (not files)
+                         (setq form (ignore-errors (read (current-buffer)))))
+               (pcase form
+                 (`(setq recentf-list (quote ,list)) (setq files list))))
+             (setq files (seq-remove (lambda (f) (string-match-p my-file-history-exclude f))
+                                     (delete-dups files)))
+             (and files
+                  (list :recent (seq-take files 50)
+                        :counts (mapcar (lambda (f) (cons f 1)) (seq-take files 2000)))))))))
+
+   (defvar my-file-history
+     (or (my-usage-load my-file-history-file)
+         (let ((seed (my-file--seed-from-recentf)))
+           (when seed (my-usage-save my-file-history-file seed))
+           seed))
+     "Usage history of visited files, see `my-usage-add'.")
+
+   (defvar my-file--record-timer nil)
+
+   (defun my-file--name (buffer)
+     "Return the file BUFFER visits, if it is a file to record."
+     (let ((file (buffer-file-name buffer)))
+       (and file
+            (not (string-match-p my-file-history-exclude file))
+            (abbreviate-file-name (expand-file-name file)))))
+
+   (defun my-file--record-current ()
+     "Record the file of the selected window, retrying while a minibuffer is open."
+     (if (active-minibuffer-window)
+         (setq my-file--record-timer
+               (run-at-time my-file-record-delay nil #'my-file--record-current))
+       (setq my-file--record-timer nil)
+       (let* ((file (my-file--name (window-buffer (selected-window))))
+              (usage (and file (my-usage-add my-file-history file 5000))))
+         (when (and usage (not (eq usage my-file-history)))
+           (setq my-file-history usage)
+           (my-usage-save my-file-history-file usage)))))
+
+   (defun my-file--schedule-record (&rest _)
+     "Arrange for the selected file to be recorded if I stay there."
+     (when (and after-init-time
+                (my-file--name (window-buffer (selected-window))))
+       (when (timerp my-file--record-timer)
+         (cancel-timer my-file--record-timer))
+       (setq my-file--record-timer
+             (run-at-time my-file-record-delay nil #'my-file--record-current))))
+
+   ;; Buffer shown in a window, window selected, or `find-alternate-file'.
+   (add-hook 'window-buffer-change-functions #'my-file--schedule-record)
+   (add-hook 'window-selection-change-functions #'my-file--schedule-record)
+   (add-hook 'find-file-hook #'my-file--schedule-record)
+
+   (defun my-file-pick ()
+     "Visit a file from the file history: recent first, then most used."
+     (interactive)
+     (let* ((exists (lambda (file) (or (file-remote-p file) (file-exists-p file))))
+            (recent (seq-filter exists (seq-take (plist-get my-file-history :recent)
+                                                 (* 2 my-file-recent-count))))
+            (recent (seq-take recent my-file-recent-count))
+            (by-count (mapcar #'car (my-usage-by-count (plist-get my-file-history :counts))))
+            (by-count (seq-take (seq-filter exists (seq-difference by-count recent))
+                                my-file-most-used-count)))
+       (find-file (my-usage-completing-read
+                   "File: "
+                   `(("Recent" . ,recent) ("Most used" . ,by-count))
+                   (plist-get my-file-history :counts)
+                   (my-file--name (current-buffer))))))
+
+   (global-set-key (kbd "<f4>") #'my-file-pick)
+   (global-set-key (kbd "C-z C-r") #'my-file-pick)
    #+end_src
 
 ** compilation colors
@@ -1511,8 +1603,7 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
          (add-to-list 'savehist-additional-variables 'helm-dired-history-variable)
         (savehist-mode 1))
 
-       :bind (("C-z C-r" . helm-recentf)
-              ([M-f3] . helm-find-files)
+       :bind (([M-f3] . helm-find-files)
               (["s-\\"] . helm-buffers-list)
               ("C-z C-f" . helm-find-files)
               ([M-f9] . helm-mark-ring)
@@ -1522,8 +1613,6 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
               ;;           ("C-x /" . helm-surfraw)
               ("C-z C-b" . helm-buffers-list)
               ("C-z C-a" . helm-mini)
-              ("C-z C-r" . helm-recentf)
-              ([f4] . helm-recentf)
               ("C-z C-f" . helm-find-files)
               ("C-z f f" . helm-etags-select)
               ("C-c h m" . helm-mark-ring)
