@@ -144,10 +144,35 @@ return the list of result strings (nil when no #+RESULTS: was written)."
                      "via-session"))
     (obr-test--kill-sessions "obr-async")))
 
+(defun obr-test--restart-run (session)
+  "Run a block in SESSION, kill its shell process, run another; return results."
+  (let ((first (car (obr-test--run obr-test-header (list (cons (format ":session %s" session) "echo before"))))))
+    (delete-process (get-buffer-process session))
+    (list first
+          (car (obr-test--run obr-test-header
+                              (list (cons (format ":session %s" session) "echo after-restart")))))))
+
+(ert-deftest obr-dead-session-restarts-without-mode ()
+  "Reproduce: a session whose shell died fails with (wrong-type-argument stringp nil)."
+  (skip-unless (get 'comint-output-filter-functions 'permanent-local))
+  (org-babel-runbook-mode -1)
+  (unwind-protect
+      (let ((ob-async-no-async-languages-alist '("bash")))
+        (should-error (obr-test--restart-run "obr-dead-off") :type 'wrong-type-argument))
+    (obr-test--kill-sessions "obr-dead-off")
+    (org-babel-runbook-mode 1)))
+
+(ert-deftest obr-dead-session-restarts ()
+  (org-babel-runbook-mode 1)
+  (unwind-protect
+      (should (equal (obr-test--restart-run "obr-dead") '("before" "after-restart")))
+    (obr-test--kill-sessions "obr-dead")))
+
 (ert-deftest obr-mode-off-removes-advice ()
   (org-babel-runbook-mode 1)
   (org-babel-runbook-mode -1)
   (should-not (advice-member-p #'org-babel-runbook--tty-guard 'org-babel-sh-evaluate))
+  (should-not (advice-member-p #'org-babel-runbook--drop-dead-session 'org-babel-sh-initiate-session))
   (org-babel-runbook-mode 1))
 
 ;;; org-babel-runbook-test.el ends here

@@ -121,7 +121,25 @@ so ob-shell's own :async runs them inside the named session buffer."
     (advice-add 'ob-async-org-babel-execute-src-block :around
                 #'org-babel-runbook--skip-ob-async)))
 
-;;;; 3. Session list
+;;;; 3. Sessions whose shell died
+
+(defun org-babel-runbook--drop-dead-session (&optional session &rest _)
+  "Before advice for `org-babel-sh-initiate-session'.
+Kill the SESSION buffer when its shell process is gone, so ob-shell
+starts a fresh session instead of restarting the shell in the old
+buffer.  A restart in place keeps `org-babel-comint-async-filter' in
+`comint-output-filter-functions' (permanent-local) while `shell-mode'
+resets the async state it needs, and the next block fails with
+\(wrong-type-argument stringp nil).  This happens after the remote host
+of a TRAMP session rebooted or the connection dropped."
+  (when-let* (((stringp session))
+              ((not (string= session "none")))
+              (buf (get-buffer session))
+              ((not (process-live-p (get-buffer-process buf)))))
+    (let ((kill-buffer-query-functions nil))
+      (kill-buffer buf))))
+
+;;;; 4. Session list
 
 (defun org-babel-runbook--session-p (buf)
   "Non-nil if BUF is an org-babel shell :session buffer."
@@ -172,15 +190,19 @@ so ob-shell's own :async runs them inside the named session buffer."
 (define-minor-mode org-babel-runbook-mode
   "Make org-babel shell :session blocks reliable for runbooks.
 Wraps async session bodies so sudo can't steal ob-shell's end marker,
-and routes shell session blocks past ob-async."
+routes shell session blocks past ob-async, and starts a fresh session
+when a session's shell has died."
   :global t
   :group 'org-babel-runbook
   (if org-babel-runbook-mode
       (progn
         (advice-add 'org-babel-sh-evaluate :filter-args #'org-babel-runbook--tty-guard)
+        (advice-add 'org-babel-sh-initiate-session :before
+                    #'org-babel-runbook--drop-dead-session)
         (org-babel-runbook--advise-ob-async)
         (with-eval-after-load 'ob-async (org-babel-runbook--advise-ob-async)))
     (advice-remove 'org-babel-sh-evaluate #'org-babel-runbook--tty-guard)
+    (advice-remove 'org-babel-sh-initiate-session #'org-babel-runbook--drop-dead-session)
     (when (fboundp 'ob-async-org-babel-execute-src-block)
       (advice-remove 'ob-async-org-babel-execute-src-block #'org-babel-runbook--skip-ob-async))))
 

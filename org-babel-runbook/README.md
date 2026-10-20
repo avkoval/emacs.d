@@ -75,7 +75,15 @@ in a separate child Emacs. That child has no session buffers: you get `No buffer
 loading your init (`Recursive load …`). ob-shell has had its own `:async` for sessions since org 9.7, so the mode
 routes shell blocks that have a `:session` past ob-async. Other languages and session-less blocks keep using ob-async.
 
-### 3. Session buffers are invisible
+### 3. A session whose shell died fails with `(wrong-type-argument stringp nil)`
+
+When a session's shell process is gone (the remote host rebooted, the TRAMP connection dropped), ob-shell restarts the
+shell in the same buffer. `shell-mode` resets ob-comint's async state there, but the async output filter stays in
+`comint-output-filter-functions`, which is permanent-local (Emacs 31). The next block then stops with
+`error in process filter: Wrong type argument: stringp, nil` from `org-babel-comint-async-filter` and never runs. The
+mode kills such a dead session buffer before ob-shell initiates the session, so the block gets a fresh one.
+
+### 4. Session buffers are invisible
 
 A `:session pi` block runs in a buffer named `pi` that doesn't show up anywhere unless you know its name.
 `org-babel-runbook-list-sessions` lists all ob-shell session buffers — live ones first, with host (for TRAMP) and
