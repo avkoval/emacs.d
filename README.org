@@ -142,7 +142,7 @@
    My packages live as git checkouts in =~/.emacs.d/<name>=, where I also develop and push them:
    [[https://github.com/avkoval/ok-gtasks][ok-gtasks]], [[https://github.com/avkoval/okorg2slides][okorg2slides]],
    [[https://github.com/avkoval/org-qa-walk][org-qa-walk]], [[https://github.com/avkoval/org-browser-run][org-browser-run]],
-   [[https://github.com/avkoval/org2docx][org2docx]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
+   [[https://github.com/avkoval/org2docx][org2docx]], [[https://github.com/avkoval/vlq][vlq]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
    (checked out as =youtrack/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
    machine needs nothing but this file.  The clone fetches over HTTPS (no key needed) and pushes over SSH.
 
@@ -152,7 +152,7 @@
 
    #+begin_src emacs-lisp
    (defvar my/own-packages
-     '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx"
+     '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx" "vlq"
        ("youtrack" . "emacs-org-mode-youtrack"))
      "My packages, kept as git checkouts in `user-emacs-directory'.
    Each entry is a folder name that equals the GitHub repo name under
@@ -1221,6 +1221,12 @@ punctuation (e.g. \" \\t\\n,.;:\") for finer, sentence-like movement.")
       (require 'tramp)
       (require 'password-cache)
       (setq password-cache-expiry nil)
+
+      ;; No shell history for TRAMP's shells.  The default "~/.tramp_history" is passed as
+      ;; `env HISTFILE=~/.tramp_history bash -i'; a zsh login shell (this laptop, /ssh:localhost:)
+      ;; does not expand that ~, so bash wrote the history into a literal "~" folder under the
+      ;; current directory (found in ~/'~'/'~'/.tramp_history, 2026-10).
+      (setq tramp-histfile-override t)
 
       ;; Open files in Docker containers like so: /docker:drunk_bardeen:/etc/passwd
       ;; (push
@@ -4990,6 +4996,11 @@ https://github.com/thndrbrrr/gtasks-org-tools
        ;; honours no ignore rules and descends into every dot-directory; rg skips
        ;; dot-dirs and respects .gitignore by default.
        (setopt magit-todos-scanner #'magit-todos--scan-with-rg)
+       ;; Ignore ~/.ripgreprc (RIPGREP_CONFIG_PATH is inherited by Emacs).  It sets
+       ;; --no-ignore and --follow, so rg walked into the git-ignored straight/ and
+       ;; hit dead symlinks under elpy/; the IO errors make rg exit 2, which
+       ;; magit-todos reports as a failure with the whole TODO list as its "output".
+       (setopt magit-todos-rg-extra-args '("--no-config"))
        ;; Passed through to whichever scanner actually runs, so these hold even if rg
        ;; is missing. Two distinct problems:
        ;;   - `.venv/' / `.claude/' / `node_modules/': huge trees, and one .venv per
@@ -5455,6 +5466,15 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    https://github.com/doublep/logview
    #+begin_src emacs-lisp
      (use-package logview)
+   #+end_src
+
+** vlq
+   VictoriaLogs search, notmuch style: [[file:vlq/README.md]]. =M-x vlq=.
+   #+begin_src emacs-lisp
+     (use-package vlq
+       :ensure nil
+       :load-path (lambda () (my/own-package "vlq"))
+       :commands (vlq vlq-search))
    #+end_src
 
 ** php-mode

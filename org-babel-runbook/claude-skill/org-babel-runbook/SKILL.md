@@ -1,6 +1,6 @@
 ---
 name: org-babel-runbook
-description: Use when the user wants an org-mode task file / runbook / install guide whose steps are executed from Emacs with org-babel — "write a task file to install X on the Pi", "make an org babel file for setting up Y", "runbook with bash sessions", "convert this tmux runbook to bash sessions" — or when debugging one ("results stay as a hash/uuid", "block hangs", "output shows in the session but not in RESULTS", "No buffer named pi"). Writes named `bash :session` blocks over TRAMP with the org-babel-runbook Emacs package's conventions: results type, sudo-safe async, idempotency tags with Check blocks, when to keep ob-tmux.
+description: Use when the user wants an org-mode task file / runbook / install guide whose steps are executed from Emacs with org-babel — "write a task file to install X on the Pi", "make an org babel file for setting up Y", "runbook with bash sessions", "convert this tmux runbook to bash sessions" — or when debugging one ("results stay as a hash/uuid", "block hangs", "output shows in the session but not in RESULTS", "No buffer named pi"). Writes named `bash :session` blocks over TRAMP with the org-babel-runbook Emacs package's conventions: results type, sudo-safe async, idempotency tags with Check blocks, when to keep ob-tmux, and progress tracking (numbered `[ ]` checkbox per block, `[/]` cookie on every step heading) for both bash and tmux blocks.
 ---
 
 # Org-babel runbooks (bash sessions, local or over TRAMP)
@@ -40,10 +40,55 @@ What the mode fixes (details in README.md):
 * Decisions               ← what was chosen and why
 * Layout                  ← #+begin_example diagram of hosts, ports, data paths
 * Variables               ← table: variable / where its value comes from / which step sets it
-* TODO 1. <step>                                                  :read_only:
-* TODO 2. <step>                                                   :rerun_ok:
+* TODO 1. <step> [/]                                              :read_only:
+* TODO 2. <step> [/]                                               :rerun_ok:
+* TODO 3. <step with sub-steps> [/]                              :disruptive:
+** TODO <sub-step> [/]                                             :rerun_ok:
 * Operations              ← Upgrade / Remove / Later
 ```
+
+### Progress: numbered checkboxes + `[/]` cookie on the heading
+
+The human runs blocks one by one and easily misses the second block under a heading (seen: a heading with two
+blocks, the first ran, the second still showed a uuid in RESULTS). So every action the reader must take is a checkbox:
+
+```org
+* TODO 3. Service, then Caddy [/]                                :disruptive:
+1. [@1]  [ ] Bind VictoriaLogs to localhost.
+#+begin_src bash :session pi :dir /ssh:user@pi-host:
+…
+#+end_src
+Expected: =OK=.
+
+2. [@2]  [ ] Replace the Caddy block and reload.
+#+begin_src bash :session pi :dir /ssh:user@pi-host:
+…
+#+end_src
+Expected: =Valid configuration=, =active=.
+
+3. [@3]  [ ] Check.
+#+begin_src bash :session pi :dir /ssh:user@pi-host:
+…
+#+end_src
+Expected: …
+```
+
+- Applies the same to `bash :session` and ob-tmux blocks (and mixed files): the checkbox tracks the human's action,
+  not the block type — a tmux block that runs for an hour is exactly the one that gets forgotten.
+- One item per source block (Check blocks included), and per manual action without a block ("open the URL in the
+  browser", "type the password in the session buffer", "edit the router config"). Short imperative text naming what
+  the block does — the reader ticks it with `C-c C-c` on the item after comparing with `Expected:`.
+- Numbered `N. [@N]  [ ]` (counter cookie, two spaces, then the checkbox); numbering restarts at 1 under every
+  heading. Blocks stay unindented between items — the heading cookie counts every checkbox in the section, even when
+  the blocks split it into several lists, and `[@N]` keeps the numbers right.
+- `[/]` goes at the end of the heading text, before the tags. It counts the checkboxes in that heading's own body.
+- A heading with sub-headings (step 3 above) gets `[/]` too, and then counts its `TODO`/`DONE` children — so its own
+  body holds prose only, no checkboxes (mixing both makes the two counters overwrite each other). Its sub-headings
+  carry the checkboxes.
+- A heading with a single block still gets the checkbox and `[/]` — uniform, and `[1/1]` is the signal to mark DONE.
+- Cookies refresh on `C-c C-c` on the cookie or a checkbox; a freshly written file shows `[/]` until then — say so.
+- Converting an existing runbook: add `[/]` to every step heading and turn each block's lead-in sentence into the
+  item text; keep ticks `[X]` for blocks whose RESULTS show the step already ran (step is DONE).
 
 Header rules:
 - `:results output` — plain `: …` lines. The default `value` turns whitespace-separated output into an org table.
@@ -85,7 +130,8 @@ Expected: <short, exact output to compare>.
 | `:disruptive:`  | safe to repeat, but restarts something users notice                        |
 | `:destructive:` | deletes data                                                               |
 
-- Every step that changes something ends with a read-only **Check** block + `Expected:`. Mark DONE when Check passes;
+- Every step that changes something ends with a read-only **Check** block + `Expected:` (its own checkbox item, last
+  in the list). Mark DONE when Check passes and the cookie is full;
   unsure whether a step went through (Emacs restarted mid-step): run Check, if it fails run the step again.
 - Re-runnable by construction: `tee` whole files (not `>>`), `install -d`, self-replacing nft tables
   (`table inet x {}` / `delete table inet x` / `table inet x {…}`), `id u || useradd …`,
