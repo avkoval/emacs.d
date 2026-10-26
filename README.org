@@ -6368,7 +6368,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
         (define-key ghostel-mode-map (kbd key) (my-ghostel-global-binding key))))
     #+end_src
 
-** claude-code-ide
+** COMMENT claude-code-ide
 
    #+begin_src emacs-lisp
 
@@ -6476,7 +6476,8 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    ;; C-x f-key map: f1 claude sessions, f2 codex sessions, f3 ztree,
    ;; f4 transcript, f5 hyperbole link, f6 export, f7 @-mention, f8 prompt,
-   ;; f11 prefix (display-line-numbers). f9, f10, f12 are still free.
+   ;; f9 claudemacs menu, f10 claudemacs request on region,
+   ;; f11 prefix (display-line-numbers). f12 is still free.
    (global-set-key (kbd "C-x <f4>") #'my-claude-open-transcript)
 
    ;; Bulk archiver: regenerate the org copy of ALL sessions (bin/claude-
@@ -6507,7 +6508,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    #+RESULTS:
    : claude-code-ide-list-sessions
 
-** codex-ide
+** COMMENT codex-ide
 
    Codex's native app-server client, with an interface similar to
    `claude-code-ide': transcript buffers, approvals, clickable file
@@ -6529,10 +6530,15 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      :vc (:url "https://github.com/cpoile/claudemacs" :rev :newest)
      :custom
      (claudemacs-terminal-backend 'ghostel)
-     :bind (("C-c C-e" . claudemacs-transient-menu)))
+     ;; Not the upstream C-c C-e: org export, helm-ag edit and drawio use it.
+     ;; f9 opens the menu; f10 sends the region (or current line) as
+     ;; path:start-end plus a request typed in the minibuffer — the
+     ;; claudemacs counterpart of claude-code-ide's <f7>/<f8>.
+     :bind (("C-x <f9>" . claudemacs-transient-menu)
+            ("C-x <f10>" . claudemacs-execute-request)))
    #+end_src
 
-** codex-cli — switch between open sessions
+** COMMENT codex-cli — switch between open sessions
 
    `codex-cli' has no process registry of its own (unlike claude-code-ide,
    whose ~claude-code-ide-list-sessions~ walks a hash table) — it encodes
