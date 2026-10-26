@@ -3656,9 +3656,13 @@ With prefix ARG, replace the converted text in place instead of copying it."
      :load-path (lambda () (my/own-package "org2docx"))
      :after org
      :demand t
-     ;; System Python explicitly: a project venv first on PATH has no LibreOffice `uno',
-     ;; and without it the table of contents stays empty.
-     :custom (org2docx-python "/usr/bin/python")
+     ;; Python that has LibreOffice `uno': a project venv first on PATH lacks it,
+     ;; and without it the table of contents stays empty.  On macOS LibreOffice's
+     ;; own Python may only be launched by soffice (launch constraint since 26.8),
+     ;; so any Python works there: org2docx.py runs the UNO step as a soffice macro.
+     :custom (org2docx-python (if (eq system-type 'darwin)
+                                  "/opt/homebrew/bin/python3"
+                                "/usr/bin/python"))
      :commands (org2docx-export my/org2docx-export))
    #+end_src
 
@@ -4425,7 +4429,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    Prerequisite — the desktop app supplies the headless exporter (~drawio -x~):
 
-   #+begin_src sh :eval no
+   #+begin_src sh :eval no :tangle no
      yay -S drawio-desktop-bin
    #+end_src
 
@@ -4712,7 +4716,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
    built automatically the first time a =.d2= file is opened (needs a C compiler); rebuild with
    ~M-x d2-ts-mode-reinstall-grammar~.
 
-   #+begin_src sh :eval no
+   #+begin_src sh :eval no :tangle no
      sudo pacman -S d2
    #+end_src
 
@@ -4726,7 +4730,7 @@ https://github.com/thndrbrrr/gtasks-org-tools
 
    In Org:
 
-   #+begin_src org :eval no
+   #+begin_src org :eval no :tangle no
      ,#+begin_src d2 :file images/flow.svg :flags --layout elk
      user -> api: request
      api -> db: query
@@ -5256,7 +5260,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      :ensure nil
      :defer t
      :custom
-     (python-shell-interpreter "python"))
+     (python-shell-interpreter "python3"))
    (use-package css-mode
      :ensure nil
      :defer t
@@ -6393,6 +6397,31 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
 
    #+RESULTS:
    : claude-code-ide-list-sessions
+
+** codex-ide
+
+   Codex's native app-server client, with an interface similar to
+   `claude-code-ide': transcript buffers, approvals, clickable file
+   references, session diffs, and session management.
+
+   #+begin_src emacs-lisp
+   (use-package codex-ide
+     :vc (:url "https://github.com/dgillis/emacs-codex-ide" :rev :newest)
+     :bind (("C-c C-;" . codex-ide-menu)))
+   #+end_src
+
+** claudemacs
+
+   A terminal-oriented alternative for comparing Codex's CLI experience
+   inside Emacs.  Ghostel is already installed and is selected explicitly.
+
+   #+begin_src emacs-lisp
+   (use-package claudemacs
+     :vc (:url "https://github.com/cpoile/claudemacs" :rev :newest)
+     :custom
+     (claudemacs-terminal-backend 'ghostel)
+     :bind (("C-c C-e" . claudemacs-transient-menu)))
+   #+end_src
 
 ** codex-cli — switch between open sessions
 
