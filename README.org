@@ -142,8 +142,8 @@
    My packages live as git checkouts in =~/.emacs.d/<name>=, where I also develop and push them:
    [[https://github.com/avkoval/ok-gtasks][ok-gtasks]], [[https://github.com/avkoval/okorg2slides][okorg2slides]],
    [[https://github.com/avkoval/org-qa-walk][org-qa-walk]], [[https://github.com/avkoval/org-browser-run][org-browser-run]],
-   [[https://github.com/avkoval/org2docx][org2docx]], [[https://github.com/avkoval/vlq][vlq]], and [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
-   (checked out as =youtrack/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
+   [[https://github.com/avkoval/org2docx][org2docx]], [[https://github.com/avkoval/vlq][vlq]], [[https://github.com/avkoval/emacs-org-mode-youtrack][emacs-org-mode-youtrack]]
+   (checked out as =youtrack/=), and [[https://github.com/avkoval/emacs-org-mode-gitlab][emacs-org-mode-gitlab]] (checked out as =gitlab/=).  Their own sections call ~my/own-package~, which clones a missing checkout from GitHub at startup, so a fresh
    machine needs nothing but this file.  The clone fetches over HTTPS (no key needed) and pushes over SSH.
 
    ~M-x my/own-packages-update~ runs ~git pull --ff-only~ in every checkout and reports the result per package.  A
@@ -153,7 +153,8 @@
    #+begin_src emacs-lisp
    (defvar my/own-packages
      '("ok-gtasks" "okorg2slides" "org-qa-walk" "org-browser-run" "org2docx" "vlq"
-       ("youtrack" . "emacs-org-mode-youtrack"))
+       ("youtrack" . "emacs-org-mode-youtrack")
+       ("gitlab" . "emacs-org-mode-gitlab"))
      "My packages, kept as git checkouts in `user-emacs-directory'.
    Each entry is a folder name that equals the GitHub repo name under
    github.com/avkoval, or (FOLDER . REPO) when they differ.")
@@ -6943,6 +6944,53 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    (global-set-key (kbd "C-x / t") #'youtrack-insert-tree)
    (global-set-key (kbd "C-x / s") #'youtrack-submit-clock-entry)
    (global-set-key (kbd "C-x / o") #'youtrack-open-issue)
+   #+end_src
+
+** GitLab
+
+   Two parts, under the =C-x / g= prefix:
+
+   - Issues — [[file:gitlab/gitlab-org.org][gitlab/gitlab-org.org]]: browse projects/issues, yank an issue as an
+     org task (=GITLAB_ISSUE= property), read an issue with its comments as an
+     org buffer, submit org-clock time to GitLab time tracking.  Same workflow
+     as YouTrack above.
+   - Merge requests, pipelines, job logs, todos — [[https://github.com/isamert/lab.el][lab.el]] (=M-x lab-=).
+
+   Both talk to the instance through the =glab= CLI's login (token in the
+   keyring), so no token is stored here or in auth-source.  ~gitlab-org-host~ is
+   private and is set in =~/.emacs=, which runs after this file.
+
+   The commands are autoloaded rather than loaded here: =gitlab-org.el= is
+   tangled by hand from its =.org= source, and this way a freshly tangled file
+   is picked up on the next command, with no restart (and a missing one gives
+   "Cannot open load file" instead of breaking startup).
+
+   #+begin_src emacs-lisp
+   (let ((file (expand-file-name "gitlab-org" (my/own-package "gitlab"))))
+     (dolist (command '(gitlab-org-insert-task gitlab-org-insert-my-task
+                        gitlab-org-view-issue gitlab-org-open-issue
+                        gitlab-org-submit-clock-entry gitlab-org-yank-my-issues
+                        gitlab-org-yank-project-issues
+                        gitlab-org-enable-clock-out-hook gitlab-org-disable-clock-out-hook))
+       (autoload command file nil t))
+     (autoload 'gitlab-org-glab-token file))
+   (global-set-key (kbd "C-x / g i") #'gitlab-org-insert-task)
+   (global-set-key (kbd "C-x / g I") #'gitlab-org-insert-my-task)
+   (global-set-key (kbd "C-x / g v") #'gitlab-org-view-issue)
+   (global-set-key (kbd "C-x / g o") #'gitlab-org-open-issue)
+   (global-set-key (kbd "C-x / g s") #'gitlab-org-submit-clock-entry)
+   (global-set-key (kbd "C-x / g y") #'gitlab-org-yank-my-issues)
+
+   (use-package lab
+     :bind (("C-x / g m" . lab-list-my-merge-requests)
+            ("C-x / g r" . lab-list-review-merge-requests)
+            ("C-x / g p" . lab-search-project))
+     :config
+     ;; lab loads on first use, after ~/.emacs has set `gitlab-org-host'.
+     (when (bound-and-true-p gitlab-org-host)
+       (setq lab-host (concat "https://" gitlab-org-host))
+       (unless lab-token
+         (setq lab-token (gitlab-org-glab-token)))))
    #+end_src
 
 ** openwith
