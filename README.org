@@ -6535,8 +6535,71 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
      ;; path:start-end plus a request typed in the minibuffer — the
      ;; claudemacs counterpart of claude-code-ide's <f7>/<f8>.
      :bind (("C-x <f9>" . claudemacs-transient-menu)
+            ("C-c C-;" . claudemacs-transient-menu)
             ("C-x <f10>" . claudemacs-execute-request)))
    #+end_src
+
+*** Session pickers — =C-x <f1>= Claude, =C-x <f2>= Codex
+
+    claudemacs's own switcher (in the =C-x <f9>= menu) only offers sessions of the current workspace. These two
+    list every open claudemacs session of one CLI family across all projects, most recently shown first. The
+    family is claudemacs's ~:tool-kind~, so registry entries such as =claude-2= or =codex-personal= are grouped
+    with their CLI. With a single session the picker switches straight to it.
+
+    #+begin_src emacs-lisp
+    (defun my-claudemacs--sessions-of-kind (kind)
+      "Return claudemacs session info plists whose tool kind is KIND, newest first."
+      (seq-sort-by (lambda (info)
+                     (let ((time (buffer-local-value 'buffer-display-time
+                                                     (plist-get info :buffer))))
+                       (if time (float-time time) 0.0)))
+                   #'>
+                   (seq-filter (lambda (info) (and info (eq (plist-get info :tool-kind) kind)))
+                               (mapcar #'claudemacs--get-session-info
+                                       (claudemacs--list-all-sessions)))))
+
+    (defun my-claudemacs--session-label (info)
+      "Return a completion label for claudemacs session INFO."
+      (let ((buf (plist-get info :buffer)))
+        (concat (claudemacs--format-tool-instance-name (plist-get info :tool)
+                                                       (plist-get info :instance))
+                "  " (abbreviate-file-name (plist-get info :session-id))
+                (and (get-buffer-window buf t) "  [visible]")
+                (and (not (ignore-errors (with-current-buffer buf (claudemacs--terminal-live-p))))
+                     "  [no process]"))))
+
+    (defun my-claudemacs-list-sessions (kind)
+      "Switch to an open claudemacs session whose CLI family is KIND."
+      (require 'claudemacs)
+      (let ((sessions (my-claudemacs--sessions-of-kind kind)))
+        (unless sessions (user-error "No open %s sessions" (capitalize (symbol-name kind))))
+        (let* ((choices (mapcar (lambda (info) (cons (my-claudemacs--session-label info) info))
+                                sessions))
+               (choice (if (cdr choices)
+                           (completing-read (format "Switch to %s session: "
+                                                    (capitalize (symbol-name kind)))
+                                            (lambda (string pred action)
+                                              (if (eq action 'metadata)
+                                                  '(metadata (display-sort-function . identity))
+                                                (complete-with-action action choices string pred)))
+                                            nil t)
+                         (caar choices)))
+               (buffer (plist-get (cdr (assoc choice choices)) :buffer)))
+          (select-window (or (get-buffer-window buffer) (display-buffer buffer))))))
+
+    (defun my-claudemacs-list-claude-sessions ()
+      "Switch to an open claudemacs Claude session."
+      (interactive)
+      (my-claudemacs-list-sessions 'claude))
+
+    (defun my-claudemacs-list-codex-sessions ()
+      "Switch to an open claudemacs Codex session."
+      (interactive)
+      (my-claudemacs-list-sessions 'codex))
+
+    (global-set-key (kbd "C-x <f1>") #'my-claudemacs-list-claude-sessions)
+    (global-set-key (kbd "C-x <f2>") #'my-claudemacs-list-codex-sessions)
+    #+end_src
 
 ** COMMENT codex-cli — switch between open sessions
 
