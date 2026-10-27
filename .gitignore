@@ -96,6 +96,7 @@ org-browser-run/
 /org-to-xlsx/
 /org-gtasks/
 /#*#
+gitlab-org
 
 # Scratch file with a pasted Customize dump (holds secrets)
 /task.org

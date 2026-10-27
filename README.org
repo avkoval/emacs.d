@@ -6966,7 +6966,7 @@ To re-enable mypy in a specific project, add a .dir-locals.el in that project's 
    "Cannot open load file" instead of breaking startup).
 
    #+begin_src emacs-lisp
-   (let ((file (expand-file-name "gitlab-org" (my/own-package "gitlab"))))
+   (let ((file (expand-file-name "gitlab-org" (my/own-package "gitlab-org"))))
      (dolist (command '(gitlab-org-insert-task gitlab-org-insert-my-task
                         gitlab-org-view-issue gitlab-org-open-issue
                         gitlab-org-submit-clock-entry gitlab-org-yank-my-issues
